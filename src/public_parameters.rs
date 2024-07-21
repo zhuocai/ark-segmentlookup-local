@@ -7,7 +7,6 @@ use ark_poly::univariate::DensePolynomial;
 use ark_std::{UniformRand, Zero};
 use ark_std::rand::RngCore;
 use ark_std::rand::rngs::StdRng;
-use fk::UpperToeplitz;
 
 use crate::error::Error;
 use crate::kzg::{Kzg, unsafe_setup_from_tau};
@@ -217,46 +216,7 @@ fn roots_of_unity<E: PairingEngine>(domain: &GeneralEvaluationDomain<E::Fr>) -> 
 }
 
 
-fn compute_quotients<E: PairingEngine>(
-    t: &DensePolynomial<E::Fr>,
-    domain: &GeneralEvaluationDomain<E::Fr>,
-    srs_g1: &[E::G1Affine],
-) -> Result<Vec<E::G1Affine>, Error> {
-    /*
-        - N (table size) is always pow2
-        - Toeplitz multiplication will happen in 2 * N, so appending zero commitments on hs is not needed
-    */
-    let toeplitz = UpperToeplitz::from_poly(t);
 
-    let mut srs_proj: Vec<E::G1Projective> = srs_g1.iter().map(|t| t.into_projective()).collect();
-    srs_proj.reverse();
-
-    let h_commitments: Vec<E::G1Projective> = toeplitz.mul_by_vec(&srs_proj);
-    if h_commitments.len() != 2 * domain.size() {
-        return Err(Error::InvalidCommitmentLength(format!(
-            "Expected h_commitments length to be {}, but was {}",
-            2 * domain.size(),
-            h_commitments.len()
-        )));
-    }
-
-    let ks: Vec<_> = domain.fft(&h_commitments[..domain.size()]);
-
-    let n_inv = domain.size_as_field_element()
-        .inverse()
-        .ok_or(Error::FailedToInverseFieldElement)?;
-    let normalized_roots: Vec<E::Fr> = domain.elements().map(|g_i| g_i * n_inv).collect();
-
-    let mut qs: Vec<E::G1Projective> = ks
-        .iter()
-        .zip(normalized_roots)
-        .map(|(ki, normalizer_i)| ki.mul(normalizer_i.into_repr()))
-        .collect();
-
-    E::G1Projective::batch_normalization(&mut qs);
-
-    Ok(qs.iter().map(|qi| qi.into_affine()).collect())
-}
 
 #[cfg(test)]
 mod test {

@@ -11,7 +11,7 @@ use crate::error::Error;
 pub fn commitments<C: AffineCurve>(srs: &[C], domain: &GeneralEvaluationDomain<C::ScalarField>) -> Vec<C> {
     let group_order = domain.size();
     assert!(srs.len() >= group_order);
-    assert!(is_pow_2(group_order));
+    assert!(group_order.is_power_of_two());
 
     let n_inv = domain
         .size_as_field_element()
@@ -58,8 +58,4 @@ pub fn zero_opening_proofs<E: PairingEngine>(
     }
 
     Ok(opening_proofs)
-}
-
-fn is_pow_2(x: usize) -> bool {
-    (x & (x - 1)) == 0
 }
