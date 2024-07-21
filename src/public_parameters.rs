@@ -60,7 +60,7 @@ pub struct PublicParameters<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> PublicParameters<E> {
-    pub fn new<R: RngCore>(
+    pub fn setup<R: RngCore>(
         rng: &mut R,
         num_segments: usize,
         num_queries: usize,
@@ -229,9 +229,9 @@ mod test {
     use crate::public_parameters::PublicParameters;
 
     #[test]
-    fn test_public_parameters_new() {
+    fn test_public_parameters_setup() {
         let mut rng = test_rng();
-        let pp = PublicParameters::<Bn254>::new::<StdRng>(
+        let pp = PublicParameters::<Bn254>::setup::<StdRng>(
             &mut rng,
             8, 4, 4,
         ).unwrap();

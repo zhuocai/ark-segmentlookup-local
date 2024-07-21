@@ -20,6 +20,8 @@ pub struct PreprocessedParameters<E: PairingEngine> {
 
 impl<E: PairingEngine> Table<E> {
     pub fn new(values: &[E::Fr]) -> Result<Self, Error> {
+        assert!(values.len().is_power_of_two());
+
         if !values.len().is_power_of_two() {
             return Err(Error::SizeNotPowerOfTwo(values.len()));
         }
@@ -34,7 +36,6 @@ impl<E: PairingEngine> Table<E> {
         &self,
         pp: &PublicParameters<E>,
     ) -> Result<PreprocessedParameters<E>, Error> {
-        assert!(self.size.is_power_of_two());
         assert_eq!(self.size, pp.table_size);
 
         let domain = pp.domain_w;
@@ -101,6 +102,7 @@ mod tests {
     use ark_bn254::Bn254;
     use ark_ec::PairingEngine;
     use ark_std::UniformRand;
+    use crate::public_parameters::PublicParameters;
     use crate::table::Table;
 
     #[test]
@@ -112,5 +114,18 @@ mod tests {
             table_values.push(<Bn254 as PairingEngine>::Fr::rand(&mut rng));
         }
         Table::<Bn254>::new(&table_values).expect("Failed to create table");
+    }
+
+    #[test]
+    fn test_table_preprocess() {
+        let table_size = 32;
+        let mut table_values: Vec<_> = Vec::with_capacity(table_size);
+        let mut rng = ark_std::test_rng();
+        for _ in 0..table_size {
+            table_values.push(<Bn254 as PairingEngine>::Fr::rand(&mut rng));
+        }
+        let table = Table::<Bn254>::new(&table_values).expect("Failed to create table");
+        let pp = PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
+        table.preprocess(&pp).expect("Failed to preprocess table");
     }
 }
