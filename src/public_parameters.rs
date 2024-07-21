@@ -21,13 +21,14 @@ pub struct PublicParameters<E: PairingEngine> {
     // Segment size (s)
     segment_size: usize,
     // Table size (n * s)
-    table_size: usize,
+    pub(crate) table_size: usize,
     // [tau^i]_1 for i in 0..max*s
-    srs_g1: Vec<E::G1Affine>,
+    pub(crate) srs_g1: Vec<E::G1Affine>,
     // [tau^i]_2 for i in 0..max*s
-    srs_g2: Vec<E::G2Affine>,
+    pub(crate) srs_g2: Vec<E::G2Affine>,
     // [z_w(tau)]_2
     z_w_com2: E::G2Affine,
+    pub(crate) domain_w: GeneralEvaluationDomain<E::Fr>,
     // [z_v(tau)]_2
     z_v_com2: E::G2Affine,
     // [z_k(tau)]_2
@@ -186,6 +187,7 @@ impl<E: PairingEngine> PublicParameters<E> {
             srs_g1,
             srs_g2,
             z_w_com2,
+            domain_w,
             z_v_com2,
             z_k_com2,
             quotient_poly_com1_vec_2,

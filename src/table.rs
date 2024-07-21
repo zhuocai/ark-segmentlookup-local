@@ -6,6 +6,7 @@ use fk::UpperToeplitz;
 
 use crate::error::Error;
 use crate::kzg::Kzg;
+use crate::public_parameters::PublicParameters;
 
 pub struct Table<E: PairingEngine> {
     size: usize,
@@ -31,13 +32,15 @@ impl<E: PairingEngine> Table<E> {
 
     pub fn preprocess(
         &self,
-        srs_g1: &[E::G1Affine],
-        srs_g2: &[E::G2Affine],
+        pp: &PublicParameters<E>,
     ) -> Result<PreprocessedParameters<E>, Error> {
         assert!(self.size.is_power_of_two());
+        assert_eq!(self.size, pp.table_size);
 
-        let domain = GeneralEvaluationDomain::<E::Fr>::new(self.size)
-            .ok_or(Error::FailedToCreateGeneralEvaluationDomain)?;
+        let domain = pp.domain_w;
+        let srs_g1 = &pp.srs_g1;
+        let srs_g2 = &pp.srs_g2;
+
         let table_poly = DensePolynomial::from_coefficients_slice(&domain.ifft(&self.values));
         let t_2: E::G2Affine = Kzg::<E>::commit_g2(srs_g2, &table_poly).into();
         let qs1 = match compute_quotients::<E>(&table_poly, &domain, srs_g1) {
@@ -91,4 +94,23 @@ fn compute_quotients<E: PairingEngine>(
     E::G1Projective::batch_normalization(&mut qs);
 
     Ok(qs.iter().map(|qi| qi.into_affine()).collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use ark_bn254::Bn254;
+    use ark_ec::PairingEngine;
+    use ark_std::UniformRand;
+    use crate::table::Table;
+
+    #[test]
+    fn test_table_new() {
+        let table_size = 8;
+        let mut table_values: Vec<_> = Vec::with_capacity(table_size);
+        let mut rng = ark_std::test_rng();
+        for _ in 0..table_size {
+            table_values.push(<Bn254 as PairingEngine>::Fr::rand(&mut rng));
+        }
+        Table::<Bn254>::new(&table_values).expect("Failed to create table");
+    }
 }
