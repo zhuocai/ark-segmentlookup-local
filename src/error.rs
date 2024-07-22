@@ -5,5 +5,8 @@ pub enum Error {
     InvalidCommitmentLength(String),
     InvalidLagrangeBasisCommitments(String),
     InvalidStructuredReferenceStrings,
+    InvalidNumerOfSegments(usize),
+    InvalidNumberOfQueries(usize),
+    InvalidSegmentSize(usize),
     SizeNotPowerOfTwo(usize),
 }

@@ -3,6 +3,10 @@ mod kzg;
 mod lagrange_basis;
 mod error;
 mod table;
+mod prover;
+mod rng;
+mod transcript;
+mod witness;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

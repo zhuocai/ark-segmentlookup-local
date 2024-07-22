@@ -15,11 +15,11 @@ use crate::lagrange_basis::{commitments, zero_opening_proofs};
 #[derive(Debug)]
 pub struct PublicParameters<E: PairingEngine> {
     // Number of total segments (n)
-    num_segments: usize,
+    pub(crate) num_segments: usize,
     // Number of segments in one query. This is fixed for all queries (k)
-    num_queries: usize,
+    pub(crate) num_queries: usize,
     // Segment size (s)
-    segment_size: usize,
+    pub(crate) segment_size: usize,
     // Table size (n * s)
     pub(crate) table_size: usize,
     // [tau^i]_1 for i in 0..max*s
@@ -31,6 +31,7 @@ pub struct PublicParameters<E: PairingEngine> {
     pub(crate) domain_w: GeneralEvaluationDomain<E::Fr>,
     // [z_v(tau)]_2
     z_v_com2: E::G2Affine,
+    pub(crate) domain_v: GeneralEvaluationDomain<E::Fr>,
     // [z_k(tau)]_2
     z_k_com2: E::G2Affine,
 
@@ -189,6 +190,7 @@ impl<E: PairingEngine> PublicParameters<E> {
             z_w_com2,
             domain_w,
             z_v_com2,
+            domain_v,
             z_k_com2,
             quotient_poly_com1_vec_2,
             quotient_poly_com1_vec_3,
@@ -216,8 +218,6 @@ fn roots_of_unity<E: PairingEngine>(domain: &GeneralEvaluationDomain<E::Fr>) -> 
 
     domain_elements
 }
-
-
 
 
 #[cfg(test)]

@@ -9,8 +9,9 @@ use crate::kzg::Kzg;
 use crate::public_parameters::PublicParameters;
 
 pub struct Table<E: PairingEngine> {
-    size: usize,
-    values: Vec<E::Fr>,
+    num_segments: usize,
+    segment_size: usize,
+    pub(crate) values: Vec<E::Fr>,
 }
 
 pub struct PreprocessedParameters<E: PairingEngine> {
@@ -19,16 +20,27 @@ pub struct PreprocessedParameters<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> Table<E> {
-    pub fn new(values: &[E::Fr]) -> Result<Self, Error> {
-        assert!(values.len().is_power_of_two());
+    pub fn new(pp: &PublicParameters<E>, segment_values: &[&[E::Fr]]) -> Result<Self, Error> {
+        let num_segments = pp.num_segments;
+        let segment_size = pp.segment_size;
 
-        if !values.len().is_power_of_two() {
-            return Err(Error::SizeNotPowerOfTwo(values.len()));
+        if segment_values.len() != num_segments {
+            return Err(Error::InvalidNumerOfSegments(segment_values.len()));
         }
 
+        let mut values = Vec::with_capacity(num_segments * segment_size);
+        for segment in segment_values {
+            if segment.len() != segment_size {
+                return Err(Error::InvalidSegmentSize(segment.len()));
+            }
+            values.extend_from_slice(segment);
+        }
+
+
         Ok(Self {
-            size: values.len(),
-            values: values.to_vec(),
+            num_segments,
+            segment_size,
+            values,
         })
     }
 
@@ -36,7 +48,13 @@ impl<E: PairingEngine> Table<E> {
         &self,
         pp: &PublicParameters<E>,
     ) -> Result<PreprocessedParameters<E>, Error> {
-        assert_eq!(self.size, pp.table_size);
+        if self.num_segments != pp.num_segments {
+            return Err(Error::InvalidNumerOfSegments(self.num_segments));
+        }
+
+        if self.segment_size != pp.segment_size {
+            return Err(Error::InvalidSegmentSize(self.segment_size));
+        }
 
         let domain = pp.domain_w;
         let srs_g1 = &pp.srs_g1;
@@ -102,30 +120,47 @@ mod tests {
     use ark_bn254::Bn254;
     use ark_ec::PairingEngine;
     use ark_std::UniformRand;
+
     use crate::public_parameters::PublicParameters;
     use crate::table::Table;
 
+    fn rand_segments(pp: &PublicParameters<Bn254>) -> Vec<Vec<<Bn254 as PairingEngine>::Fr>> {
+        let mut rng = ark_std::test_rng();
+        let mut segments = Vec::with_capacity(pp.num_segments);
+        for _ in 0..pp.num_segments {
+            let mut segment = Vec::with_capacity(pp.segment_size);
+            for _ in 0..pp.segment_size {
+                segment.push(<Bn254 as PairingEngine>::Fr::rand(&mut rng));
+            }
+            segments.push(segment);
+        }
+
+        segments
+    }
+
     #[test]
     fn test_table_new() {
-        let table_size = 8;
-        let mut table_values: Vec<_> = Vec::with_capacity(table_size);
         let mut rng = ark_std::test_rng();
-        for _ in 0..table_size {
-            table_values.push(<Bn254 as PairingEngine>::Fr::rand(&mut rng));
-        }
-        Table::<Bn254>::new(&table_values).expect("Failed to create table");
+        let pp = PublicParameters::setup(&mut rng, 8, 4, 4)
+            .expect("Failed to setup public parameters");
+        let segments = rand_segments(&pp);
+        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> = segments
+            .iter().map(|segment| segment.as_slice()).collect();
+
+        Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
     }
 
     #[test]
     fn test_table_preprocess() {
-        let table_size = 32;
-        let mut table_values: Vec<_> = Vec::with_capacity(table_size);
         let mut rng = ark_std::test_rng();
-        for _ in 0..table_size {
-            table_values.push(<Bn254 as PairingEngine>::Fr::rand(&mut rng));
-        }
-        let table = Table::<Bn254>::new(&table_values).expect("Failed to create table");
-        let pp = PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
-        table.preprocess(&pp).expect("Failed to preprocess table");
+        let pp = PublicParameters::setup(&mut rng, 8, 4, 4)
+            .expect("Failed to setup public parameters");
+        let segments = rand_segments(&pp);
+        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> = segments
+            .iter().map(|segment| segment.as_slice()).collect();
+        let t = Table::<Bn254>::new(&pp, &segment_slices)
+            .expect("Failed to create table");
+
+        t.preprocess(&pp).expect("Failed to preprocess table");
     }
 }
