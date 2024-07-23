@@ -37,6 +37,7 @@ pub struct PublicParameters<E: PairingEngine> {
     pub(crate) domain_v: Radix2EvaluationDomain<E::Fr>,
     // [z_k(tau)]_2
     z_k_com2: E::G2Affine,
+    pub(crate) domain_k: Radix2EvaluationDomain<E::Fr>,
     // q_{i, 2} for i in 1..n*s
     // The commitment of quotient polynomials Q_{i, 2} s.t.
     // L^W_i(X) * X = omega^i * L^W_i(X) + Z_W(X) * Q_{i, 2}(X)
@@ -191,6 +192,7 @@ impl<E: PairingEngine> PublicParameters<E> {
             z_v_com2,
             domain_v,
             z_k_com2,
+            domain_k,
             quotient_poly_com1_vec_2,
             quotient_poly_com1_vec_3,
             quotient_poly_com1_vec_4,
