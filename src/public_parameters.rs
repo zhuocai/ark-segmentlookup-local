@@ -1,10 +1,11 @@
 use std::cmp::max;
+use std::ops::Mul;
 
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
-use ark_ff::{Field, PrimeField};
-use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+use ark_ff::{FftField, FftParameters, Field, PrimeField};
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain, UVPolynomial};
 use ark_poly::univariate::DensePolynomial;
-use ark_std::{UniformRand, Zero};
+use ark_std::{One, UniformRand, Zero};
 use ark_std::rand::RngCore;
 use ark_std::rand::rngs::StdRng;
 
@@ -16,48 +17,44 @@ use crate::lagrange_basis::{commitments, zero_opening_proofs};
 pub struct PublicParameters<E: PairingEngine> {
     // Number of total segments (n)
     pub(crate) num_segments: usize,
-    // Number of segments in one query. This is fixed for all queries (k)
+    // Number of queries (segments) in one witness. This is fixed for all queries (k)
     pub(crate) num_queries: usize,
     // Segment size (s)
     pub(crate) segment_size: usize,
     // Table size (n * s)
     pub(crate) table_size: usize,
+    // Witness size (k * s)
+    pub(crate) witness_size: usize,
     // [tau^i]_1 for i in 0..max*s
     pub(crate) srs_g1: Vec<E::G1Affine>,
     // [tau^i]_2 for i in 0..max*s
     pub(crate) srs_g2: Vec<E::G2Affine>,
     // [z_w(tau)]_2
     z_w_com2: E::G2Affine,
-    pub(crate) domain_w: GeneralEvaluationDomain<E::Fr>,
+    pub(crate) domain_w: Radix2EvaluationDomain<E::Fr>,
     // [z_v(tau)]_2
     z_v_com2: E::G2Affine,
-    pub(crate) domain_v: GeneralEvaluationDomain<E::Fr>,
+    pub(crate) domain_v: Radix2EvaluationDomain<E::Fr>,
     // [z_k(tau)]_2
     z_k_com2: E::G2Affine,
-
-    // // [t(tau)]_2
-    // t_com2: Vec<E::G2Affine>,
-    // // q_{i, 1} for i in 1..n*s
-    // quotient_poly_com1_set_1: Vec<E::G1Affine>,
-
     // q_{i, 2} for i in 1..n*s
     // The commitment of quotient polynomials Q_{i, 2} s.t.
     // L^W_i(X) * X = omega^i * L^W_i(X) + Z_W(X) * Q_{i, 2}(X)
     quotient_poly_com1_vec_2: Vec<E::G1Affine>,
     // q_{i, 3} for i in 1..n*s
-    quotient_poly_com1_vec_3: Vec<E::G1Affine>,
+    pub(crate) quotient_poly_com1_vec_3: Vec<E::G1Affine>,
     // q_{i, 4} for i in 1..n*s
-    quotient_poly_com1_vec_4: Vec<E::G1Affine>,
+    pub(crate) quotient_poly_com1_vec_4: Vec<E::G1Affine>,
     // [L^W_i(tau)]_1 for i in 1..n*s
-    lagrange_basis_w_com1_vec: Vec<E::G1Affine>,
+    pub(crate) lagrange_basis_w_com1_vec: Vec<E::G1Affine>,
     // [L^W_i(tau / w)]_1 for i in 1..n*s
-    lagrange_basis_w_inv_com1_vec: Vec<E::G1Affine>,
+    pub(crate) lagrange_basis_w_inv_com1_vec: Vec<E::G1Affine>,
     // [(L^W_i(tau) - L^W_i(0)) / tau]_1 for i in 1..n*s
     lagrange_basis_w_zero_opening_proofs: Vec<E::G1Affine>,
     // [L^V_i(tau)]_1 for i in 1..k*s
-    lagrange_basis_v_com1_vec: Vec<E::G1Affine>,
+    pub(crate) lagrange_basis_v_com1_vec: Vec<E::G1Affine>,
     // [L^V_i(tau * v)]_1 for i in 1..k*s
-    lagrange_basis_v_mul_com1_vec: Vec<E::G1Affine>,
+    pub(crate) lagrange_basis_v_mul_com1_vec: Vec<E::G1Affine>,
 }
 
 impl<E: PairingEngine> PublicParameters<E> {
@@ -68,6 +65,7 @@ impl<E: PairingEngine> PublicParameters<E> {
         segment_size: usize,
     ) -> Result<PublicParameters<E>, Error> {
         let table_size = num_segments * segment_size;
+        let witness_size = num_queries * segment_size;
 
         // Step 1: Choose a random tau. Let max = max(k, n). Compute SRS from tau
         let tau = E::Fr::rand(rng);
@@ -76,21 +74,22 @@ impl<E: PairingEngine> PublicParameters<E> {
 
         // Step 2: Compute [Z_W(tau)]_2
         let order_w = num_segments * segment_size;
-        let domain_w: GeneralEvaluationDomain<E::Fr> = GeneralEvaluationDomain::<E::Fr>::new(order_w)
-            .ok_or(Error::FailedToCreateGeneralEvaluationDomain)?;
+        let domain_w: Radix2EvaluationDomain<E::Fr> = Radix2EvaluationDomain::<E::Fr>::new(order_w)
+            .ok_or(Error::FailedToCreateEvaluationDomain)?;
         let z_w_com2 = vanishing_poly_com2::<E>(&srs_g2, &domain_w);
 
         // Step 2: Compute [Z_V(tau)]_2
         let order_v = num_queries * segment_size;
-        let domain_v: GeneralEvaluationDomain<E::Fr> = GeneralEvaluationDomain::<E::Fr>::new(order_v)
-            .ok_or(Error::FailedToCreateGeneralEvaluationDomain)?;
+        let domain_v: Radix2EvaluationDomain<E::Fr> = Radix2EvaluationDomain::<E::Fr>::new(order_v)
+            .ok_or(Error::FailedToCreateEvaluationDomain)?;
         let z_v_com2 = vanishing_poly_com2::<E>(&srs_g2, &domain_v);
 
         // Step 2: Compute [Z_K(tau)]_2
+        // K = {v^{is}, i \in [0, k - 1]}
         let order_k = num_queries;
-        let domain_k: GeneralEvaluationDomain<E::Fr> = GeneralEvaluationDomain::<E::Fr>::new(order_k)
-            .ok_or(Error::FailedToCreateGeneralEvaluationDomain)?;
+        let domain_k = create_domain_k_from_domain_v::<E>(&domain_v, order_k, segment_size)?;
         let z_k_com2 = vanishing_poly_com2::<E>(&srs_g2, &domain_k);
+
 
         // Step 4-a: Compute q_{i, 2} = [Q_{i,2}(tau)]_1 for i in 1..n*s
         // Q_{i,2}(X) = w^i / (ns)
@@ -156,7 +155,6 @@ impl<E: PairingEngine> PublicParameters<E> {
         // Step 6: Compute quotient polynomial commitments q_{i, 4} for i in 1..n*s
         // Q_{i,4}(X) = Q_{i+1,3}(X) * (X^n - w^{in}) / (X^n - w^{(i+1)n})
         // q_{i, 4} = q_{i+1, 3} * (tau^n - w^{in}) / (tau^n - w^{(i+1)n})
-
         let tau_pow_n_minus_w_pow_in_inv_vec: Vec<E::Fr> = tau_pow_n_minus_w_pow_in_vec.iter()
             .map(|x| x.inverse().unwrap_or_else(|| E::Fr::zero())).collect();
         let quotient_poly_com1_vec_4 = (0..order_w).map(|i| {
@@ -185,6 +183,7 @@ impl<E: PairingEngine> PublicParameters<E> {
             num_queries,
             segment_size,
             table_size,
+            witness_size,
             srs_g1,
             srs_g2,
             z_w_com2,
@@ -206,14 +205,55 @@ impl<E: PairingEngine> PublicParameters<E> {
 
 fn vanishing_poly_com2<E: PairingEngine>(
     srs_g2: &[E::G2Affine],
-    domain: &GeneralEvaluationDomain<E::Fr>,
+    domain: &Radix2EvaluationDomain<E::Fr>,
 ) -> E::G2Affine {
     let vanishing_poly: DensePolynomial<E::Fr> = domain.vanishing_polynomial().into();
 
     Kzg::<E>::commit_g2(&srs_g2, &vanishing_poly).into_affine()
 }
 
-fn roots_of_unity<E: PairingEngine>(domain: &GeneralEvaluationDomain<E::Fr>) -> Vec<E::Fr> {
+fn create_domain_k_from_domain_v<E: PairingEngine>(
+    domain_v: &Radix2EvaluationDomain<E::Fr>,
+    order_k: usize,
+    segment_size: usize,
+) -> Result<Radix2EvaluationDomain<E::Fr>, Error> {
+    if !order_k.is_power_of_two() {
+        return Err(Error::InvalidEvaluationDomainSize(order_k));
+    }
+
+    let size: u64 = order_k as u64;
+    let log_size_of_group = size.trailing_zeros();
+    if log_size_of_group > <E::Fr as FftField>::FftParams::TWO_ADICITY {
+        return Err(Error::InvalidEvaluationDomainSize(order_k));
+    }
+
+    let roots_of_unity_v = roots_of_unity::<E>(&domain_v);
+    let group_gen_k = roots_of_unity_v[segment_size];
+    let size_as_field_element = E::Fr::from(size);
+    let size_inv = size_as_field_element
+        .inverse()
+        .ok_or(Error::FailedToInverseFieldElement)?;
+
+    let group_gen_inv = group_gen_k
+        .inverse()
+        .ok_or(Error::FailedToInverseFieldElement)?;
+
+    let generator_inv = E::Fr::multiplicative_generator()
+        .inverse()
+        .ok_or(Error::FailedToInverseFieldElement)?;
+
+    Ok(Radix2EvaluationDomain {
+        size,
+        log_size_of_group,
+        size_as_field_element,
+        size_inv,
+        group_gen: group_gen_k,
+        group_gen_inv,
+        generator_inv,
+    })
+}
+
+fn roots_of_unity<E: PairingEngine>(domain: &Radix2EvaluationDomain<E::Fr>) -> Vec<E::Fr> {
     let domain_elements: Vec<E::Fr> = domain.elements().collect();
 
     domain_elements
@@ -223,10 +263,13 @@ fn roots_of_unity<E: PairingEngine>(domain: &GeneralEvaluationDomain<E::Fr>) -> 
 #[cfg(test)]
 mod test {
     use ark_bn254::Bn254;
+    use ark_ec::PairingEngine;
+    use ark_ff::Field;
+    use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
+    use ark_std::{One, test_rng};
     use ark_std::rand::rngs::StdRng;
-    use ark_std::test_rng;
 
-    use crate::public_parameters::PublicParameters;
+    use crate::public_parameters::{create_domain_k_from_domain_v, PublicParameters};
 
     #[test]
     fn test_public_parameters_setup() {
@@ -236,5 +279,20 @@ mod test {
             8, 4, 4,
         ).unwrap();
         println!("{:?}", pp);
+    }
+
+    #[test]
+    fn test_domain_k() {
+        let num_segments = 16;
+        let num_queries = 8;
+        let segment_size = 4;
+
+        let order_v = num_queries * segment_size;
+        let domain_v = Radix2EvaluationDomain::<<Bn254 as PairingEngine>::Fr>::new(order_v)
+            .unwrap();
+        let order_k = num_queries;
+        let domain_k = create_domain_k_from_domain_v::<Bn254>(&domain_v, order_k, segment_size).unwrap();
+        let group_gen_k = domain_k.group_gen;
+        assert_eq!(group_gen_k.pow([domain_k.size]), <Bn254 as PairingEngine>::Fr::one());
     }
 }

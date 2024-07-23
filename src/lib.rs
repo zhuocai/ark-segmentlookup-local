@@ -1,4 +1,4 @@
-pub mod public_parameters;
+mod public_parameters;
 mod kzg;
 mod lagrange_basis;
 mod error;

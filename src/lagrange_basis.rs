@@ -2,13 +2,13 @@ use std::iter;
 
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{Field, PrimeField};
-use ark_poly::{EvaluationDomain, GeneralEvaluationDomain};
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 
 use crate::error::Error;
 
 // Efficiently compute the commitments to the Lagrange basis using SRS in O(n log n) time.
 // Section 3.3 from the paper BGG17: https://eprint.iacr.org/2017/602.
-pub fn commitments<C: AffineCurve>(srs: &[C], domain: &GeneralEvaluationDomain<C::ScalarField>) -> Vec<C> {
+pub fn commitments<C: AffineCurve>(srs: &[C], domain: &Radix2EvaluationDomain<C::ScalarField>) -> Vec<C> {
     let group_order = domain.size();
     assert!(srs.len() >= group_order);
     assert!(group_order.is_power_of_two());
@@ -39,7 +39,7 @@ pub fn commitments<C: AffineCurve>(srs: &[C], domain: &GeneralEvaluationDomain<C
 // See Page 12 of CQ paper for efficient computation.
 pub fn zero_opening_proofs<E: PairingEngine>(
     srs_g1: &[E::G1Affine],
-    domain: &GeneralEvaluationDomain<E::Fr>,
+    domain: &Radix2EvaluationDomain<E::Fr>,
     lagrange_basis_w_com1_vec: &[E::G1Affine],
 ) -> Result<Vec<E::G1Affine>, Error> {
     let domain_size_inverse_fr = domain

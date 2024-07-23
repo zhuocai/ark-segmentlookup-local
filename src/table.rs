@@ -1,6 +1,6 @@
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{Field, PrimeField};
-use ark_poly::{EvaluationDomain, GeneralEvaluationDomain, UVPolynomial};
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain, UVPolynomial};
 use ark_poly::univariate::DensePolynomial;
 use fk::UpperToeplitz;
 
@@ -16,7 +16,7 @@ pub struct Table<E: PairingEngine> {
 
 pub struct PreprocessedParameters<E: PairingEngine> {
     t_com2: E::G2Affine,
-    quotient_poly_com1_vec_1: Vec<E::G1Affine>,
+    pub(crate) quotient_poly_com1_vec_1: Vec<E::G1Affine>,
 }
 
 impl<E: PairingEngine> Table<E> {
@@ -76,7 +76,7 @@ impl<E: PairingEngine> Table<E> {
 
 fn compute_quotients<E: PairingEngine>(
     t: &DensePolynomial<E::Fr>,
-    domain: &GeneralEvaluationDomain<E::Fr>,
+    domain: &Radix2EvaluationDomain<E::Fr>,
     srs_g1: &[E::G1Affine],
 ) -> Result<Vec<E::G1Affine>, Error> {
     /*
@@ -116,15 +116,13 @@ fn compute_quotients<E: PairingEngine>(
 }
 
 #[cfg(test)]
-mod tests {
+pub mod rand_segments {
     use ark_bn254::Bn254;
     use ark_ec::PairingEngine;
     use ark_std::UniformRand;
-
     use crate::public_parameters::PublicParameters;
-    use crate::table::Table;
 
-    fn rand_segments(pp: &PublicParameters<Bn254>) -> Vec<Vec<<Bn254 as PairingEngine>::Fr>> {
+    pub fn generate(pp: &PublicParameters<Bn254>) -> Vec<Vec<<Bn254 as PairingEngine>::Fr>> {
         let mut rng = ark_std::test_rng();
         let mut segments = Vec::with_capacity(pp.num_segments);
         for _ in 0..pp.num_segments {
@@ -137,27 +135,41 @@ mod tests {
 
         segments
     }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use ark_bn254::Bn254;
+    use ark_ec::PairingEngine;
+    use ark_std::test_rng;
+    use crate::public_parameters::PublicParameters;
+    use crate::table::{rand_segments, Table};
 
     #[test]
     fn test_table_new() {
-        let mut rng = ark_std::test_rng();
+        let mut rng = test_rng();
         let pp = PublicParameters::setup(&mut rng, 8, 4, 4)
             .expect("Failed to setup public parameters");
-        let segments = rand_segments(&pp);
+        let segments = rand_segments::generate(&pp);
         let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> = segments
-            .iter().map(|segment| segment.as_slice()).collect();
+            .iter()
+            .map(|segment| segment.as_slice())
+            .collect();
 
         Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
     }
 
     #[test]
     fn test_table_preprocess() {
-        let mut rng = ark_std::test_rng();
+        let mut rng = test_rng();
         let pp = PublicParameters::setup(&mut rng, 8, 4, 4)
             .expect("Failed to setup public parameters");
-        let segments = rand_segments(&pp);
+        let segments = rand_segments::generate(&pp);
         let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> = segments
-            .iter().map(|segment| segment.as_slice()).collect();
+            .iter()
+            .map(|segment| segment.as_slice())
+            .collect();
         let t = Table::<Bn254>::new(&pp, &segment_slices)
             .expect("Failed to create table");
 

@@ -7,7 +7,7 @@ use ark_poly::{Polynomial, univariate::DensePolynomial, UVPolynomial};
 use ark_std::rand::RngCore;
 use ark_std::UniformRand;
 
-/// Minimal KZG functionalities needed for cq
+/// Minimal KZG functionalities needed for the lookup argument.
 /// Modified from https://github.com/geometryxyz/cq/blob/main/src/kzg.rs
 pub struct Kzg<E: PairingEngine> {
     _e: PhantomData<E>,
@@ -34,8 +34,8 @@ impl<E: PairingEngine> Kzg<E> {
                 srs.len()
             );
         }
-        let coeff_scalars: Vec<_> = poly.coeffs.iter().map(|c| c.into_repr()).collect();
-        VariableBaseMSM::multi_scalar_mul(srs, &coeff_scalars)
+        let coefficient_scalars: Vec<_> = poly.coeffs.iter().map(|c| c.into_repr()).collect();
+        VariableBaseMSM::multi_scalar_mul(srs, &coefficient_scalars)
     }
 
     pub fn open_g1(
