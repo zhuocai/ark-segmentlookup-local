@@ -30,7 +30,7 @@ pub struct PublicParameters<E: PairingEngine> {
     // [tau^i]_2 for i in 0..max*s
     pub(crate) srs_g2: Vec<E::G2Affine>,
     // [z_w(tau)]_2
-    z_w_com2: E::G2Affine,
+    pub(crate) z_w_com2: E::G2Affine,
     pub(crate) domain_w: Radix2EvaluationDomain<E::Fr>,
     // [z_v(tau)]_2
     z_v_com2: E::G2Affine,

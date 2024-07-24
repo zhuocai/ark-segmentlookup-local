@@ -14,4 +14,6 @@ pub enum Error {
     InvalidEvaluationDomainSize(usize),
 
     SizeNotPowerOfTwo(usize),
+    
+    Pairing1Failed,
 }

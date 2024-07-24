@@ -7,6 +7,7 @@ mod prover;
 mod rng;
 mod transcript;
 mod witness;
+mod verifier;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

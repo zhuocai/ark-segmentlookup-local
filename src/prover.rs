@@ -20,19 +20,23 @@ pub struct Prover<E: PairingEngine, FS: FiatShamirRng> {
 }
 
 pub struct Proof<E: PairingEngine> {
-    m_com1: E::G1Affine,
-    m_inv_w_com1: E::G1Affine,
-    l_com1: E::G1Affine,
-    l_mul_v_com1: E::G1Affine,
-
+    // Round 1 messages
+    pub(crate) m_com1: E::G1Affine, // [M(tau)]_1
+    pub(crate) m_inv_w_com1: E::G1Affine, // [M(tau / w)]_1
+    pub(crate)  q_m_com1: E::G1Affine, // [Q_M(tau)]_1
+    l_com1: E::G1Affine, // [L(tau)]_1
+    l_mul_v_com1: E::G1Affine, // [L(tau * v)]_1
+    q_l_com1: E::G1Affine, // [Q_L(tau)]_1
+    d_com1: E::G1Affine, // [D(tau)]_1
+    q_d_com1: E::G1Affine, // [Q_D(tau)]_1
 }
 
 impl<E: PairingEngine, FS: FiatShamirRng> Prover<E, FS> {
     pub fn prove(
         pp: &PublicParameters<E>,
-        tpp: &PreprocessedParameters<E>,
+        // tpp: &PreprocessedParameters<E>,
         witness: &Witness<E>,
-        statement: E::G1Affine,
+        // statement: E::G1Affine,
     ) -> Result<Proof<E>, Error> {
         // Round 1-1: Compute the multiplicity polynomial M of degree (ns - 1),
         // and send [M(tau)]_1 and [M(tau / w)]_1 to the verifier.
@@ -107,11 +111,16 @@ impl<E: PairingEngine, FS: FiatShamirRng> Prover<E, FS> {
                     .into_affine();
                 witness_element_index += 1;
             }
-            
+
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
             d_poly_evaluations.push(root_of_unity_w);
         }
         // TODO: Send [L(tau)]_1 and [L(tau * v)]_1 to the verifier
+        // TODO: Send [D(tau)]_1 to the verifier
+        let d_poly_coefficients = pp.domain_k.ifft(&d_poly_evaluations);
+        let d_poly = DensePolynomial::from_coefficients_vec(d_poly_coefficients);
+        let d_com1 = Kzg::<E>::commit_g1(&pp.srs_g1, &d_poly)
+            .into_affine();
 
         // Round 1-4: Compute the quotient polynomial Q_L(X) s.t.
         // (X^k - 1)*(L(Xv) - w*L(X)) = Z_V(X)*Q_L(X),
@@ -145,7 +154,7 @@ impl<E: PairingEngine, FS: FiatShamirRng> Prover<E, FS> {
         let q_l_com1 = Kzg::<E>::commit_g1(&pp.srs_g1, &q_l_poly)
             .into_affine();
         // TODO: Send [Q_L(tau)]_1 to the verifier
-        
+
         // Round 1-6: Compute Q_D s.t. L(X) - D(X) = Z_K(X)*Q_D(X),
         // and send [Q_D(tau)]_1 to the verifier. 
         let l_poly = DensePolynomial::from_coefficients_vec(l_poly_coefficients);
@@ -156,10 +165,26 @@ impl<E: PairingEngine, FS: FiatShamirRng> Prover<E, FS> {
         let q_d_com1 = Kzg::<E>::commit_g1(&pp.srs_g1, &q_d_poly)
             .into_affine();
         // TODO: Send [Q_D(tau)]_1 to the verifier
-        
-        
 
-        todo!()
+        // Round 2 is performed by the verifier
+
+        // Round 3 - Round 8:
+        // Using the instantiation of Lemma 5,
+        // the prover and verifier engage in a protocol that polynomial L is well-formed.
+
+
+        // todo!()
+        
+        Ok(Proof{
+            m_com1,
+            m_inv_w_com1,
+            q_m_com1,
+            l_com1,
+            l_mul_v_com1,
+            q_l_com1,
+            d_com1,
+            q_d_com1,
+        })
     }
 }
 
