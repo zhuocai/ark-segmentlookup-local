@@ -20,9 +20,11 @@ pub struct Prover<E: PairingEngine, FS: FiatShamirRng> {
 }
 
 pub struct Proof<E: PairingEngine> {
-    pub a: E::G1Affine,
-    pub b: E::G1Affine,
-    pub c: E::G1Affine,
+    m_com1: E::G1Affine,
+    m_inv_w_com1: E::G1Affine,
+    l_com1: E::G1Affine,
+    l_mul_v_com1: E::G1Affine,
+
 }
 
 impl<E: PairingEngine, FS: FiatShamirRng> Prover<E, FS> {
@@ -54,22 +56,22 @@ impl<E: PairingEngine, FS: FiatShamirRng> Prover<E, FS> {
             let multiplicity_fr = E::Fr::from(m as u64);
             for j in segment_element_indices {
                 // Linear combination of [L^W_i(tau)]_1
-                m_com1 = pp.lagrange_basis_w_com1_vec[j]
+                m_com1 = pp.l_w_com1_list[j]
                     .mul(multiplicity_fr)
                     .add_mixed(&m_com1)
                     .into_affine();
                 // Linear combination of [L^W_i(tau / w)]_1
-                m_inv_w_com1 = pp.lagrange_basis_w_inv_com1_vec[j]
+                m_inv_w_com1 = pp.l_w_inv_w_com1_list[j]
                     .mul(multiplicity_fr)
                     .add_mixed(&m_inv_w_com1)
                     .into_affine();
                 // Linear combination of q_{i, 3}
-                q_m_com1 = pp.quotient_poly_com1_vec_3[j]
+                q_m_com1 = pp.q_3_com1_list[j]
                     .mul(multiplicity_fr)
                     .add_mixed(&q_m_com1)
                     .into_affine();
                 // Linear combination of q_{i, 4}
-                q_m_com1 = pp.quotient_poly_com1_vec_4[j]
+                q_m_com1 = pp.q_4_com1_list[j]
                     .mul(multiplicity_fr)
                     .neg()
                     .add_mixed(&q_m_com1)
@@ -84,7 +86,7 @@ impl<E: PairingEngine, FS: FiatShamirRng> Prover<E, FS> {
         // For each i \in [0, k - 1], D(v^{is}) = L(v^{is}) = w^{js}
         let mut l_poly_evaluations: Vec<E::Fr> = Vec::with_capacity(pp.witness_size);
         let mut l_com1 = E::G1Affine::zero(); // [L(tau)]_1
-        let mut l_mul_com1 = E::G1Affine::zero(); // [L(tau * v)]_1
+        let mut l_mul_v_com1 = E::G1Affine::zero(); // [L(tau * v)]_1
         let roots_of_unity_w: Vec<E::Fr> = pp.domain_w.elements().collect();
         let mut witness_element_index: usize = 0;
         let mut d_poly_evaluations: Vec<E::Fr> = Vec::with_capacity(pp.num_queries);
@@ -94,14 +96,14 @@ impl<E: PairingEngine, FS: FiatShamirRng> Prover<E, FS> {
                 let root_of_unity_w = roots_of_unity_w[j];
                 l_poly_evaluations.push(root_of_unity_w);
                 // Linear combination of [L^V_i(tau)]_1
-                l_com1 = pp.lagrange_basis_v_com1_vec[witness_element_index]
+                l_com1 = pp.l_v_com1_list[witness_element_index]
                     .mul(root_of_unity_w)
                     .add_mixed(&l_com1)
                     .into_affine();
                 // Linear combination of [L^V_i(tau * v)]_1
-                l_mul_com1 = pp.lagrange_basis_v_mul_com1_vec[witness_element_index]
+                l_mul_v_com1 = pp.l_v_mul_v_com1_list[witness_element_index]
                     .mul(root_of_unity_w)
-                    .add_mixed(&l_mul_com1)
+                    .add_mixed(&l_mul_v_com1)
                     .into_affine();
                 witness_element_index += 1;
             }
@@ -118,12 +120,12 @@ impl<E: PairingEngine, FS: FiatShamirRng> Prover<E, FS> {
         let l_poly_coefficients = pp.domain_v.ifft(&l_poly_evaluations);
         // The coefficients of L(Xv). We can scale each L(X) polynomial coefficients by v^i
         let domain_v_elements: Vec<E::Fr> = pp.domain_v.elements().collect();
-        let l_mul_poly_coefficients: Vec<E::Fr> = l_poly_coefficients
+        let l_mul_v_poly_coefficients: Vec<E::Fr> = l_poly_coefficients
             .iter()
             .enumerate()
             .map(|(i, &c)| c * domain_v_elements[i])
             .collect();
-        let l_mul_poly = DensePolynomial::from_coefficients_vec(l_mul_poly_coefficients);
+        let l_mul_v_poly = DensePolynomial::from_coefficients_vec(l_mul_v_poly_coefficients);
         // The coefficients of w*L(X).
         let domain_w_generator = roots_of_unity_w[1];
         let w_mul_l_poly_coefficients: Vec<E::Fr> = l_poly_coefficients
@@ -137,10 +139,10 @@ impl<E: PairingEngine, FS: FiatShamirRng> Prover<E, FS> {
         x_pow_k_minus_one_poly_coefficients[0] = -E::Fr::one();
         let x_pow_k_minus_one_poly = DensePolynomial::from_coefficients_vec(x_pow_k_minus_one_poly_coefficients);
         let domain_v_vanishing_poly: DensePolynomial<E::Fr> = pp.domain_v.vanishing_polynomial().into();
-        let mut quotient_l_poly = l_mul_poly.sub(&w_mul_l_poly);
-        quotient_l_poly = quotient_l_poly.div(&domain_v_vanishing_poly);
-        quotient_l_poly = quotient_l_poly.mul(&x_pow_k_minus_one_poly);
-        let q_l_com1 = Kzg::<E>::commit_g1(&pp.srs_g1, &quotient_l_poly)
+        let mut q_l_poly = l_mul_v_poly.sub(&w_mul_l_poly);
+        q_l_poly = q_l_poly.div(&domain_v_vanishing_poly);
+        q_l_poly = q_l_poly.mul(&x_pow_k_minus_one_poly);
+        let q_l_com1 = Kzg::<E>::commit_g1(&pp.srs_g1, &q_l_poly)
             .into_affine();
         // TODO: Send [Q_L(tau)]_1 to the verifier
         
@@ -148,10 +150,10 @@ impl<E: PairingEngine, FS: FiatShamirRng> Prover<E, FS> {
         // and send [Q_D(tau)]_1 to the verifier. 
         let l_poly = DensePolynomial::from_coefficients_vec(l_poly_coefficients);
         let d_poly = DensePolynomial::from_coefficients_vec(d_poly_evaluations);
-        let mut quotient_d_poly = l_poly.sub(&d_poly);
+        let mut q_d_poly = l_poly.sub(&d_poly);
         let domain_k_vanishing_poly: DensePolynomial<E::Fr> = pp.domain_k.vanishing_polynomial().into();
-        quotient_d_poly = quotient_d_poly.div(&domain_k_vanishing_poly);
-        let q_d_com1 = Kzg::<E>::commit_g1(&pp.srs_g1, &quotient_d_poly)
+        q_d_poly = q_d_poly.div(&domain_k_vanishing_poly);
+        let q_d_com1 = Kzg::<E>::commit_g1(&pp.srs_g1, &q_d_poly)
             .into_affine();
         // TODO: Send [Q_D(tau)]_1 to the verifier
         

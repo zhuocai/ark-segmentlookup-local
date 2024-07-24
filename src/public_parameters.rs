@@ -41,21 +41,21 @@ pub struct PublicParameters<E: PairingEngine> {
     // q_{i, 2} for i in 1..n*s
     // The commitment of quotient polynomials Q_{i, 2} s.t.
     // L^W_i(X) * X = omega^i * L^W_i(X) + Z_W(X) * Q_{i, 2}(X)
-    quotient_poly_com1_vec_2: Vec<E::G1Affine>,
+    q_2_com1_list: Vec<E::G1Affine>,
     // q_{i, 3} for i in 1..n*s
-    pub(crate) quotient_poly_com1_vec_3: Vec<E::G1Affine>,
+    pub(crate) q_3_com1_list: Vec<E::G1Affine>,
     // q_{i, 4} for i in 1..n*s
-    pub(crate) quotient_poly_com1_vec_4: Vec<E::G1Affine>,
+    pub(crate) q_4_com1_list: Vec<E::G1Affine>,
     // [L^W_i(tau)]_1 for i in 1..n*s
-    pub(crate) lagrange_basis_w_com1_vec: Vec<E::G1Affine>,
+    pub(crate) l_w_com1_list: Vec<E::G1Affine>,
     // [L^W_i(tau / w)]_1 for i in 1..n*s
-    pub(crate) lagrange_basis_w_inv_com1_vec: Vec<E::G1Affine>,
+    pub(crate) l_w_inv_w_com1_list: Vec<E::G1Affine>,
     // [(L^W_i(tau) - L^W_i(0)) / tau]_1 for i in 1..n*s
-    lagrange_basis_w_zero_opening_proofs: Vec<E::G1Affine>,
+    l_w_zero_opening_proofs: Vec<E::G1Affine>,
     // [L^V_i(tau)]_1 for i in 1..k*s
-    pub(crate) lagrange_basis_v_com1_vec: Vec<E::G1Affine>,
+    pub(crate) l_v_com1_list: Vec<E::G1Affine>,
     // [L^V_i(tau * v)]_1 for i in 1..k*s
-    pub(crate) lagrange_basis_v_mul_com1_vec: Vec<E::G1Affine>,
+    pub(crate) l_v_mul_v_com1_list: Vec<E::G1Affine>,
 }
 
 impl<E: PairingEngine> PublicParameters<E> {
@@ -99,38 +99,38 @@ impl<E: PairingEngine> PublicParameters<E> {
             .iter()
             .map(|&x| x / E::Fr::from(order_w as u64))
             .collect();
-        let quotient_poly_com1_vec_2 = quotient_values
+        let q_2_com1_list = quotient_values
             .iter()
             .map(|&x| srs_g1[0].clone().mul(x).into())
             .collect();
 
 
         // Step 4-b: Compute [L^W_i(tau)]_1 for i in 1..n*s
-        let lagrange_basis_w_com1_vec = commitments(&srs_g1, &domain_w);
+        let l_w_com1_list = commitments(&srs_g1, &domain_w);
 
         // Step 4-c: Compute [(L^W_i(tau) - L^W_i(0)) / tau]_1 for i in 1..n*s
         // a.k.a. zero openings of the Lagrange basis.
-        let lagrange_basis_w_zero_opening_proofs = match
+        let l_w_zero_opening_proofs = match
         zero_opening_proofs::<E>(
             &srs_g1,
             &domain_w,
-            &lagrange_basis_w_com1_vec,
+            &l_w_com1_list,
         ) {
             Ok(proofs) => proofs,
             Err(e) => return Err(e),
         };
 
         // Step 5: Compute [L^V_i(tau)]_1 for i in 1..k*s
-        let lagrange_basis_v_com1_vec = commitments(&srs_g1, &domain_v);
+        let l_v_com1_list = commitments(&srs_g1, &domain_v);
 
         // Step 6: Compute [L^V_i(tau*v)]_1 for i in 1..k*s
         // L^V_i(X * v) = L^V_{i-1}(X).
         // We can shift [L^V_i(tau)]_1 to the right by 1 to get the result.
-        let mut lagrange_basis_v_mul_com1_vec: Vec<E::G1Affine> = Vec::with_capacity(order_v);
-        if let Some(first) = lagrange_basis_v_com1_vec.first().cloned() {
-            lagrange_basis_v_com1_vec.iter().skip(1).
-                for_each(|com| lagrange_basis_v_mul_com1_vec.push(com.clone()));
-            lagrange_basis_v_mul_com1_vec.push(first);
+        let mut l_v_mul_v_com1_list: Vec<E::G1Affine> = Vec::with_capacity(order_v);
+        if let Some(first) = l_v_com1_list.first().cloned() {
+            l_v_com1_list.iter().skip(1).
+                for_each(|com| l_v_mul_v_com1_list.push(com.clone()));
+            l_v_mul_v_com1_list.push(first);
         } else {
             return Err(Error::InvalidLagrangeBasisCommitments("Lagrange basis commitments for V is empty".to_string()));
         }
@@ -144,7 +144,7 @@ impl<E: PairingEngine> PublicParameters<E> {
         let tau_pow_n_minus_w_pow_in_vec: Vec<E::Fr> = (0..order_w)
             .map(|i| tau_pow_n_fr - roots_of_unity_w[i].pow([num_segments as u64]))
             .collect();
-        let quotient_poly_com1_vec_3: Vec<E::G1Affine> = (0..order_w).map(|i| {
+        let q_3_com1_list: Vec<E::G1Affine> = (0..order_w).map(|i| {
             let mut q3 = srs_g1[0].clone().mul(roots_of_unity_w[i]);
             q3 = q3.mul(ns_inv_fr.into_repr());
             q3 = q3.mul(tau_pow_n_minus_w_pow_in_vec[i].into_repr());
@@ -158,9 +158,9 @@ impl<E: PairingEngine> PublicParameters<E> {
         // q_{i, 4} = q_{i+1, 3} * (tau^n - w^{in}) / (tau^n - w^{(i+1)n})
         let tau_pow_n_minus_w_pow_in_inv_vec: Vec<E::Fr> = tau_pow_n_minus_w_pow_in_vec.iter()
             .map(|x| x.inverse().unwrap_or_else(|| E::Fr::zero())).collect();
-        let quotient_poly_com1_vec_4 = (0..order_w).map(|i| {
+        let q_4_com1_list = (0..order_w).map(|i| {
             let next_index = (i + 1) % order_w;
-            let mut q4 = quotient_poly_com1_vec_3[next_index].into_projective();
+            let mut q4 = q_3_com1_list[next_index].into_projective();
             q4 = q4.mul(tau_pow_n_minus_w_pow_in_vec[i].into_repr());
             q4 = q4.mul(tau_pow_n_minus_w_pow_in_inv_vec[next_index].into_repr());
 
@@ -170,11 +170,11 @@ impl<E: PairingEngine> PublicParameters<E> {
         // Step 6-b: Compute [L^W_i(tau / w)]_1 for i in 1..n*s
         // L^W_i(tau / w) = L^W_{i+1}(tau) * w
         // We can shift [L^W_i(tau)]_1 to the left by 1 to get the result.
-        let mut lagrange_basis_w_inv_com1_vec: Vec<E::G1Affine> = Vec::with_capacity(order_w);
-        if let Some(last) = lagrange_basis_w_com1_vec.last().cloned() {
-            lagrange_basis_w_com1_vec.iter().skip(1).
-                for_each(|com| lagrange_basis_w_inv_com1_vec.push(com.clone()));
-            lagrange_basis_w_inv_com1_vec.push(last);
+        let mut l_w_inv_w_com1_list: Vec<E::G1Affine> = Vec::with_capacity(order_w);
+        if let Some(last) = l_w_com1_list.last().cloned() {
+            l_w_com1_list.iter().skip(1).
+                for_each(|com| l_w_inv_w_com1_list.push(com.clone()));
+            l_w_inv_w_com1_list.push(last);
         } else {
             return Err(Error::InvalidLagrangeBasisCommitments("Lagrange basis commitments for W is empty".to_string()));
         }
@@ -193,14 +193,14 @@ impl<E: PairingEngine> PublicParameters<E> {
             domain_v,
             z_k_com2,
             domain_k,
-            quotient_poly_com1_vec_2,
-            quotient_poly_com1_vec_3,
-            quotient_poly_com1_vec_4,
-            lagrange_basis_w_com1_vec,
-            lagrange_basis_w_inv_com1_vec,
-            lagrange_basis_w_zero_opening_proofs,
-            lagrange_basis_v_com1_vec,
-            lagrange_basis_v_mul_com1_vec,
+            q_2_com1_list,
+            q_3_com1_list,
+            q_4_com1_list,
+            l_w_com1_list,
+            l_w_inv_w_com1_list,
+            l_w_zero_opening_proofs,
+            l_v_com1_list,
+            l_v_mul_v_com1_list,
         })
     }
 }
