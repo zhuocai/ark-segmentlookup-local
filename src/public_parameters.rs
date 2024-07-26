@@ -2,9 +2,9 @@ use std::cmp::max;
 
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{FftField, FftParameters, Field, PrimeField};
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain, UVPolynomial};
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_poly::univariate::DensePolynomial;
-use ark_std::{One, UniformRand, Zero};
+use ark_std::{UniformRand, Zero};
 use ark_std::rand::RngCore;
 use ark_std::rand::rngs::StdRng;
 
@@ -48,7 +48,7 @@ pub struct PublicParameters<E: PairingEngine> {
     // [L^W_i(tau)]_1 for i in 1..n*s
     pub(crate) l_w_com1_list: Vec<E::G1Affine>,
     // [L^W_i(tau / w)]_1 for i in 1..n*s
-    pub(crate) l_w_inv_w_com1_list: Vec<E::G1Affine>,
+    pub(crate) l_w_div_w_com1_list: Vec<E::G1Affine>,
     // [(L^W_i(tau) - L^W_i(0)) / tau]_1 for i in 1..n*s
     l_w_zero_opening_proofs: Vec<E::G1Affine>,
     // [L^V_i(tau)]_1 for i in 1..k*s
@@ -166,11 +166,11 @@ impl<E: PairingEngine> PublicParameters<E> {
         // Step 6-b: Compute [L^W_i(tau / w)]_1 for i in 1..n*s
         // L^W_i(tau / w) = L^W_{i+1}(tau) * w
         // We can shift [L^W_i(tau)]_1 to the left by 1 to get the result.
-        let mut l_w_inv_w_com1_list: Vec<E::G1Affine> = Vec::with_capacity(order_w);
+        let mut l_w_div_w_com1_list: Vec<E::G1Affine> = Vec::with_capacity(order_w);
         if let Some(first_element) = l_w_com1_list.first().cloned() {
             l_w_com1_list.iter().skip(1).
-                for_each(|com| l_w_inv_w_com1_list.push(com.clone()));
-            l_w_inv_w_com1_list.push(first_element);
+                for_each(|com| l_w_div_w_com1_list.push(com.clone()));
+            l_w_div_w_com1_list.push(first_element);
         } else {
             return Err(Error::InvalidLagrangeBasisCommitments("Lagrange basis commitments for W is empty".to_string()));
         }
@@ -191,12 +191,12 @@ impl<E: PairingEngine> PublicParameters<E> {
             domain_k,
             q_2_com1_list,
             q_3_com1_list,
-            q_4_com1_list,
+            q_4_com1_list, // TODO: can be removed
             l_w_com1_list,
-            l_w_inv_w_com1_list,
+            l_w_div_w_com1_list, // TODO: can be removed
             l_w_zero_opening_proofs,
             l_v_com1_list,
-            l_v_mul_v_com1_list,
+            l_v_mul_v_com1_list, // TODO: can be removed
         })
     }
 }

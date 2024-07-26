@@ -1,13 +1,13 @@
-mod public_parameters;
+pub mod public_parameters;
 mod kzg;
 mod lagrange_basis;
 mod error;
 mod table;
-mod prover;
+pub mod prover;
 mod rng;
 mod transcript;
 mod witness;
-mod verifier;
+pub mod verifier;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right
