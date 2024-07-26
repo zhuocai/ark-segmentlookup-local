@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::ops::{Div, Mul, Sub};
+use std::ops::{Add, Div, Mul, Sub};
 
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain, UVPolynomial};
@@ -13,7 +13,7 @@ use crate::rng::FiatShamirRng;
 use crate::witness::Witness;
 
 pub struct Proof<E: PairingEngine> {
-    // Round 1 messages
+    // Round 1 message
     pub(crate) m_com1: E::G1Affine, // [M(tau)]_1
     pub(crate) m_div_w_com1: E::G1Affine, // [M(tau / w)]_1
     pub(crate) q_m_com1: E::G1Affine, // [Q_M(tau)]_1
@@ -136,40 +136,36 @@ fn com1_multiplicity_polynomials_and_quotient<E: PairingEngine>(
     q_4_com1_list: &[E::G1Affine],
     segment_size: usize,
 ) -> MultiplicityPolynomialsAndQuotient<E> {
-    let mut m_com1 = E::G1Affine::zero(); // [M(tau)]_1
-    let mut m_div_w_com1 = E::G1Affine::zero(); // [M(tau / w)]_1
-    let mut q_m_com1 = E::G1Affine::zero(); // [Q_M(tau)]_1
+    let mut m_com1_proj = E::G1Projective::zero(); // [M(tau)]_1
+    let mut m_div_w_com1_proj = E::G1Projective::zero(); // [M(tau / w)]_1
+    let mut q_m_com1_proj = E::G1Projective::zero(); // [Q_M(tau)]_1
     for (&i, &m) in multiplicities.iter() {
         let segment_element_indices = i * segment_size..(i + 1) * segment_size;
         let multiplicity_fr = E::Fr::from(m as u64);
         for elem_index in segment_element_indices {
             // Linear combination of [L^W_i(tau)]_1
-            m_com1 = l_w_com1_list[elem_index]
+            m_com1_proj = l_w_com1_list[elem_index]
                 .mul(multiplicity_fr)
-                .add_mixed(&m_com1)
-                .into_affine();
+                .add(m_com1_proj);
             // Linear combination of [L^W_i(tau / w)]_1
-            m_div_w_com1 = l_w_div_w_com1_list[elem_index]
+            m_div_w_com1_proj = l_w_div_w_com1_list[elem_index]
                 .mul(multiplicity_fr)
-                .add_mixed(&m_div_w_com1)
-                .into_affine();
+                .add(m_div_w_com1_proj);
             // Linear combination of q_{i, 3}
-            q_m_com1 = q_3_com1_list[elem_index]
+            q_m_com1_proj = q_3_com1_list[elem_index]
                 .mul(multiplicity_fr)
-                .add_mixed(&q_m_com1)
-                .into_affine();
+                .add(q_m_com1_proj);
             // Linear combination of q_{i, 4}
-            q_m_com1 = q_4_com1_list[elem_index]
+            q_m_com1_proj = q_4_com1_list[elem_index]
                 .mul(-multiplicity_fr) // negate the coefficient
-                .add_mixed(&q_m_com1)
-                .into_affine();
+                .add(q_m_com1_proj);
         }
     }
 
     MultiplicityPolynomialsAndQuotient {
-        m_com1,
-        m_div_w_com1,
-        q_m_com1,
+        m_com1: m_com1_proj.into_affine(),
+        m_div_w_com1: m_div_w_com1_proj.into_affine(),
+        q_m_com1: q_m_com1_proj.into_affine(),
     }
 }
 
@@ -197,8 +193,8 @@ fn com1_index_polynomials_and_quotients<E: PairingEngine>(
     num_queries: usize,
 ) -> IndexPolynomialsAndQuotients<E> {
     let mut l_poly_evaluations: Vec<E::Fr> = Vec::with_capacity(witness_size);
-    let mut l_com1 = E::G1Affine::zero(); // [L(tau)]_1
-    let mut l_mul_v_com1 = E::G1Affine::zero(); // [L(tau * v)]_1
+    let mut l_com1_proj = E::G1Projective::zero(); // [L(tau)]_1
+    let mut l_mul_v_com1_proj = E::G1Projective::zero(); // [L(tau * v)]_1
     let roots_of_unity_w: Vec<E::Fr> = domain_w.elements().collect();
     let mut witness_element_index: usize = 0;
     let mut d_poly_evaluations: Vec<E::Fr> = Vec::with_capacity(num_queries);
@@ -208,15 +204,13 @@ fn com1_index_polynomials_and_quotients<E: PairingEngine>(
             let root_of_unity_w = roots_of_unity_w[j];
             l_poly_evaluations.push(root_of_unity_w);
             // Linear combination of [L^V_i(tau)]_1
-            l_com1 = l_v_com1_list[witness_element_index]
+            l_com1_proj = l_v_com1_list[witness_element_index]
                 .mul(root_of_unity_w)
-                .add_mixed(&l_com1)
-                .into_affine();
+                .add(l_com1_proj);
             // Linear combination of [L^V_i(tau * v)]_1
-            l_mul_v_com1 = l_v_mul_v_com1_list[witness_element_index]
+            l_mul_v_com1_proj = l_v_mul_v_com1_list[witness_element_index]
                 .mul(root_of_unity_w)
-                .add_mixed(&l_mul_v_com1)
-                .into_affine();
+                .add(l_mul_v_com1_proj);
             witness_element_index += 1;
         }
 
@@ -269,8 +263,8 @@ fn com1_index_polynomials_and_quotients<E: PairingEngine>(
         .into_affine();
 
     IndexPolynomialsAndQuotients {
-        l_com1,
-        l_mul_v_com1,
+        l_com1: l_com1_proj.into_affine(),
+        l_mul_v_com1: l_mul_v_com1_proj.into_affine(),
         d_com1,
         q_l_com1,
         q_d_com1,
