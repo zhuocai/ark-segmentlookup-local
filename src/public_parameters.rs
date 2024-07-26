@@ -1,5 +1,4 @@
 use std::cmp::max;
-use std::ops::Mul;
 
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{FftField, FftParameters, Field, PrimeField};
@@ -138,43 +137,40 @@ impl<E: PairingEngine> PublicParameters<E> {
         // Step 6: Compute quotient polynomial commitments q_{i, 3} and q_{i, 4} for i in 1..n*s
         // q_{i, 3} = [(w^i / ns) * (tau^n - w^{in}) / (tau - w)]_1
         let ns_inv_fr = domain_w.size_as_field_element().inverse().ok_or(Error::FailedToInverseFieldElement)?;
-        let tau_minus_w_pow_i_inv_vec: Vec<E::Fr> = roots_of_unity_w.iter()
+        let tau_sub_w_pow_i_inv_vec: Vec<E::Fr> = roots_of_unity_w.iter()
             .map(|x| (tau - x).inverse().unwrap_or_else(|| E::Fr::zero())).collect();
         let tau_pow_n_fr = tau.pow([num_segments as u64]);
-        let tau_pow_n_minus_w_pow_in_vec: Vec<E::Fr> = (0..order_w)
+        let tau_pow_n_sub_w_pow_in_vec: Vec<E::Fr> = (0..order_w)
             .map(|i| tau_pow_n_fr - roots_of_unity_w[i].pow([num_segments as u64]))
             .collect();
         let q_3_com1_list: Vec<E::G1Affine> = (0..order_w).map(|i| {
             let mut q3 = srs_g1[0].clone().mul(roots_of_unity_w[i]);
             q3 = q3.mul(ns_inv_fr.into_repr());
-            q3 = q3.mul(tau_pow_n_minus_w_pow_in_vec[i].into_repr());
-            q3 = q3.mul(tau_minus_w_pow_i_inv_vec[i].into_repr());
+            q3 = q3.mul(tau_pow_n_sub_w_pow_in_vec[i].into_repr());
+            q3 = q3.mul(tau_sub_w_pow_i_inv_vec[i].into_repr());
 
             q3.into_affine()
         }).collect();
 
         // Step 6: Compute quotient polynomial commitments q_{i, 4} for i in 1..n*s
-        // Q_{i,4}(X) = Q_{i+1,3}(X) * (X^n - w^{in}) / (X^n - w^{(i+1)n})
-        // q_{i, 4} = q_{i+1, 3} * (tau^n - w^{in}) / (tau^n - w^{(i+1)n})
-        let tau_pow_n_minus_w_pow_in_inv_vec: Vec<E::Fr> = tau_pow_n_minus_w_pow_in_vec.iter()
-            .map(|x| x.inverse().unwrap_or_else(|| E::Fr::zero())).collect();
-        let q_4_com1_list = (0..order_w).map(|i| {
-            let next_index = (i + 1) % order_w;
-            let mut q4 = q_3_com1_list[next_index].into_projective();
-            q4 = q4.mul(tau_pow_n_minus_w_pow_in_vec[i].into_repr());
-            q4 = q4.mul(tau_pow_n_minus_w_pow_in_inv_vec[next_index].into_repr());
-
-            q4.into_affine()
-        }).collect();
+        // q_{i, 4} is equivalent to shift q_{i, 3} to left by 1.
+        let mut q_4_com1_list: Vec<E::G1Affine> = Vec::with_capacity(order_w);
+        if let Some(first_element) = q_3_com1_list.first().cloned() {
+            q_3_com1_list.iter().skip(1).
+                for_each(|com| q_4_com1_list.push(com.clone()));
+            q_4_com1_list.push(first_element);
+        } else {
+            return Err(Error::InvalidQuotientPolynomialCommitments("Quotient polynomial commitments for q_{i, 3} is empty".to_string()));
+        }
 
         // Step 6-b: Compute [L^W_i(tau / w)]_1 for i in 1..n*s
         // L^W_i(tau / w) = L^W_{i+1}(tau) * w
         // We can shift [L^W_i(tau)]_1 to the left by 1 to get the result.
         let mut l_w_inv_w_com1_list: Vec<E::G1Affine> = Vec::with_capacity(order_w);
-        if let Some(last) = l_w_com1_list.last().cloned() {
+        if let Some(first_element) = l_w_com1_list.first().cloned() {
             l_w_com1_list.iter().skip(1).
                 for_each(|com| l_w_inv_w_com1_list.push(com.clone()));
-            l_w_inv_w_com1_list.push(last);
+            l_w_inv_w_com1_list.push(first_element);
         } else {
             return Err(Error::InvalidLagrangeBasisCommitments("Lagrange basis commitments for W is empty".to_string()));
         }
