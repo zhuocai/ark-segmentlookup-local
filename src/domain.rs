@@ -15,7 +15,7 @@ pub fn vanishing_poly_com2<E: PairingEngine>(
     Kzg::<E>::commit_g2(&srs_g2, &vanishing_poly).into_affine()
 }
 
-pub fn create_domain_from_larger_domain<E: PairingEngine>(
+pub fn create_sub_domain<E: PairingEngine>(
     larger_domain: &Radix2EvaluationDomain<E::Fr>,
     order: usize,
     segment_size: usize,
@@ -25,19 +25,19 @@ pub fn create_domain_from_larger_domain<E: PairingEngine>(
     }
 
     let size: u64 = order as u64;
-    let log_size_of_group = size.trailing_zeros();
+    let log_size_of_group = order.trailing_zeros();
     if log_size_of_group > <E::Fr as FftField>::FftParams::TWO_ADICITY {
         return Err(Error::InvalidEvaluationDomainSize(order));
     }
 
-    let roots_of_unity_v = roots_of_unity::<E>(&larger_domain);
-    let group_gen_k = roots_of_unity_v[segment_size];
+    let roots_of_unity_larger_domain = roots_of_unity::<E>(&larger_domain);
+    let group_gen = roots_of_unity_larger_domain[segment_size];
     let size_as_field_element = E::Fr::from(size);
     let size_inv = size_as_field_element
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
 
-    let group_gen_inv = group_gen_k
+    let group_gen_inv = group_gen
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
 
@@ -50,7 +50,7 @@ pub fn create_domain_from_larger_domain<E: PairingEngine>(
         log_size_of_group,
         size_as_field_element,
         size_inv,
-        group_gen: group_gen_k,
+        group_gen,
         group_gen_inv,
         generator_inv,
     })
@@ -79,7 +79,7 @@ mod tests {
         let domain_v = Radix2EvaluationDomain::<<Bn254 as PairingEngine>::Fr>::new(order_v)
             .unwrap();
         let order_k = num_queries;
-        let domain_k = create_domain_from_larger_domain::<Bn254>(&domain_v, order_k, segment_size).unwrap();
+        let domain_k = create_sub_domain::<Bn254>(&domain_v, order_k, segment_size).unwrap();
         let group_gen_k = domain_k.group_gen;
         assert_eq!(group_gen_k.pow([domain_k.size]), <Bn254 as PairingEngine>::Fr::one());
     }

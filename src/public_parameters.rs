@@ -7,7 +7,7 @@ use ark_std::{UniformRand, Zero};
 use ark_std::rand::RngCore;
 use ark_std::rand::rngs::StdRng;
 
-use crate::domain::{create_domain_from_larger_domain, roots_of_unity, vanishing_poly_com2};
+use crate::domain::{create_sub_domain, roots_of_unity, vanishing_poly_com2};
 use crate::error::Error;
 use crate::kzg::unsafe_setup_from_tau;
 use crate::lagrange_basis::{commitments, zero_opening_proofs};
@@ -87,7 +87,7 @@ impl<E: PairingEngine> PublicParameters<E> {
         // Step 2: Compute [Z_K(tau)]_2
         // K = {v^{is}, i \in [0, k - 1]}
         let order_k = num_queries;
-        let domain_k = create_domain_from_larger_domain::<E>(&domain_v, order_k, segment_size)?;
+        let domain_k = create_sub_domain::<E>(&domain_v, order_k, segment_size)?;
         let z_k_com2 = vanishing_poly_com2::<E>(&srs_g2, &domain_k);
 
 
