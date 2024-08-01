@@ -84,7 +84,7 @@ pub fn prove<E: PairingEngine, FS: FiatShamirRng>(
     // Round 3 - Round 8:
     // Using the instantiation of Lemma 5,
     // the prover and verifier engage in a protocol that polynomial L is well-formed.
-
+    
 
     // todo!()
 
@@ -372,15 +372,14 @@ mod tests {
             m_com1: m_com1_got,
             m_div_w_com1: m_div_w_com1_got,
             q_m_com1: q_m_com1_got,
-        } =
-            com1_multiplicity_polynomials_and_quotient::<Bn254>(
-                &multiplicities,
-                &pp.l_w_com1_list,
-                &pp.l_w_div_w_com1_list,
-                &pp.q_3_com1_list,
-                &pp.q_4_com1_list,
-                segment_size,
-            );
+        } = com1_multiplicity_polynomials_and_quotient::<Bn254>(
+            &multiplicities,
+            &pp.l_w_com1_list,
+            &pp.l_w_div_w_com1_list,
+            &pp.q_3_com1_list,
+            &pp.q_4_com1_list,
+            segment_size,
+        );
 
         assert_eq!(m_com1_expected, m_com1_got);
         assert_eq!(m_div_w_com1_expected, m_div_w_com1_got);

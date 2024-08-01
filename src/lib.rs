@@ -8,6 +8,8 @@ mod rng;
 mod transcript;
 mod witness;
 pub mod verifier;
+mod multi_unity;
+mod domain;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

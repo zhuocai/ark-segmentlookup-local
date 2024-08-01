@@ -120,6 +120,7 @@ pub mod rand_segments {
     use ark_bn254::Bn254;
     use ark_ec::PairingEngine;
     use ark_std::UniformRand;
+
     use crate::public_parameters::PublicParameters;
 
     pub fn generate(pp: &PublicParameters<Bn254>) -> Vec<Vec<<Bn254 as PairingEngine>::Fr>> {
@@ -141,10 +142,9 @@ pub mod rand_segments {
 #[cfg(test)]
 mod tests {
     use ark_bn254::Bn254;
-    use ark_ec::PairingEngine;
     use ark_std::test_rng;
-    use crate::public_parameters::PublicParameters;
-    use crate::table::{rand_segments, Table};
+
+    use super::*;
 
     #[test]
     fn test_table_new() {

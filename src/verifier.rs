@@ -34,19 +34,17 @@ pub fn verify<E: PairingEngine, FS: FiatShamirRng>(
 #[cfg(test)]
 mod tests {
     use ark_bn254::Bn254;
-    use ark_ec::PairingEngine;
     use ark_std::rand::RngCore;
     use ark_std::test_rng;
     use rand_chacha::ChaChaRng;
     use sha3::Keccak256;
 
-    use crate::prover::Proof;
     use crate::prover::prove;
-    use crate::public_parameters::PublicParameters;
     use crate::rng::SimpleHashFiatShamirRng;
     use crate::table::{rand_segments, Table};
-    use crate::verifier::verify;
     use crate::witness::Witness;
+
+    use super::*;
 
     type FS = SimpleHashFiatShamirRng<Keccak256, ChaChaRng>;
     #[test]
