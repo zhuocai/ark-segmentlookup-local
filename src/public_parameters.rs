@@ -2,8 +2,9 @@ use std::cmp::max;
 
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{Field, PrimeField};
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
-use ark_std::{UniformRand, Zero};
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use ark_poly::univariate::DensePolynomial;
+use ark_std::{cfg_into_iter, One, UniformRand, Zero};
 use ark_std::rand::RngCore;
 use ark_std::rand::rngs::StdRng;
 
@@ -55,6 +56,10 @@ pub struct PublicParameters<E: PairingEngine> {
     pub(crate) l_v_com1_list: Vec<E::G1Affine>,
     // [L^V_i(tau * v)]_1 for i in 1..k*s
     pub(crate) l_v_mul_v_com1_list: Vec<E::G1Affine>,
+    pub(crate) log_num_segments: usize, // TODO: optimize.
+    pub(crate) domain_log_n: Radix2EvaluationDomain<E::Fr>, // TODO: optimize.
+    pub(crate) lagrange_basis_log_n: Vec<DensePolynomial<E::Fr>>, // TODO: optimize.
+    pub(crate) id_poly: DensePolynomial<E::Fr>, // TODO: optimize.
 }
 
 impl<E: PairingEngine> PublicParameters<E> {
@@ -175,6 +180,27 @@ impl<E: PairingEngine> PublicParameters<E> {
             return Err(Error::InvalidLagrangeBasisCommitments("Lagrange basis commitments for W is empty".to_string()));
         }
 
+        // TODO: to be optimized.
+        let log_num_segments = num_segments.trailing_zeros() as usize;
+        let domain_log_n: Radix2EvaluationDomain<E::Fr> = Radix2EvaluationDomain::<E::Fr>::new(log_num_segments)
+            .ok_or(Error::FailedToCreateEvaluationDomain)?;
+        // Compute the lagrange basis of domain_n
+        let mut lagrange_basis_log_n: Vec<DensePolynomial<E::Fr>> = Vec::new();
+        for i in 0..domain_log_n.size() {
+            let evaluations: Vec<E::Fr> = cfg_into_iter!(0..domain_log_n.size())
+                .map(|k| if k == i { E::Fr::one() } else { E::Fr::zero() })
+                .collect();
+            lagrange_basis_log_n.push(Evaluations::from_vec_and_domain(evaluations, domain_log_n).interpolate());
+        }
+
+        // TODO: change or optimize this.
+        let mut id_list = Vec::new();
+        for _ in 0..num_queries {
+            id_list.push(E::Fr::one());
+        }
+        let id_poly = Evaluations::from_vec_and_domain(id_list, domain_k)
+            .interpolate();
+
         Ok(PublicParameters {
             num_segments,
             num_queries,
@@ -197,6 +223,11 @@ impl<E: PairingEngine> PublicParameters<E> {
             l_w_zero_opening_proofs,
             l_v_com1_list,
             l_v_mul_v_com1_list, // TODO: can be removed
+
+            log_num_segments,
+            domain_log_n,
+            lagrange_basis_log_n,
+            id_poly,
         })
     }
 }

@@ -2,6 +2,7 @@
 pub enum Error {
     FailedToCreateEvaluationDomain,
     FailedToInverseFieldElement,
+    FailedToDivideByVanishingPolynomial,
 
     InvalidCommitmentLength(String),
     InvalidLagrangeBasisCommitments(String),

@@ -64,7 +64,7 @@ mod tests {
 
         let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
 
-        let proof: Proof<Bn254> = prove::<Bn254, FS>(&pp, &witness).unwrap();
+        let proof: Proof<Bn254> = prove::<Bn254, >(&pp, &witness).unwrap();
 
         assert!(verify::<Bn254, FS>(&pp, &proof).is_ok());
     }

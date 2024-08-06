@@ -9,7 +9,6 @@ use ark_std::{One, Zero};
 use crate::error::Error;
 use crate::kzg::Kzg;
 use crate::public_parameters::PublicParameters;
-use crate::rng::FiatShamirRng;
 use crate::witness::Witness;
 
 pub struct Proof<E: PairingEngine> {
@@ -24,7 +23,7 @@ pub struct Proof<E: PairingEngine> {
     q_d_com1: E::G1Affine, // [Q_D(tau)]_1
 }
 
-pub fn prove<E: PairingEngine, FS: FiatShamirRng>(
+pub fn prove<E: PairingEngine>(
     pp: &PublicParameters<E>,
     // tpp: &PreprocessedParameters<E>,
     witness: &Witness<E>,
@@ -84,7 +83,7 @@ pub fn prove<E: PairingEngine, FS: FiatShamirRng>(
     // Round 3 - Round 8:
     // Using the instantiation of Lemma 5,
     // the prover and verifier engage in a protocol that polynomial L is well-formed.
-    
+
 
     // todo!()
 
