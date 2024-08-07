@@ -2,7 +2,7 @@
 pub enum Error {
     FailedToCreateEvaluationDomain,
     FailedToInverseFieldElement,
-    FailedToDivideByVanishingPolynomial,
+    
 
     InvalidCommitmentLength(String),
     InvalidLagrangeBasisCommitments(String),
@@ -18,4 +18,8 @@ pub enum Error {
     SizeNotPowerOfTwo(usize),
     
     Pairing1Failed,
+    
+    // Caulk Sub-protocol
+    FailedToDivideByVanishingPolynomial,
+    RemainderAfterDivisionIsNonZero,
 }

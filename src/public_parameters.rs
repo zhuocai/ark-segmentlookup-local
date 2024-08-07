@@ -224,10 +224,10 @@ impl<E: PairingEngine> PublicParameters<E> {
             l_v_com1_list,
             l_v_mul_v_com1_list, // TODO: can be removed
 
-            log_num_segments,
-            domain_log_n,
-            lagrange_basis_log_n,
-            id_poly,
+            log_num_segments, // TODO: optimize.
+            domain_log_n, // TODO: optimize.
+            lagrange_basis_log_n, // TODO: optimize.
+            id_poly, // TODO: optimize.
         })
     }
 }
