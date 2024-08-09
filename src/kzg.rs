@@ -161,7 +161,7 @@ impl<E: PairingEngine> CaulkKzg<E> {
         (eval, proof)
     }
 
-    pub fn bi_poly_commit(
+    pub fn bi_poly_commit_g1(
         srs_g1: &[E::G1Affine],
         polynomials: &[DensePolynomial<E::Fr>],
         deg_x: usize,
@@ -186,7 +186,7 @@ impl<E: PairingEngine> CaulkKzg<E> {
         g1_poly
     }
 
-    pub fn open_g1_batch(
+    pub fn batch_open_g1(
         srs_g1: &[E::G1Affine],
         poly: &DensePolynomial<E::Fr>,
         max_deg: Option<&usize>,
@@ -253,13 +253,13 @@ impl<E: PairingEngine> CaulkKzg<E> {
 
         witness_bipolynomial.reverse();
 
-        let proof = Self::bi_poly_commit(srs_g1, &witness_bipolynomial, deg_x);
+        let proof = Self::bi_poly_commit_g1(srs_g1, &witness_bipolynomial, deg_x);
 
         end_timer!(timer);
         (eval, proof, poly_partial_eval)
     }
 
-    pub fn verify_g1_defer_pairing(
+    pub fn verify_defer_pairing_g1(
         // Verify that @c_com is a commitment to C(X) such that C(x)=z
         powers_of_g1: &[E::G1Affine], // generator of G1
         powers_of_g2: &[E::G2Affine], // [1]_2, [x]_2, [x^2]_2, ...
@@ -335,7 +335,7 @@ impl<E: PairingEngine> CaulkKzg<E> {
         res
     }
 
-    pub fn partial_verify_g1_defer_pairing(
+    pub fn partial_verify_defer_pairing_g1(
         srs_g2: &[E::G2Affine],
         c_com: &E::G1Affine, // commitment
         deg_x: usize,

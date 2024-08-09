@@ -11,7 +11,7 @@ use ark_std::rand::RngCore;
 use ark_std::{One, UniformRand, Zero};
 
 use crate::error::Error;
-use crate::kzg::{convert_to_big_ints, CaulkKzg, Kzg};
+use crate::kzg::{convert_to_big_ints, CaulkKzg};
 use crate::public_parameters::PublicParameters;
 
 /// Modified from https://github.com/caulk-crypto/caulk/blob/main/src/multi/unity.rs
@@ -111,49 +111,45 @@ pub fn multi_unity_prove<E: PairingEngine>(
         if !remainder.is_zero() {
             return Err(Error::RemainderAfterDivisionIsNonZero);
         }
-
+        println!("len {}", h_s_poly.len());
         h_s_poly_list.push(h_s_poly);
     }
 
     let mut h_2_partial_y_polys = Vec::new();
-    let num_coefficients = h_s_poly_list[0].len();
-    
-    // First add H_1(X) * \rho_1(Y).
+    let num_coefficients = h_s_poly_list[1].len();
+
+    // Add H_1(X) * \rho_1(Y) and pad with zero polynomials if needed.
     for j in 0..num_coefficients {
-        let h_0_j = DensePolynomial::from_coefficients_slice(&[h_s_poly_list[0][j]]);
+        let h_0_j = if j < h_s_poly_list[0].len() {
+            DensePolynomial::from_coefficients_slice(&[h_s_poly_list[0][j]])
+        } else {
+            DensePolynomial::from_coefficients_slice(&[E::Fr::zero()])
+        };
         h_2_partial_y_polys.push(&h_0_j * &lagrange_basis[0]);
     }
 
-    // In case, the number of coefficients in H_1(X) is less than the number of coefficients in H_2(X),
-    // pad the remaining coefficients with zero polynomials.
-    for _ in h_s_poly_list[0].len()..h_s_poly_list[1].len() {
-        let h_0_j = DensePolynomial::from_coefficients_slice(&[E::Fr::zero()]);
-        h_2_partial_y_polys.push(h_0_j);
-    }
-    println!("{}", h_2_partial_y_polys.len());
-
+    // Update h_2_partial_y_polys with the sum of H_{s,j} * \rho_s(Y)
     for (j, coeff) in h_2_partial_y_polys
         .iter_mut()
         .enumerate()
-        .take(h_s_poly_list[1].len())
+        .take(num_coefficients)
     {
-        // h_2[j] = sum_s H_{s,j} * rho_s(Y)
         for (s, h_s_poly) in h_s_poly_list
             .iter()
             .enumerate()
             .take(log_num_segments)
             .skip(1) {
             let h_s_j = DensePolynomial::from_coefficients_slice(&[h_s_poly[j]]);
-
-            // h_2[j] += H_{s,j} * rho_s(Y)
             *coeff += &(&h_s_j * &lagrange_basis[s]);
         }
     }
 
-    let domain_log_n = &pp.domain_log_n;
-
-    let u_bar_com1 = CaulkKzg::<E>::bi_poly_commit(&pp.srs_g1, &u_bar_partial_y_polys, domain_log_n.size());
-    let h_2_com1 = CaulkKzg::<E>::bi_poly_commit(&pp.srs_g1, &h_2_partial_y_polys, domain_log_n.size());
+    let u_bar_com1 = CaulkKzg::<E>::bi_poly_commit_g1(
+        &pp.srs_g1,
+        &u_bar_partial_y_polys, 
+        log_num_segments,
+    );
+    let h_2_com1 = CaulkKzg::<E>::bi_poly_commit_g1(&pp.srs_g1, &h_2_partial_y_polys, log_num_segments);
 
     // Compute H_1(Y)
     let mut u_alpha_poly = DensePolynomial::zero();
@@ -171,6 +167,7 @@ pub fn multi_unity_prove<E: PairingEngine>(
         temp = DensePolynomial::from_coefficients_slice(&[u_s_alpha.square()]);
         u_sqr_alpha_list += &(&temp * &lagrange_basis[s]);
     }
+    let domain_log_n = &pp.domain_log_n;
     let (h_1_poly, remainder) = (&(&u_alpha_poly * &u_alpha_poly) - &u_sqr_alpha_list)
         .divide_by_vanishing_poly(domain_log_n.clone())
         .unwrap();
@@ -179,6 +176,7 @@ pub fn multi_unity_prove<E: PairingEngine>(
     }
 
     assert!(pp.srs_g1.len() >= h_1_poly.len());
+    
     let h_1_com1 = VariableBaseMSM::multi_scalar_mul(
         &pp.srs_g1,
         convert_to_big_ints(&h_1_poly.coeffs).as_slice(),
@@ -205,8 +203,8 @@ pub fn multi_unity_prove<E: PairingEngine>(
     p_poly = &p_poly - &temp;
 
     let mut poly_h_2_alpha = DensePolynomial::from_coefficients_slice(&[E::Fr::zero()]);
-    for (s, H_s_poly) in h_s_poly_list.iter().enumerate() {
-        let h_s_j = DensePolynomial::from_coefficients_slice(&[H_s_poly.evaluate(&alpha)]);
+    for (s, h_s_poly) in h_s_poly_list.iter().enumerate() {
+        let h_s_j = DensePolynomial::from_coefficients_slice(&[h_s_poly.evaluate(&alpha)]);
         poly_h_2_alpha = &poly_h_2_alpha + &(&h_s_j * &lagrange_basis[s]);
     }
 
@@ -217,25 +215,25 @@ pub fn multi_unity_prove<E: PairingEngine>(
     assert!(p_poly.evaluate(&beta) == E::Fr::zero());
 
 
-    let (evals_1, pi_1) = CaulkKzg::<E>::open_g1_batch(&pp.srs_g1, &u_poly_list[0], None, &[alpha]);
+    let (eval_1_list, pi_1) = CaulkKzg::<E>::batch_open_g1(&pp.srs_g1, &u_poly_list[0], None, &[alpha]);
     let (u_bar_alpha_com1, pi_2, poly_u_bar_alpha) =
         CaulkKzg::<E>::partial_open_g1(&pp.srs_g1, &u_bar_partial_y_polys, domain_log_n.size(), &alpha);
     let (h_2_alpha_com1, pi_3, _) =
         CaulkKzg::<E>::partial_open_g1(&pp.srs_g1, &h_2_partial_y_polys, domain_log_n.size(), &alpha);
-    let (evals_2, pi_4) = CaulkKzg::<E>::open_g1_batch(
+    let (eval_2_list, pi_4) = CaulkKzg::<E>::batch_open_g1(
         &pp.srs_g1,
         &poly_u_bar_alpha,
         Some(&(domain_log_n.size() - 1)),
         &[E::Fr::one(), beta, beta * domain_log_n.element(1)],
     );
-    assert!(evals_2[0] == E::Fr::zero());
-    let (evals_3, pi_5) = CaulkKzg::<E>::open_g1_batch(
+    assert!(eval_2_list[0] == E::Fr::zero());
+    let (eval_3_list, pi_5) = CaulkKzg::<E>::batch_open_g1(
         &pp.srs_g1,
         &p_poly,
         Some(&(domain_log_n.size() - 1)),
         &[beta],
     );
-    assert!(evals_3[0] == E::Fr::zero());
+    assert!(eval_3_list[0] == E::Fr::zero());
 
     Ok(MultiUnityProof {
         u_bar_com1,
@@ -243,9 +241,9 @@ pub fn multi_unity_prove<E: PairingEngine>(
         h_2_com1,
         u_bar_alpha_com1,
         h_2_alpha_com1,
-        v1: evals_1[0],
-        v2: evals_2[1],
-        v3: evals_2[2],
+        v1: eval_1_list[0],
+        v2: eval_2_list[1],
+        v3: eval_2_list[2],
         pi_1,
         pi_2,
         pi_3,
@@ -372,7 +370,7 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
     // Check the KZG openings
     ////////////////////////////
 
-    let check1 = CaulkKzg::<E>::verify_g1_defer_pairing(
+    let check1 = CaulkKzg::<E>::verify_defer_pairing_g1(
         srs_g1,
         srs_g2,
         g1_u,
@@ -381,7 +379,7 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
         &[pi_unity.v1],
         &pi_unity.pi_1,
     );
-    let check2 = CaulkKzg::<E>::partial_verify_g1_defer_pairing(
+    let check2 = CaulkKzg::<E>::partial_verify_defer_pairing_g1(
         srs_g2,
         &pi_unity.u_bar_com1,
         domain_log_n.size(),
@@ -389,7 +387,7 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
         &pi_unity.u_bar_alpha_com1,
         &pi_unity.pi_2,
     );
-    let check3 = CaulkKzg::<E>::partial_verify_g1_defer_pairing(
+    let check3 = CaulkKzg::<E>::partial_verify_defer_pairing_g1(
         srs_g2,
         &pi_unity.h_2_com1,
         domain_log_n.size(),
@@ -397,7 +395,7 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
         &pi_unity.h_2_alpha_com1,
         &pi_unity.pi_3,
     );
-    let check4 = CaulkKzg::<E>::verify_g1_defer_pairing(
+    let check4 = CaulkKzg::<E>::verify_defer_pairing_g1(
         srs_g1,
         srs_g2,
         &pi_unity.u_bar_alpha_com1,
@@ -406,7 +404,7 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
         &[E::Fr::zero(), pi_unity.v2, pi_unity.v3],
         &pi_unity.pi_4,
     );
-    let check5 = CaulkKzg::<E>::verify_g1_defer_pairing(
+    let check5 = CaulkKzg::<E>::verify_defer_pairing_g1(
         srs_g1,
         srs_g2,
         &p_com1.into_affine(),
@@ -432,7 +430,7 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
 mod tests {
     use ark_bn254::Bn254;
     use ark_std::test_rng;
-
+    use crate::kzg::Kzg;
     use super::*;
 
     #[test]
