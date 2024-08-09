@@ -71,7 +71,6 @@ mod tests {
 
     #[test]
     fn test_create_domain_from_large_domain() {
-        let num_segments = 16;
         let num_queries = 8;
         let segment_size = 4;
 

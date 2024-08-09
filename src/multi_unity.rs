@@ -32,13 +32,10 @@ pub struct MultiUnityProof<E: PairingEngine> {
     pub pi_4: E::G1Affine,
     pub pi_5: E::G1Affine,
 }
-pub fn multi_unity_prove<
-    E: PairingEngine,
-    // R: RngCore
->(
+pub fn multi_unity_prove<E: PairingEngine>(
     pp: &PublicParameters<E>,
     d_poly: &DensePolynomial<E::Fr>,
-    mut rng: StdRng,
+    rng: &mut StdRng,
     alpha: E::Fr, // TODO: to be removed.
     beta: E::Fr, // TODO: to be removed.
 ) -> Result<MultiUnityProof<E>, Error> {
@@ -70,7 +67,7 @@ pub fn multi_unity_prove<
         let u_poly = Evaluations::from_vec_and_domain(
             d_evaluations.clone(),
             pp.domain_k,
-        ).interpolate() + blinded_vanishing_poly::<E>(&vanishing_poly_k, rng.clone());
+        ).interpolate() + blinded_vanishing_poly::<E>(&vanishing_poly_k, rng);
         u_poly_list.push(u_poly);
     }
 
@@ -257,9 +254,9 @@ pub fn multi_unity_prove<
 
 fn blinded_vanishing_poly<E: PairingEngine>(
     vanishing_poly: &DensePolynomial<E::Fr>,
-    mut rng: StdRng,
+    rng: &mut StdRng,
 ) -> DensePolynomial<E::Fr> {
-    let rand_scalar = E::Fr::rand(&mut rng);
+    let rand_scalar = E::Fr::rand(rng);
     let vanishing_poly_coefficients: Vec<E::Fr> = vanishing_poly.coeffs.clone();
     let rand_poly_coefficients = vanishing_poly_coefficients
         .iter()
@@ -433,10 +430,6 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
 mod tests {
     use ark_bn254::Bn254;
     use ark_std::test_rng;
-    use rand_chacha::ChaChaRng;
-    use sha3::Keccak256;
-
-    use crate::rng::SimpleHashFiatShamirRng;
 
     use super::*;
 
@@ -446,7 +439,6 @@ mod tests {
         assert_eq!(num.trailing_zeros() as usize, 3);
     }
 
-    type FS = SimpleHashFiatShamirRng<Keccak256, ChaChaRng>;
 
     #[test]
     fn test_multi_unity_prove() {
@@ -474,7 +466,7 @@ mod tests {
         multi_unity_prove::<Bn254>(
             &pp,
             &d_poly,
-            rng,
+            &mut rng,
             alpha,
             beta,
         ).unwrap();
@@ -508,7 +500,7 @@ mod tests {
         let multi_unity_proof = multi_unity_prove::<Bn254>(
             &pp,
             &d_poly,
-            rng.clone(),
+            &mut rng,
             alpha,
             beta,
         ).unwrap();
@@ -527,7 +519,7 @@ mod tests {
         assert!(!multi_unity_prove::<Bn254>(
             &pp,
             &incorrect_d_poly,
-            rng.clone(),
+            &mut rng,
             alpha,
             beta,
         ).is_ok());
