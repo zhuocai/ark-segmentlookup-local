@@ -52,13 +52,12 @@ impl<E: PairingEngine> Witness<E> {
 #[cfg(test)]
 mod tests {
     use ark_bn254::Bn254;
-    use ark_ec::PairingEngine;
     use ark_std::rand::RngCore;
     use ark_std::test_rng;
 
-    use crate::public_parameters::PublicParameters;
-    use crate::table::{rand_segments, Table};
-    use crate::witness::Witness;
+    use crate::table::rand_segments;
+
+    use super::*;
 
     #[test]
     fn test_witness_new() {
