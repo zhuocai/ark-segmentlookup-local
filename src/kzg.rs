@@ -175,9 +175,6 @@ impl<E: PairingEngine> CaulkKzg<E> {
                 poly_formatted.push(E::Fr::zero().into_repr());
             }
         }
-
-        println!("srs_g1 size: {}", srs_g1.len());
-        println!("poly formatted: {}", poly_formatted.len());
         
         assert!(srs_g1.len() >= poly_formatted.len());
         let g1_poly = VariableBaseMSM::multi_scalar_mul(srs_g1, poly_formatted.as_slice())

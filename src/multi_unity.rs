@@ -13,6 +13,7 @@ use ark_std::{One, UniformRand, Zero};
 use crate::error::Error;
 use crate::kzg::{convert_to_big_ints, CaulkKzg};
 use crate::public_parameters::PublicParameters;
+use crate::transcript::Transcript;
 
 /// Modified from https://github.com/caulk-crypto/caulk/blob/main/src/multi/unity.rs
 // TODO:
@@ -35,10 +36,10 @@ pub struct MultiUnityProof<E: PairingEngine> {
 }
 pub fn multi_unity_prove<E: PairingEngine>(
     pp: &PublicParameters<E>,
+    transcript: &mut Transcript<E::Fr>,
     d_poly: &DensePolynomial<E::Fr>,
+    g1_u: &E::G1Affine,
     rng: &mut StdRng,
-    alpha: E::Fr, // TODO: to be removed.
-    beta: E::Fr, // TODO: to be removed.
 ) -> Result<MultiUnityProof<E>, Error> {
     // Round 1: The prover takes the input srs and U_0(X) amd samples log(n) randomnesses
     // to compute U_l(X) for l = 1, ..., log(n), U(X, Y), U_bar(X, Y), and Q_2(X, Y).
@@ -146,10 +147,16 @@ pub fn multi_unity_prove<E: PairingEngine>(
 
     let u_bar_com1 = CaulkKzg::<E>::bi_poly_commit_g1(
         &pp.srs_g1,
-        &u_bar_partial_y_polys, 
+        &u_bar_partial_y_polys,
         log_num_segments,
     );
     let h_2_com1 = CaulkKzg::<E>::bi_poly_commit_g1(&pp.srs_g1, &h_2_partial_y_polys, log_num_segments);
+
+    transcript.append_element(b"u", g1_u);
+    transcript.append_element(b"u_bar", &u_bar_com1);
+    transcript.append_element(b"h2", &h_2_com1);
+    let alpha = transcript.get_and_append_challenge(b"alpha");
+
 
     // Compute H_1(Y)
     let mut u_alpha_poly = DensePolynomial::zero();
@@ -176,11 +183,14 @@ pub fn multi_unity_prove<E: PairingEngine>(
     }
 
     assert!(pp.srs_g1.len() >= h_1_poly.len());
-    
+
     let h_1_com1 = VariableBaseMSM::multi_scalar_mul(
         &pp.srs_g1,
         convert_to_big_ints(&h_1_poly.coeffs).as_slice(),
     ).into_affine();
+
+    transcript.append_element(b"h1", &h_1_com1);
+    let beta = transcript.get_and_append_challenge(b"beta");
 
     let u_alpha_beta = u_alpha_poly.evaluate(&beta);
     let mut p_poly = DensePolynomial::from_coefficients_slice(&[u_alpha_beta.square()]);
@@ -267,13 +277,13 @@ fn blinded_vanishing_poly<E: PairingEngine>(
 
 pub fn multi_unity_verify<E: PairingEngine, R: RngCore>(
     pp: &PublicParameters<E>,
+    transcript: &mut Transcript<E::Fr>,
     u_com1: &E::G1Affine,
     proof: &MultiUnityProof<E>,
     rng: &mut R,
-    alpha: E::Fr,
-    beta: E::Fr,
 ) -> bool {
     let mut pairing_inputs = multi_unity_verify_defer_pairing(
+        transcript,
         &pp.srs_g1,
         &pp.srs_g2,
         pp.id_poly.clone(),
@@ -283,8 +293,6 @@ pub fn multi_unity_verify<E: PairingEngine, R: RngCore>(
         &pp.lagrange_basis_log_n,
         u_com1,
         proof,
-        alpha,
-        beta,
     );
     assert_eq!(pairing_inputs.len(), 10);
 
@@ -316,8 +324,7 @@ pub fn multi_unity_verify<E: PairingEngine, R: RngCore>(
 }
 
 fn multi_unity_verify_defer_pairing<E: PairingEngine>(
-    // pp: &PublicParameters<E>,
-    // transcript: &mut CaulkTranscript<E::Fr>,
+    transcript: &mut Transcript<E::Fr>,
     srs_g1: &[E::G1Affine],
     srs_g2: &[E::G2Affine],
     id_poly: DensePolynomial<E::Fr>,
@@ -327,22 +334,20 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
     lagrange_basis_log_n: &[DensePolynomial<E::Fr>],
     g1_u: &E::G1Affine,
     pi_unity: &MultiUnityProof<E>,
-    alpha: E::Fr, // TODO: to be removed.
-    beta: E::Fr, // TODO: to be removed.
 ) -> Vec<(E::G1Projective, E::G2Projective)> {
     ////////////////////////////
     // alpha = Hash(g1_u, g1_u_bar, g1_h_2)
     ////////////////////////////
-    // transcript.append_element(b"u", g1_u);
-    // transcript.append_element(b"u_bar", &pi_unity.g1_u_bar);
-    // transcript.append_element(b"h2", &pi_unity.g1_h_2);
-    // let alpha = transcript.get_and_append_challenge(b"alpha");
+    transcript.append_element(b"u", g1_u);
+    transcript.append_element(b"u_bar", &pi_unity.u_bar_com1);
+    transcript.append_element(b"h2", &pi_unity.h_2_com1);
+    let alpha = transcript.get_and_append_challenge(b"alpha");
 
     ////////////////////////////
     // beta = Hash( g1_h_1 )
     ////////////////////////////
-    // transcript.append_element(b"h1", &pi_unity.g1_h_1);
-    // let beta = transcript.get_and_append_challenge(b"beta");
+    transcript.append_element(b"h1", &pi_unity.h_1_com1);
+    let beta = transcript.get_and_append_challenge(b"beta");
 
     /////////////////////////////
     // Compute [P]_1
@@ -459,16 +464,17 @@ mod tests {
 
         let d_poly_coefficients = pp.domain_k.ifft(&d_poly_evaluations);
         let d_poly = DensePolynomial::from_coefficients_vec(d_poly_coefficients);
+        let d_com1 = Kzg::<Bn254>::commit_g1(&pp.srs_g1, &d_poly)
+            .into_affine();
 
-        let alpha = <Bn254 as PairingEngine>::Fr::rand(&mut rng);
-        let beta = <Bn254 as PairingEngine>::Fr::rand(&mut rng);
+        let mut transcript = Transcript::new();
 
         multi_unity_prove::<Bn254>(
             &pp,
+            &mut transcript,
             &d_poly,
+            &d_com1,
             &mut rng,
-            alpha,
-            beta,
         ).unwrap();
     }
 
@@ -477,35 +483,31 @@ mod tests {
         let mut rng = test_rng();
         let pp = PublicParameters::setup(&mut rng, 8, 4, 4)
             .expect("Failed to setup public parameters");
-
         let queried_segment_indices: Vec<usize> = (0..pp.num_queries)
             .map(|_| rng.next_u32() as usize % pp.num_segments)
             .collect();
-
         let roots_of_unity_w: Vec<<Bn254 as PairingEngine>::Fr> = pp.domain_w.elements().collect();
         let mut d_poly_evaluations: Vec<<Bn254 as PairingEngine>::Fr> = Vec::with_capacity(pp.num_queries);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
             d_poly_evaluations.push(root_of_unity_w);
         }
-
         let d_poly_coefficients = pp.domain_k.ifft(&d_poly_evaluations);
         let d_poly = DensePolynomial::from_coefficients_vec(d_poly_coefficients);
         let d_com1 = Kzg::<Bn254>::commit_g1(&pp.srs_g1, &d_poly)
             .into_affine();
 
-        let alpha = <Bn254 as PairingEngine>::Fr::rand(&mut rng);
-        let beta = <Bn254 as PairingEngine>::Fr::rand(&mut rng);
-
+        let mut transcript = Transcript::new();
         let multi_unity_proof = multi_unity_prove::<Bn254>(
             &pp,
+            &mut transcript,
             &d_poly,
+            &d_com1,
             &mut rng,
-            alpha,
-            beta,
         ).unwrap();
 
-        assert!(multi_unity_verify(&pp, &d_com1, &multi_unity_proof, &mut rng, alpha, beta));
+        let mut transcript = Transcript::new();
+        assert!(multi_unity_verify(&pp, &mut transcript, &d_com1, &multi_unity_proof, &mut rng));
 
         let mut incorrect_d_poly_evaluations = d_poly_evaluations.clone();
         incorrect_d_poly_evaluations[0] = <Bn254 as PairingEngine>::Fr::from(456);
@@ -514,14 +516,26 @@ mod tests {
         let incorrect_d_com1 = Kzg::<Bn254>::commit_g1(&pp.srs_g1, &incorrect_d_poly)
             .into_affine();
 
-        assert!(!multi_unity_verify(&pp, &incorrect_d_com1, &multi_unity_proof, &mut rng, alpha, beta));
+        let mut transcript = Transcript::new();
 
+        let multi_unity_proof = multi_unity_prove::<Bn254>(
+            &pp,
+            &mut transcript,
+            &d_poly,
+            &d_com1,
+            &mut rng,
+        ).unwrap();
+
+        let mut transcript = Transcript::new();
+        assert!(!multi_unity_verify(&pp, &mut transcript,&incorrect_d_com1, &multi_unity_proof, &mut rng));
+
+        let mut transcript = Transcript::new();
         assert!(!multi_unity_prove::<Bn254>(
             &pp,
+            &mut transcript,
             &incorrect_d_poly,
+            &d_com1,
             &mut rng,
-            alpha,
-            beta,
         ).is_ok());
     }
 }
