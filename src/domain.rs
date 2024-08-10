@@ -6,13 +6,13 @@ use ark_poly::univariate::DensePolynomial;
 use crate::error::Error;
 use crate::kzg::Kzg;
 
-pub fn vanishing_poly_com2<E: PairingEngine>(
-    srs_g2: &[E::G2Affine],
+pub fn vanishing_poly_g2<E: PairingEngine>(
+    g2_srs: &[E::G2Affine],
     domain: &Radix2EvaluationDomain<E::Fr>,
 ) -> E::G2Affine {
     let vanishing_poly: DensePolynomial<E::Fr> = domain.vanishing_polynomial().into();
 
-    Kzg::<E>::commit_g2(&srs_g2, &vanishing_poly).into_affine()
+    Kzg::<E>::commit_g2(&g2_srs, &vanishing_poly).into_affine()
 }
 
 pub fn create_sub_domain<E: PairingEngine>(

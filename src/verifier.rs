@@ -10,17 +10,17 @@ pub fn verify<E: PairingEngine, FS: FiatShamirRng>(
     proof: &Proof<E>,
 ) -> Result<(), Error> {
     // Round 2: Pairing check.
-    let m_com1 = proof.m_com1;
-    let neg_m_div_w_com1 = -proof.m_div_w_com1;
-    let tau_pow_ns_com2 = pp.srs_g2[pp.num_segments];
-    let neg_one_com2 = -pp.srs_g2[0];
-    let q_m_com1 = proof.q_m_com1;
-    let z_w_com2 = pp.z_w_com2;
+    let g1_m = proof.g1_m;
+    let g1_neg_m_div_w = -proof.g1_m_div_w;
+    let g2_tau_pow_ns = pp.g2_srs[pp.num_segments];
+    let g2_neg_one = -pp.g2_srs[0];
+    let g1_q_m = proof.g1_q_m;
+    let g2_z_w = pp.g2_z_w;
 
-    let left_pairing_lhs = m_com1 + neg_m_div_w_com1;
-    let left_pairing_rhs = tau_pow_ns_com2 + neg_one_com2;
+    let left_pairing_lhs = g1_m + g1_neg_m_div_w;
+    let left_pairing_rhs = g2_tau_pow_ns + g2_neg_one;
     let left_pairing = E::pairing(left_pairing_lhs, left_pairing_rhs);
-    let right_pairing = E::pairing(q_m_com1, z_w_com2);
+    let right_pairing = E::pairing(g1_q_m, g2_z_w);
 
     if left_pairing != right_pairing {
         println!("Left pairing: {:?}", left_pairing);

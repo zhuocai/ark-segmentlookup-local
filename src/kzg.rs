@@ -1,11 +1,11 @@
-use std::{iter, marker::PhantomData};
 use std::cmp::max;
+use std::{iter, marker::PhantomData};
 
-use ark_ec::{AffineCurve, msm::VariableBaseMSM, PairingEngine, ProjectiveCurve};
+use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField};
-use ark_poly::{Polynomial, univariate::DensePolynomial, UVPolynomial};
-use ark_std::{end_timer, start_timer, UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
 use ark_std::rand::RngCore;
+use ark_std::{UniformRand, Zero};
 
 /// Minimal KZG functionalities needed for the lookup argument.
 /// Modified from https://github.com/geometryxyz/cq/blob/main/src/kzg.rs
@@ -105,10 +105,10 @@ pub fn unsafe_setup_from_tau<E: PairingEngine, R: RngCore>(
 ) -> (Vec<E::G1Affine>, Vec<E::G2Affine>) {
     let powers_of_tau_size = max(max_power_g1 + 1, max_power_g2 + 1);
     let powers_of_tau = powers_of_tau::<E>(tau, powers_of_tau_size);
-    let srs_g1 = srs::<E::G1Affine>(&powers_of_tau, max_power_g1);
-    let srs_g2 = srs::<E::G2Affine>(&powers_of_tau, max_power_g2);
+    let g1_srs = srs::<E::G1Affine>(&powers_of_tau, max_power_g1);
+    let g2_srs = srs::<E::G2Affine>(&powers_of_tau, max_power_g2);
 
-    (srs_g1, srs_g2)
+    (g1_srs, g2_srs)
 }
 
 fn powers_of_tau<E: PairingEngine>(tau: E::Fr, size: usize) -> Vec<E::Fr> {
@@ -162,7 +162,7 @@ impl<E: PairingEngine> CaulkKzg<E> {
     }
 
     pub fn bi_poly_commit_g1(
-        srs_g1: &[E::G1Affine],
+        g1_srs: &[E::G1Affine],
         polynomials: &[DensePolynomial<E::Fr>],
         deg_x: usize,
     ) -> E::G1Affine {
@@ -176,24 +176,23 @@ impl<E: PairingEngine> CaulkKzg<E> {
             }
         }
         
-        assert!(srs_g1.len() >= poly_formatted.len());
-        let g1_poly = VariableBaseMSM::multi_scalar_mul(srs_g1, poly_formatted.as_slice())
+        assert!(g1_srs.len() >= poly_formatted.len());
+        let g1_poly = VariableBaseMSM::multi_scalar_mul(g1_srs, poly_formatted.as_slice())
             .into_affine();
 
         g1_poly
     }
 
     pub fn batch_open_g1(
-        srs_g1: &[E::G1Affine],
+        g1_srs: &[E::G1Affine],
         poly: &DensePolynomial<E::Fr>,
         max_deg: Option<&usize>,
         points: &[E::Fr],
     ) -> (Vec<E::Fr>, E::G1Affine) {
-        let timer = start_timer!(|| "kzg batch open g1");
         let mut evals = Vec::new();
         let mut proofs = Vec::new();
         for p in points.iter() {
-            let (eval, pi) = Self::open_g1(srs_g1, poly, max_deg, p);
+            let (eval, pi) = Self::open_g1(g1_srs, poly, max_deg, p);
             evals.push(eval);
             proofs.push(pi);
         }
@@ -214,33 +213,31 @@ impl<E: PairingEngine> CaulkKzg<E> {
             res += q_add;
         }
 
-        end_timer!(timer);
         (evals, res.into_affine())
     }
 
     pub fn partial_open_g1(
-        srs_g1: &[E::G1Affine],
-        polys: &[DensePolynomial<E::Fr>],
+        g1_srs: &[E::G1Affine],
+        polynomials: &[DensePolynomial<E::Fr>],
         deg_x: usize,
         point: &E::Fr,
     ) -> (E::G1Affine, E::G1Affine, DensePolynomial<E::Fr>) {
-        let timer = start_timer!(|| "kzg partial open g1");
         let mut poly_partial_eval = DensePolynomial::from_coefficients_vec(vec![E::Fr::zero()]);
         let mut alpha = E::Fr::one();
-        for coeff in polys {
+        for coeff in polynomials {
             let pow_alpha = DensePolynomial::from_coefficients_vec(vec![alpha]);
             poly_partial_eval += &(&pow_alpha * coeff);
             alpha *= point;
         }
 
         let eval = VariableBaseMSM::multi_scalar_mul(
-            srs_g1,
+            g1_srs,
             convert_to_big_ints(&poly_partial_eval.coeffs).as_slice(),
         )
             .into_affine();
 
         let mut witness_bipolynomial = Vec::new();
-        let poly_reverse: Vec<_> = polys.iter().rev().collect();
+        let poly_reverse: Vec<_> = polynomials.iter().rev().collect();
         witness_bipolynomial.push(poly_reverse[0].clone());
 
         let alpha = DensePolynomial::from_coefficients_vec(vec![*point]);
@@ -250,24 +247,21 @@ impl<E: PairingEngine> CaulkKzg<E> {
 
         witness_bipolynomial.reverse();
 
-        let proof = Self::bi_poly_commit_g1(srs_g1, &witness_bipolynomial, deg_x);
+        let proof = Self::bi_poly_commit_g1(g1_srs, &witness_bipolynomial, deg_x);
 
-        end_timer!(timer);
         (eval, proof, poly_partial_eval)
     }
 
     pub fn verify_defer_pairing_g1(
         // Verify that @c_com is a commitment to C(X) such that C(x)=z
-        powers_of_g1: &[E::G1Affine], // generator of G1
-        powers_of_g2: &[E::G2Affine], // [1]_2, [x]_2, [x^2]_2, ...
-        c_com: &E::G1Affine,          // commitment
-        max_deg: Option<&usize>,      // max degree
+        g1_srs: &[E::G1Affine], // generator of G1
+        g2_srs: &[E::G2Affine], // [1]_2, [x]_2, [x^2]_2, ...
+        g1_com: &E::G1Affine,          // commitment
+        deg_max: Option<&usize>,      // max degree
         points: &[E::Fr],             // x such that eval = C(x)
-        evals: &[E::Fr],              // evaluation
+        evaluations: &[E::Fr],              // evaluation
         pi: &E::G1Affine,             // proof
     ) -> Vec<(E::G1Projective, E::G2Projective)> {
-        let timer = start_timer!(|| "kzg verify g1 (deferring pairing)");
-
         // Interpolation set
         // tau_i(X) = lagrange_tau[i] = polynomial equal to 0 at point[j] for j!= i and
         // 1  at points[i]
@@ -283,18 +277,18 @@ impl<E: PairingEngine> CaulkKzg<E> {
 
         for i in 0..points.len() {
             let mut temp = &prod / &components[i];
-            let lagrange_scalar = temp.evaluate(&points[i]).inverse().unwrap() * evals[i];
+            let lagrange_scalar = temp.evaluate(&points[i]).inverse().unwrap() * evaluations[i];
             temp.coeffs.iter_mut().for_each(|x| *x *= lagrange_scalar);
             lagrange_tau = lagrange_tau + temp;
         }
 
         // commit to sum evals[i] tau_i(X)
         assert!(
-            powers_of_g1.len() >= lagrange_tau.len(),
+            g1_srs.len() >= lagrange_tau.len(),
             "KZG verifier doesn't have enough g1 powers"
         );
         let g1_tau = VariableBaseMSM::multi_scalar_mul(
-            &powers_of_g1[..lagrange_tau.len()],
+            &g1_srs[..lagrange_tau.len()],
             convert_to_big_ints(&lagrange_tau.coeffs).as_slice(),
         );
 
@@ -303,55 +297,52 @@ impl<E: PairingEngine> CaulkKzg<E> {
 
         // commit to z_tau(X) in g2
         assert!(
-            powers_of_g2.len() >= z_tau.len(),
+            g2_srs.len() >= z_tau.len(),
             "KZG verifier doesn't have enough g2 powers"
         );
         let g2_z_tau = VariableBaseMSM::multi_scalar_mul(
-            &powers_of_g2[..z_tau.len()],
+            &g2_srs[..z_tau.len()],
             convert_to_big_ints(&z_tau.coeffs).as_slice(),
         );
 
-        let global_max_deg = powers_of_g1.len();
+        let global_max_deg = g1_srs.len();
 
         let mut d: usize = 0;
-        if max_deg == None {
+        if deg_max == None {
             d += global_max_deg;
         } else {
-            d += max_deg.unwrap();
+            d += deg_max.unwrap();
         }
 
         let res = vec![
             (
-                g1_tau - c_com.into_projective(),
-                powers_of_g2[global_max_deg - d].into_projective(),
+                g1_tau - g1_com.into_projective(),
+                g2_srs[global_max_deg - d].into_projective(),
             ),
             (pi.into_projective(), g2_z_tau),
         ];
 
-        end_timer!(timer);
         res
     }
 
     pub fn partial_verify_defer_pairing_g1(
-        srs_g2: &[E::G2Affine],
-        c_com: &E::G1Affine, // commitment
+        g2_srs: &[E::G2Affine],
+        g1_com: &E::G1Affine, // commitment
         deg_x: usize,
         point: &E::Fr,
         partial_eval: &E::G1Affine,
         pi: &E::G1Affine, // proof
     ) -> Vec<(E::G1Projective, E::G2Projective)> {
-        let timer = start_timer!(|| "kzg partial verify g1 (deferring pairing)");
         let res = vec![
             (
-                partial_eval.into_projective() - c_com.into_projective(),
-                srs_g2[0].into_projective(),
+                partial_eval.into_projective() - g1_com.into_projective(),
+                g2_srs[0].into_projective(),
             ),
             (
                 pi.into_projective(),
-                srs_g2[deg_x].into_projective() -  srs_g2[0].mul(*point),
+                g2_srs[deg_x].into_projective() -  g2_srs[0].mul(*point),
             ),
         ];
-        end_timer!(timer);
         res
     }
 }
