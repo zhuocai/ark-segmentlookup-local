@@ -20,25 +20,25 @@ use crate::transcript::Transcript;
 // fix the issue that when the number of queries is larger than the number of segments,
 // the KZG commit fails.
 pub struct MultiUnityProof<E: PairingEngine> {
-    pub u_bar_com1: E::G1Affine,
-    pub h_1_com1: E::G1Affine,
-    pub h_2_com1: E::G1Affine,
-    pub u_bar_alpha_com1: E::G1Affine,
-    pub h_2_alpha_com1: E::G1Affine,
-    pub v1: E::Fr,
-    pub v2: E::Fr,
-    pub v3: E::Fr,
-    pub pi_1: E::G1Affine,
-    pub pi_2: E::G1Affine,
-    pub pi_3: E::G1Affine,
-    pub pi_4: E::G1Affine,
-    pub pi_5: E::G1Affine,
+    pub g1_u_bar: E::G1Affine,
+    pub g1_h_1: E::G1Affine,
+    pub g1_h_2: E::G1Affine,
+    pub g1_u_bar_alpha: E::G1Affine,
+    pub g1_h_2_alpha: E::G1Affine,
+    pub fr_v1: E::Fr,
+    pub fr_v2: E::Fr,
+    pub fr_v3: E::Fr,
+    pub g1_pi1: E::G1Affine,
+    pub g1_pi2: E::G1Affine,
+    pub g1_pi3: E::G1Affine,
+    pub g1_pi4: E::G1Affine,
+    pub g1_pi5: E::G1Affine,
 }
 pub fn multi_unity_prove<E: PairingEngine>(
     pp: &PublicParameters<E>,
     transcript: &mut Transcript<E::Fr>,
-    d_poly: &DensePolynomial<E::Fr>,
-    g1_u: &E::G1Affine,
+    poly_d: &DensePolynomial<E::Fr>,
+    g1_d: &E::G1Affine,
     rng: &mut StdRng,
 ) -> Result<MultiUnityProof<E>, Error> {
     // Round 1: The prover takes the input srs and U_0(X) amd samples log(n) randomnesses
@@ -50,61 +50,61 @@ pub fn multi_unity_prove<E: PairingEngine>(
 
     // Get the coefficients of the polynomial D(X):
     // {D{1}, D{v^s}, ..., D{v^{k-1}}}
-    let d_coefficients = d_poly.coeffs.clone();
-    let mut d_evaluations = pp.domain_k.fft(&d_coefficients);
+    let poly_coeff_list_d = poly_d.coeffs.clone();
+    let mut poly_eval_list_d = pp.domain_k.fft(&poly_coeff_list_d);
 
 
     let log_num_segments = pp.log_num_segments;
-    let mut u_poly_list: Vec<DensePolynomial<E::Fr>> = Vec::with_capacity(log_num_segments -1);
+    let mut poly_u_list: Vec<DensePolynomial<E::Fr>> = Vec::with_capacity(log_num_segments -1);
 
     // Compute U_l(X) for l = 1, ..., log(n)-1
     // u_poly_list contains U_1(X), U_2(X), ..., U_{log(n)-1}(X)
     let vanishing_poly_k: DensePolynomial<E::Fr> = pp.domain_k.vanishing_polynomial().into();
     for _ in 1..log_num_segments {
         // In-place squaring of the evaluations of D(X)
-        for eval in &mut d_evaluations {
+        for eval in &mut poly_eval_list_d {
             *eval = eval.square();
         }
-        let u_poly = Evaluations::from_vec_and_domain(
-            d_evaluations.clone(),
+        let poly_u = Evaluations::from_vec_and_domain(
+            poly_eval_list_d.clone(),
             pp.domain_k,
         ).interpolate() + blinded_vanishing_poly::<E>(&vanishing_poly_k, rng);
 
-        u_poly_list.push(u_poly);
+        poly_u_list.push(poly_u);
     }
 
     // Compute U(X, Y) = \sum^{log(n)-1}_{l=0} U_l(X) * \rho_{l+1}(Y)
     // Store each term U_l(X) * \rho_l(Y) in a vector
     let lagrange_basis = &pp.lagrange_basis_log_n;
-    let num_coefficients = u_poly_list[0].len();
-    let mut u_bar_partial_y_polys = Vec::with_capacity(num_coefficients);
+    let num_coefficients = poly_u_list[0].len();
+    let mut partial_y_poly_list_u_bar = Vec::with_capacity(num_coefficients);
 
     for coeff_index in 0..num_coefficients {
         let mut partial_y_poly = DensePolynomial::zero();
-        for (base_index, u_poly) in u_poly_list.iter().enumerate() {
-            let u_coeff = u_poly[coeff_index];
+        for (base_index, poly_u) in poly_u_list.iter().enumerate() {
+            let coeff_u = poly_u[coeff_index];
             let scaled_coeffs: Vec<E::Fr> = lagrange_basis[base_index + 1]
                 .coeffs.iter()
-                .map(|&basis_coeff| basis_coeff * &u_coeff)
+                .map(|&basis_coeff| basis_coeff * &coeff_u)
                 .collect();
             let scaled_poly = DensePolynomial::from_coefficients_vec(scaled_coeffs);
             partial_y_poly += &scaled_poly;
         }
-        u_bar_partial_y_polys.push(partial_y_poly);
+        partial_y_poly_list_u_bar.push(partial_y_poly);
     }
 
     // Add D(X) to the front and identity polynomial to the back.
-    let id_poly = pp.id_poly.clone();
-    u_poly_list = iter::once(d_poly.clone())
-        .chain(u_poly_list.into_iter())
-        .chain(iter::once(id_poly.clone()))
+    let identity_poly = pp.identity_poly_k.clone();
+    poly_u_list = iter::once(poly_d.clone())
+        .chain(poly_u_list.into_iter())
+        .chain(iter::once(identity_poly.clone()))
         .collect();
 
 
-    let mut h_s_poly_list: Vec<DensePolynomial<E::Fr>> = Vec::new();
+    let mut poly_h_s_list: Vec<DensePolynomial<E::Fr>> = Vec::new();
     for s in 1..=log_num_segments {
-        let (h_s_poly, remainder) = (
-            &(&u_poly_list[s - 1] * &u_poly_list[s - 1]) - &u_poly_list[s]
+        let (poly_h_s, remainder) = (
+            &(&poly_u_list[s - 1] * &poly_u_list[s - 1]) - &poly_u_list[s]
         )
             .divide_by_vanishing_poly(pp.domain_k)
             .ok_or(Error::FailedToDivideByVanishingPolynomial)?;
@@ -112,30 +112,30 @@ pub fn multi_unity_prove<E: PairingEngine>(
         if !remainder.is_zero() {
             return Err(Error::RemainderAfterDivisionIsNonZero);
         }
-        println!("len {}", h_s_poly.len());
-        h_s_poly_list.push(h_s_poly);
+        println!("len {}", poly_h_s.len());
+        poly_h_s_list.push(poly_h_s);
     }
 
-    let mut h_2_partial_y_polys = Vec::new();
-    let num_coefficients = h_s_poly_list[1].len();
+    let mut partial_y_poly_list_h_2 = Vec::new();
+    let num_coefficients = poly_h_s_list[1].len();
 
     // Add H_1(X) * \rho_1(Y) and pad with zero polynomials if needed.
     for j in 0..num_coefficients {
-        let h_0_j = if j < h_s_poly_list[0].len() {
-            DensePolynomial::from_coefficients_slice(&[h_s_poly_list[0][j]])
+        let h_0_j = if j < poly_h_s_list[0].len() {
+            DensePolynomial::from_coefficients_slice(&[poly_h_s_list[0][j]])
         } else {
             DensePolynomial::from_coefficients_slice(&[E::Fr::zero()])
         };
-        h_2_partial_y_polys.push(&h_0_j * &lagrange_basis[0]);
+        partial_y_poly_list_h_2.push(&h_0_j * &lagrange_basis[0]);
     }
 
     // Update h_2_partial_y_polys with the sum of H_{s,j} * \rho_s(Y)
-    for (j, coeff) in h_2_partial_y_polys
+    for (j, coeff) in partial_y_poly_list_h_2
         .iter_mut()
         .enumerate()
         .take(num_coefficients)
     {
-        for (s, h_s_poly) in h_s_poly_list
+        for (s, h_s_poly) in poly_h_s_list
             .iter()
             .enumerate()
             .take(log_num_segments)
@@ -145,120 +145,120 @@ pub fn multi_unity_prove<E: PairingEngine>(
         }
     }
 
-    let u_bar_com1 = CaulkKzg::<E>::bi_poly_commit_g1(
-        &pp.srs_g1,
-        &u_bar_partial_y_polys,
+    let g1_u_bar = CaulkKzg::<E>::bi_poly_commit_g1(
+        &pp.g1_srs,
+        &partial_y_poly_list_u_bar,
         log_num_segments,
     );
-    let h_2_com1 = CaulkKzg::<E>::bi_poly_commit_g1(&pp.srs_g1, &h_2_partial_y_polys, log_num_segments);
+    let g1_h_2 = CaulkKzg::<E>::bi_poly_commit_g1(&pp.g1_srs, &partial_y_poly_list_h_2, log_num_segments);
 
-    transcript.append_element(b"u", g1_u);
-    transcript.append_element(b"u_bar", &u_bar_com1);
-    transcript.append_element(b"h2", &h_2_com1);
+    transcript.append_element(b"u", g1_d);
+    transcript.append_element(b"u_bar", &g1_u_bar);
+    transcript.append_element(b"h2", &g1_h_2);
     let alpha = transcript.get_and_append_challenge(b"alpha");
 
 
     // Compute H_1(Y)
-    let mut u_alpha_poly = DensePolynomial::zero();
+    let mut poly_u_alpha = DensePolynomial::zero();
 
     let mut u_sqr_alpha_list = DensePolynomial::zero();
 
-    for (s, u_poly) in u_poly_list
+    for (s, poly_u) in poly_u_list
         .iter()
         .enumerate()
         .take(log_num_segments) {
-        let u_s_alpha = u_poly.evaluate(&alpha);
+        let u_s_alpha = poly_u.evaluate(&alpha);
         let mut temp = DensePolynomial::from_coefficients_slice(&[u_s_alpha]);
-        u_alpha_poly += &(&temp * &lagrange_basis[s]);
+        poly_u_alpha += &(&temp * &lagrange_basis[s]);
 
         temp = DensePolynomial::from_coefficients_slice(&[u_s_alpha.square()]);
         u_sqr_alpha_list += &(&temp * &lagrange_basis[s]);
     }
     let domain_log_n = &pp.domain_log_n;
-    let (h_1_poly, remainder) = (&(&u_alpha_poly * &u_alpha_poly) - &u_sqr_alpha_list)
+    let (poly_h_1, remainder) = (&(&poly_u_alpha * &poly_u_alpha) - &u_sqr_alpha_list)
         .divide_by_vanishing_poly(domain_log_n.clone())
         .unwrap();
     if !remainder.is_zero() {
         return Err(Error::RemainderAfterDivisionIsNonZero);
     }
 
-    assert!(pp.srs_g1.len() >= h_1_poly.len());
+    assert!(pp.g1_srs.len() >= poly_h_1.len());
 
-    let h_1_com1 = VariableBaseMSM::multi_scalar_mul(
-        &pp.srs_g1,
-        convert_to_big_ints(&h_1_poly.coeffs).as_slice(),
+    let g1_h_1 = VariableBaseMSM::multi_scalar_mul(
+        &pp.g1_srs,
+        convert_to_big_ints(&poly_h_1.coeffs).as_slice(),
     ).into_affine();
 
-    transcript.append_element(b"h1", &h_1_com1);
+    transcript.append_element(b"h1", &g1_h_1);
     let beta = transcript.get_and_append_challenge(b"beta");
 
-    let u_alpha_beta = u_alpha_poly.evaluate(&beta);
-    let mut p_poly = DensePolynomial::from_coefficients_slice(&[u_alpha_beta.square()]);
+    let u_alpha_beta = poly_u_alpha.evaluate(&beta);
+    let mut poly_p = DensePolynomial::from_coefficients_slice(&[u_alpha_beta.square()]);
 
     let mut u_bar_alpha_shift_beta = E::Fr::zero();
     let beta_shift = beta * domain_log_n.element(1);
-    for (s, u_ploy) in u_poly_list.iter().enumerate().take(log_num_segments).skip(1) {
-        let u_s_alpha = u_ploy.evaluate(&alpha);
+    for (s, ploy_u) in poly_u_list.iter().enumerate().take(log_num_segments).skip(1) {
+        let u_s_alpha = ploy_u.evaluate(&alpha);
         u_bar_alpha_shift_beta += u_s_alpha * lagrange_basis[s].evaluate(&beta_shift);
     }
 
     let temp = u_bar_alpha_shift_beta
-        + (id_poly.evaluate(&alpha) * lagrange_basis[log_num_segments - 1].evaluate(&beta));
+        + (identity_poly.evaluate(&alpha) * lagrange_basis[log_num_segments - 1].evaluate(&beta));
     let temp = DensePolynomial::from_coefficients_slice(&[temp]);
 
-    p_poly = &p_poly - &temp;
+    poly_p = &poly_p - &temp;
 
     let vanishing_poly_log_n: DensePolynomial<E::Fr> = domain_log_n.vanishing_polynomial().into();
-    let temp = &DensePolynomial::from_coefficients_slice(&[vanishing_poly_log_n.evaluate(&beta)]) * &h_1_poly;
-    p_poly = &p_poly - &temp;
+    let temp = &DensePolynomial::from_coefficients_slice(&[vanishing_poly_log_n.evaluate(&beta)]) * &poly_h_1;
+    poly_p = &poly_p - &temp;
 
     let mut poly_h_2_alpha = DensePolynomial::from_coefficients_slice(&[E::Fr::zero()]);
-    for (s, h_s_poly) in h_s_poly_list.iter().enumerate() {
-        let h_s_j = DensePolynomial::from_coefficients_slice(&[h_s_poly.evaluate(&alpha)]);
+    for (s, poly_h_s) in poly_h_s_list.iter().enumerate() {
+        let h_s_j = DensePolynomial::from_coefficients_slice(&[poly_h_s.evaluate(&alpha)]);
         poly_h_2_alpha = &poly_h_2_alpha + &(&h_s_j * &lagrange_basis[s]);
     }
 
     let temp =
         &DensePolynomial::from_coefficients_slice(&[vanishing_poly_k.evaluate(&alpha)]) * &poly_h_2_alpha;
-    p_poly = &p_poly - &temp;
+    poly_p = &poly_p - &temp;
 
-    assert!(p_poly.evaluate(&beta) == E::Fr::zero());
+    assert!(poly_p.evaluate(&beta) == E::Fr::zero());
 
 
-    let (eval_1_list, pi_1) = CaulkKzg::<E>::batch_open_g1(&pp.srs_g1, &u_poly_list[0], None, &[alpha]);
-    let (u_bar_alpha_com1, pi_2, poly_u_bar_alpha) =
-        CaulkKzg::<E>::partial_open_g1(&pp.srs_g1, &u_bar_partial_y_polys, domain_log_n.size(), &alpha);
-    let (h_2_alpha_com1, pi_3, _) =
-        CaulkKzg::<E>::partial_open_g1(&pp.srs_g1, &h_2_partial_y_polys, domain_log_n.size(), &alpha);
-    let (eval_2_list, pi_4) = CaulkKzg::<E>::batch_open_g1(
-        &pp.srs_g1,
+    let (eval_list1, g1_pi1) = CaulkKzg::<E>::batch_open_g1(&pp.g1_srs, &poly_u_list[0], None, &[alpha]);
+    let (g1_u_bar_alpha, g1_pi2, poly_u_bar_alpha) =
+        CaulkKzg::<E>::partial_open_g1(&pp.g1_srs, &partial_y_poly_list_u_bar, domain_log_n.size(), &alpha);
+    let (g1_h_2_alpha, g1_pi3, _) =
+        CaulkKzg::<E>::partial_open_g1(&pp.g1_srs, &partial_y_poly_list_h_2, domain_log_n.size(), &alpha);
+    let (eval_list2, g1_pi4) = CaulkKzg::<E>::batch_open_g1(
+        &pp.g1_srs,
         &poly_u_bar_alpha,
         Some(&(domain_log_n.size() - 1)),
         &[E::Fr::one(), beta, beta * domain_log_n.element(1)],
     );
-    assert!(eval_2_list[0] == E::Fr::zero());
-    let (eval_3_list, pi_5) = CaulkKzg::<E>::batch_open_g1(
-        &pp.srs_g1,
-        &p_poly,
+    assert!(eval_list2[0] == E::Fr::zero());
+    let (eval_list3, g1_pi5) = CaulkKzg::<E>::batch_open_g1(
+        &pp.g1_srs,
+        &poly_p,
         Some(&(domain_log_n.size() - 1)),
         &[beta],
     );
-    assert!(eval_3_list[0] == E::Fr::zero());
+    assert!(eval_list3[0] == E::Fr::zero());
 
     Ok(MultiUnityProof {
-        u_bar_com1,
-        h_1_com1,
-        h_2_com1,
-        u_bar_alpha_com1,
-        h_2_alpha_com1,
-        v1: eval_1_list[0],
-        v2: eval_2_list[1],
-        v3: eval_2_list[2],
-        pi_1,
-        pi_2,
-        pi_3,
-        pi_4,
-        pi_5,
+        g1_u_bar,
+        g1_h_1,
+        g1_h_2,
+        g1_u_bar_alpha,
+        g1_h_2_alpha,
+        fr_v1: eval_list1[0],
+        fr_v2: eval_list2[1],
+        fr_v3: eval_list2[2],
+        g1_pi1,
+        g1_pi2,
+        g1_pi3,
+        g1_pi4,
+        g1_pi5,
     })
 }
 
@@ -266,11 +266,11 @@ fn blinded_vanishing_poly<E: PairingEngine>(
     vanishing_poly: &DensePolynomial<E::Fr>,
     rng: &mut StdRng,
 ) -> DensePolynomial<E::Fr> {
-    let rand_scalar = E::Fr::rand(rng);
+    let fr_rand = E::Fr::rand(rng);
     let vanishing_poly_coefficients: Vec<E::Fr> = vanishing_poly.coeffs.clone();
     let rand_poly_coefficients = vanishing_poly_coefficients
         .iter()
-        .map(|&s| { s * rand_scalar }).collect();
+        .map(|&s| { s * fr_rand }).collect();
 
     DensePolynomial::from_coefficients_vec(rand_poly_coefficients)
 }
@@ -278,20 +278,20 @@ fn blinded_vanishing_poly<E: PairingEngine>(
 pub fn multi_unity_verify<E: PairingEngine, R: RngCore>(
     pp: &PublicParameters<E>,
     transcript: &mut Transcript<E::Fr>,
-    u_com1: &E::G1Affine,
+    g1_d: &E::G1Affine,
     proof: &MultiUnityProof<E>,
     rng: &mut R,
 ) -> bool {
     let mut pairing_inputs = multi_unity_verify_defer_pairing(
         transcript,
-        &pp.srs_g1,
-        &pp.srs_g2,
-        pp.id_poly.clone(),
+        &pp.g1_srs,
+        &pp.g2_srs,
+        pp.identity_poly_k.clone(),
         &pp.domain_k,
         &pp.domain_log_n,
         pp.log_num_segments,
         &pp.lagrange_basis_log_n,
-        u_com1,
+        g1_d,
         proof,
     );
     assert_eq!(pairing_inputs.len(), 10);
@@ -325,98 +325,84 @@ pub fn multi_unity_verify<E: PairingEngine, R: RngCore>(
 
 fn multi_unity_verify_defer_pairing<E: PairingEngine>(
     transcript: &mut Transcript<E::Fr>,
-    srs_g1: &[E::G1Affine],
-    srs_g2: &[E::G2Affine],
-    id_poly: DensePolynomial<E::Fr>,
+    g1_srs: &[E::G1Affine],
+    g2_srs: &[E::G2Affine],
+    identity_poly_k: DensePolynomial<E::Fr>,
     domain_k: &Radix2EvaluationDomain<E::Fr>,
     domain_log_n: &Radix2EvaluationDomain<E::Fr>,
     log_num_segments: usize,
     lagrange_basis_log_n: &[DensePolynomial<E::Fr>],
     g1_u: &E::G1Affine,
-    pi_unity: &MultiUnityProof<E>,
+    proof: &MultiUnityProof<E>,
 ) -> Vec<(E::G1Projective, E::G2Projective)> {
-    ////////////////////////////
-    // alpha = Hash(g1_u, g1_u_bar, g1_h_2)
-    ////////////////////////////
     transcript.append_element(b"u", g1_u);
-    transcript.append_element(b"u_bar", &pi_unity.u_bar_com1);
-    transcript.append_element(b"h2", &pi_unity.h_2_com1);
+    transcript.append_element(b"u_bar", &proof.g1_u_bar);
+    transcript.append_element(b"h2", &proof.g1_h_2);
     let alpha = transcript.get_and_append_challenge(b"alpha");
-
-    ////////////////////////////
-    // beta = Hash( g1_h_1 )
-    ////////////////////////////
-    transcript.append_element(b"h1", &pi_unity.h_1_com1);
+    
+    transcript.append_element(b"h1", &proof.g1_h_1);
     let beta = transcript.get_and_append_challenge(b"beta");
 
-    /////////////////////////////
-    // Compute [P]_1
-    ////////////////////////////
-
-    let u_alpha_beta = pi_unity.v1 * lagrange_basis_log_n[0].evaluate(&beta) + pi_unity.v2;
+    let u_alpha_beta = proof.fr_v1 * lagrange_basis_log_n[0].evaluate(&beta) + proof.fr_v2;
 
     // g1_P = [ U^2 - (v3 + id(alpha)* pn(beta) )]_1
-    let mut p_com1 = srs_g1[0].mul(
+    let mut g1_p = g1_srs[0].mul(
         u_alpha_beta * u_alpha_beta
-            - (pi_unity.v3
-            + (id_poly.evaluate(&alpha)
+            - (proof.fr_v3
+            + (identity_poly_k.evaluate(&alpha)
             * lagrange_basis_log_n[log_num_segments - 1].evaluate(&beta))),
     );
 
     // g1_P = g1_P  - h1 zVn(beta)
     let vanishing_poly_log_n = domain_log_n.vanishing_polynomial();
-    p_com1 -= pi_unity.h_1_com1.mul(vanishing_poly_log_n.evaluate(&beta));
+    g1_p -= proof.g1_h_1.mul(vanishing_poly_log_n.evaluate(&beta));
 
     // g1_P = g1_P  - h2_alpha zVm(alpha)
     let vanishing_poly_k = domain_k.vanishing_polynomial();
-    p_com1 -= pi_unity.h_2_alpha_com1.mul(vanishing_poly_k.evaluate(&alpha));
-
-    /////////////////////////////
-    // Check the KZG openings
-    ////////////////////////////
+    g1_p -= proof.g1_h_2_alpha.mul(vanishing_poly_k.evaluate(&alpha));
 
     let check1 = CaulkKzg::<E>::verify_defer_pairing_g1(
-        srs_g1,
-        srs_g2,
+        g1_srs,
+        g2_srs,
         g1_u,
         None,
         &[alpha],
-        &[pi_unity.v1],
-        &pi_unity.pi_1,
+        &[proof.fr_v1],
+        &proof.g1_pi1,
     );
     let check2 = CaulkKzg::<E>::partial_verify_defer_pairing_g1(
-        srs_g2,
-        &pi_unity.u_bar_com1,
+        g2_srs,
+        &proof.g1_u_bar,
         domain_log_n.size(),
         &alpha,
-        &pi_unity.u_bar_alpha_com1,
-        &pi_unity.pi_2,
+        &proof.g1_u_bar_alpha,
+        &proof.g1_pi2,
     );
     let check3 = CaulkKzg::<E>::partial_verify_defer_pairing_g1(
-        srs_g2,
-        &pi_unity.h_2_com1,
+        g2_srs,
+        &proof.g1_h_2,
         domain_log_n.size(),
         &alpha,
-        &pi_unity.h_2_alpha_com1,
-        &pi_unity.pi_3,
+        &proof.g1_h_2_alpha,
+        &proof.g1_pi3,
     );
     let check4 = CaulkKzg::<E>::verify_defer_pairing_g1(
-        srs_g1,
-        srs_g2,
-        &pi_unity.u_bar_alpha_com1,
+        g1_srs,
+        g2_srs,
+        &proof.g1_u_bar_alpha,
         Some(&(domain_log_n.size() - 1)),
         &[E::Fr::one(), beta, beta * domain_log_n.element(1)],
-        &[E::Fr::zero(), pi_unity.v2, pi_unity.v3],
-        &pi_unity.pi_4,
+        &[E::Fr::zero(), proof.fr_v2, proof.fr_v3],
+        &proof.g1_pi4,
     );
     let check5 = CaulkKzg::<E>::verify_defer_pairing_g1(
-        srs_g1,
-        srs_g2,
-        &p_com1.into_affine(),
+        g1_srs,
+        g2_srs,
+        &g1_p.into_affine(),
         Some(&(domain_log_n.size() - 1)),
         &[beta],
         &[E::Fr::zero()],
-        &pi_unity.pi_5,
+        &proof.g1_pi5,
     );
 
     let res = [
@@ -456,15 +442,15 @@ mod tests {
             .collect();
 
         let roots_of_unity_w: Vec<<Bn254 as PairingEngine>::Fr> = pp.domain_w.elements().collect();
-        let mut d_poly_evaluations: Vec<<Bn254 as PairingEngine>::Fr> = Vec::with_capacity(pp.num_queries);
+        let mut poly_eval_list_d: Vec<<Bn254 as PairingEngine>::Fr> = Vec::with_capacity(pp.num_queries);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
-            d_poly_evaluations.push(root_of_unity_w);
+            poly_eval_list_d.push(root_of_unity_w);
         }
 
-        let d_poly_coefficients = pp.domain_k.ifft(&d_poly_evaluations);
-        let d_poly = DensePolynomial::from_coefficients_vec(d_poly_coefficients);
-        let d_com1 = Kzg::<Bn254>::commit_g1(&pp.srs_g1, &d_poly)
+        let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
+        let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
+        let g1_d = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &poly_d)
             .into_affine();
 
         let mut transcript = Transcript::new();
@@ -472,8 +458,8 @@ mod tests {
         multi_unity_prove::<Bn254>(
             &pp,
             &mut transcript,
-            &d_poly,
-            &d_com1,
+            &poly_d,
+            &g1_d,
             &mut rng,
         ).unwrap();
     }
@@ -487,33 +473,33 @@ mod tests {
             .map(|_| rng.next_u32() as usize % pp.num_segments)
             .collect();
         let roots_of_unity_w: Vec<<Bn254 as PairingEngine>::Fr> = pp.domain_w.elements().collect();
-        let mut d_poly_evaluations: Vec<<Bn254 as PairingEngine>::Fr> = Vec::with_capacity(pp.num_queries);
+        let mut poly_eval_list_d: Vec<<Bn254 as PairingEngine>::Fr> = Vec::with_capacity(pp.num_queries);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
-            d_poly_evaluations.push(root_of_unity_w);
+            poly_eval_list_d.push(root_of_unity_w);
         }
-        let d_poly_coefficients = pp.domain_k.ifft(&d_poly_evaluations);
-        let d_poly = DensePolynomial::from_coefficients_vec(d_poly_coefficients);
-        let d_com1 = Kzg::<Bn254>::commit_g1(&pp.srs_g1, &d_poly)
+        let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
+        let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
+        let g1_d = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &poly_d)
             .into_affine();
 
         let mut transcript = Transcript::new();
         let multi_unity_proof = multi_unity_prove::<Bn254>(
             &pp,
             &mut transcript,
-            &d_poly,
-            &d_com1,
+            &poly_d,
+            &g1_d,
             &mut rng,
         ).unwrap();
 
         let mut transcript = Transcript::new();
-        assert!(multi_unity_verify(&pp, &mut transcript, &d_com1, &multi_unity_proof, &mut rng));
+        assert!(multi_unity_verify(&pp, &mut transcript, &g1_d, &multi_unity_proof, &mut rng));
 
-        let mut incorrect_d_poly_evaluations = d_poly_evaluations.clone();
-        incorrect_d_poly_evaluations[0] = <Bn254 as PairingEngine>::Fr::from(456);
-        let incorrect_d_poly_coefficients = pp.domain_k.ifft(&incorrect_d_poly_evaluations);
-        let incorrect_d_poly = DensePolynomial::from_coefficients_vec(incorrect_d_poly_coefficients);
-        let incorrect_d_com1 = Kzg::<Bn254>::commit_g1(&pp.srs_g1, &incorrect_d_poly)
+        let mut incorrect_poly_eval_list_d = poly_eval_list_d.clone();
+        incorrect_poly_eval_list_d[0] = <Bn254 as PairingEngine>::Fr::from(456);
+        let incorrect_poly_coeff_list_d = pp.domain_k.ifft(&incorrect_poly_eval_list_d);
+        let incorrect_poly_d = DensePolynomial::from_coefficients_vec(incorrect_poly_coeff_list_d);
+        let incorrect_g1_d = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &incorrect_poly_d)
             .into_affine();
 
         let mut transcript = Transcript::new();
@@ -521,20 +507,20 @@ mod tests {
         let multi_unity_proof = multi_unity_prove::<Bn254>(
             &pp,
             &mut transcript,
-            &d_poly,
-            &d_com1,
+            &poly_d,
+            &g1_d,
             &mut rng,
         ).unwrap();
 
         let mut transcript = Transcript::new();
-        assert!(!multi_unity_verify(&pp, &mut transcript,&incorrect_d_com1, &multi_unity_proof, &mut rng));
+        assert!(!multi_unity_verify(&pp, &mut transcript, &incorrect_g1_d, &multi_unity_proof, &mut rng));
 
         let mut transcript = Transcript::new();
         assert!(!multi_unity_prove::<Bn254>(
             &pp,
             &mut transcript,
-            &incorrect_d_poly,
-            &d_com1,
+            &incorrect_poly_d,
+            &g1_d,
             &mut rng,
         ).is_ok());
     }

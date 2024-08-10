@@ -8,7 +8,7 @@ use crate::error::Error;
 
 // Efficiently compute the commitments to the Lagrange basis using SRS in O(n log n) time.
 // Section 3.3 from the paper BGG17: https://eprint.iacr.org/2017/602.
-pub fn commitments<C: AffineCurve>(srs: &[C], domain: &Radix2EvaluationDomain<C::ScalarField>) -> Vec<C> {
+pub fn lagrange_basis_g1<C: AffineCurve>(srs: &[C], domain: &Radix2EvaluationDomain<C::ScalarField>) -> Vec<C> {
     let group_order = domain.size();
     assert!(srs.len() >= group_order);
     assert!(group_order.is_power_of_two());

@@ -57,8 +57,8 @@ impl<E: PairingEngine> Table<E> {
         }
 
         let domain = pp.domain_w;
-        let srs_g1 = &pp.srs_g1;
-        let srs_g2 = &pp.srs_g2;
+        let srs_g1 = &pp.g1_srs;
+        let srs_g2 = &pp.g2_srs;
 
         let table_poly = DensePolynomial::from_coefficients_slice(&domain.ifft(&self.values));
         let t_2: E::G2Affine = Kzg::<E>::commit_g2(srs_g2, &table_poly).into();

@@ -6,7 +6,7 @@ use ark_poly::univariate::DensePolynomial;
 use crate::error::Error;
 use crate::kzg::Kzg;
 
-pub fn vanishing_poly_com2<E: PairingEngine>(
+pub fn vanishing_poly_g2<E: PairingEngine>(
     srs_g2: &[E::G2Affine],
     domain: &Radix2EvaluationDomain<E::Fr>,
 ) -> E::G2Affine {

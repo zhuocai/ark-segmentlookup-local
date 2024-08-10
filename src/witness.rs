@@ -9,8 +9,8 @@ use crate::table::Table;
 pub struct Witness<E: PairingEngine> {
     num_queries: usize,
     segment_size: usize,
-    f_poly: DensePolynomial<E::Fr>,
-    f_poly_evaluations: Vec<E::Fr>,
+    poly_f: DensePolynomial<E::Fr>,
+    poly_eval_list_f: Vec<E::Fr>,
     pub(crate) queried_segment_indices: Vec<usize>,
 }
 
@@ -32,18 +32,18 @@ impl<E: PairingEngine> Witness<E> {
             }
         }
 
-        let f_poly_evaluations: Vec<E::Fr> = table_element_indices
+        let poly_eval_list_f: Vec<E::Fr> = table_element_indices
             .iter()
             .map(|&i| table.values[i])
             .collect();
-        let f_poly_coefficients = pp.domain_v.ifft(&f_poly_evaluations);
-        let f_poly = DensePolynomial::from_coefficients_vec(f_poly_coefficients);
+        let poly_coeff_list_f = pp.domain_v.ifft(&poly_eval_list_f);
+        let poly_f = DensePolynomial::from_coefficients_vec(poly_coeff_list_f);
 
         Ok(Self {
             num_queries: pp.num_queries,
             segment_size: pp.segment_size,
-            f_poly,
-            f_poly_evaluations,
+            poly_f,
+            poly_eval_list_f,
             queried_segment_indices: queried_segment_indices.to_vec(),
         })
     }
