@@ -1,41 +1,44 @@
 use std::collections::BTreeMap;
 use std::ops::{Add, Div, Mul, Sub};
 
-use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain, UVPolynomial};
-use ark_poly::univariate::DensePolynomial;
-use ark_std::{One, Zero};
-
 use crate::error::Error;
 use crate::kzg::Kzg;
+use crate::multi_unity::{multi_unity_prove, MultiUnityProof};
 use crate::public_parameters::PublicParameters;
+use crate::transcript::Transcript;
 use crate::witness::Witness;
+use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
+use ark_poly::univariate::DensePolynomial;
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain, UVPolynomial};
+use ark_std::rand::prelude::StdRng;
+use ark_std::{One, Zero};
 
 pub struct Proof<E: PairingEngine> {
     // Round 1 message
-    pub(crate) g1_m: E::G1Affine, // [M(tau)]_1
+    pub(crate) g1_m: E::G1Affine,       // [M(tau)]_1
     pub(crate) g1_m_div_w: E::G1Affine, // [M(tau / w)]_1
-    pub(crate) g1_q_m: E::G1Affine, // [Q_M(tau)]_1
-    g1_l: E::G1Affine, // [L(tau)]_1
-    g1_l_mul_v: E::G1Affine, // [L(tau * v)]_1
-    g1_q_l: E::G1Affine, // [Q_L(tau)]_1
-    g1_d: E::G1Affine, // [D(tau)]_1
-    g1_q_d: E::G1Affine, // [Q_D(tau)]_1
+    pub(crate) g1_q_m: E::G1Affine,     // [Q_M(tau)]_1
+    g1_l: E::G1Affine,                  // [L(tau)]_1
+    g1_l_mul_v: E::G1Affine,            // [L(tau * v)]_1
+    g1_q_l: E::G1Affine,                // [Q_L(tau)]_1
+    pub(crate) g1_d: E::G1Affine,       // [D(tau)]_1
+    g1_q_d: E::G1Affine,                // [Q_D(tau)]_1
+
+    pub(crate) multi_unity_proof: MultiUnityProof<E>,
 }
 
 pub fn prove<E: PairingEngine>(
     pp: &PublicParameters<E>,
+    transcript: &mut Transcript<E::Fr>,
     // tpp: &PreprocessedParameters<E>,
     witness: &Witness<E>,
     // statement: E::G1Affine,
+    rng: &mut StdRng,
 ) -> Result<Proof<E>, Error> {
     // Round 1-1: Compute the multiplicity polynomial M of degree (ns - 1),
     // and send [M(tau)]_1 and [M(tau / w)]_1 to the verifier.
     // Round 1-2: Compute and send [Q_M(tau)]_1 using the SRS and Lemma 4.
-    let multiplicities = segment_multiplicities(
-        &witness.queried_segment_indices,
-        pp.num_segments,
-    )?;
+    let multiplicities = segment_multiplicities(&witness.queried_segment_indices, pp.num_segments)?;
     let MultiplicityPolynomialsAndQuotient {
         g1_m,
         g1_m_div_w,
@@ -63,6 +66,7 @@ pub fn prove<E: PairingEngine>(
         g1_l,
         g1_l_mul_v,
         g1_d,
+        poly_d,
         g1_q_l,
         g1_q_d,
     } = index_polynomials_and_quotients_g1::<E>(
@@ -83,7 +87,10 @@ pub fn prove<E: PairingEngine>(
     // Round 3 - Round 8:
     // Using the instantiation of Lemma 5,
     // the prover and verifier engage in a protocol that polynomial L is well-formed.
-
+    let multi_unity_proof = match multi_unity_prove(pp, transcript, &poly_d, &g1_d, rng) {
+        Ok(proof) => proof,
+        Err(e) => return Err(e),
+    };
 
     // todo!()
 
@@ -96,6 +103,7 @@ pub fn prove<E: PairingEngine>(
         g1_q_l,
         g1_d,
         g1_q_d,
+        multi_unity_proof,
     })
 }
 
@@ -109,9 +117,7 @@ fn segment_multiplicities(
             return Err(Error::InvalidSegmentIndex(i));
         }
 
-        let segment_index_multiplicity = multiplicities
-            .entry(i)
-            .or_insert(0);
+        let segment_index_multiplicity = multiplicities.entry(i).or_insert(0);
         *segment_index_multiplicity += 1;
     }
 
@@ -143,17 +149,13 @@ fn multiplicity_polynomials_and_quotient_g1<E: PairingEngine>(
         let multiplicity_fr = E::Fr::from(m as u64);
         for elem_index in segment_element_indices {
             // Linear combination of [L^W_i(tau)]_1
-            g1_m_proj = g1_l_w_list[elem_index]
-                .mul(multiplicity_fr)
-                .add(g1_m_proj);
+            g1_m_proj = g1_l_w_list[elem_index].mul(multiplicity_fr).add(g1_m_proj);
             // Linear combination of [L^W_i(tau / w)]_1
             g1_m_div_w_proj = g1_l_w_div_w_list[elem_index]
                 .mul(multiplicity_fr)
                 .add(g1_m_div_w_proj);
             // Linear combination of q_{i, 3}
-            g1_q_m_proj = g1_q3_list[elem_index]
-                .mul(multiplicity_fr)
-                .add(g1_q_m_proj);
+            g1_q_m_proj = g1_q3_list[elem_index].mul(multiplicity_fr).add(g1_q_m_proj);
             // Linear combination of q_{i, 4}
             g1_q_m_proj = g1_q4_list[elem_index]
                 .mul(-multiplicity_fr) // negate the coefficient
@@ -174,6 +176,7 @@ struct IndexPolynomialsAndQuotients<E: PairingEngine> {
     g1_l: E::G1Affine,
     g1_l_mul_v: E::G1Affine,
     g1_d: E::G1Affine,
+    poly_d: DensePolynomial<E::Fr>,
     g1_q_l: E::G1Affine,
     g1_q_d: E::G1Affine,
 }
@@ -219,8 +222,7 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
 
     let poly_coeff_list_d = domain_k.ifft(&poly_eval_list_d);
     let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
-    let g1_d = Kzg::<E>::commit_g1(g1_srs, &poly_d)
-        .into_affine();
+    let g1_d = Kzg::<E>::commit_g1(g1_srs, &poly_d).into_affine();
 
     // Compute the quotient polynomial Q_L(X) s.t. (X^k - 1)*(L(Xv) - w*L(X)) = Z_V(X)*Q_L(X),
     // Inverse FFT costs O(ks log(ks)) operations
@@ -244,27 +246,26 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
     let mut poly_coeff_list_x_pow_k_sub_one = vec![E::Fr::zero(); witness_size];
     poly_coeff_list_x_pow_k_sub_one[num_queries] = E::Fr::one();
     poly_coeff_list_x_pow_k_sub_one[0] = -E::Fr::one();
-    let poly_x_pow_k_sub_one = DensePolynomial::from_coefficients_vec(poly_coeff_list_x_pow_k_sub_one);
+    let poly_x_pow_k_sub_one =
+        DensePolynomial::from_coefficients_vec(poly_coeff_list_x_pow_k_sub_one);
     let vanishing_poly_v: DensePolynomial<E::Fr> = domain_v.vanishing_polynomial().into();
     let mut poly_q_l = poly_l_mul_v.sub(&poly_w_mul_l);
     poly_q_l = poly_q_l.div(&vanishing_poly_v);
     poly_q_l = poly_q_l.mul(&poly_x_pow_k_sub_one);
-    let g1_q_l = Kzg::<E>::commit_g1(&g1_srs, &poly_q_l)
-        .into_affine();
+    let g1_q_l = Kzg::<E>::commit_g1(&g1_srs, &poly_q_l).into_affine();
 
     // Compute Q_D s.t. L(X) - D(X) = Z_K(X)*Q_D(X).
     let poly_l = DensePolynomial::from_coefficients_vec(poly_coeff_list_l);
-    let poly_d = DensePolynomial::from_coefficients_vec(poly_eval_list_d);
     let mut poly_q_d = poly_l.sub(&poly_d);
     let vanishing_poly_k: DensePolynomial<E::Fr> = domain_k.vanishing_polynomial().into();
     poly_q_d = poly_q_d.div(&vanishing_poly_k);
-    let g1_q_d = Kzg::<E>::commit_g1(&g1_srs, &poly_q_d)
-        .into_affine();
+    let g1_q_d = Kzg::<E>::commit_g1(&g1_srs, &poly_q_d).into_affine();
 
     IndexPolynomialsAndQuotients {
         g1_l: g1_l_proj.into_affine(),
         g1_l_mul_v: g1_l_mul_v_proj.into_affine(),
         g1_d,
+        poly_d,
         g1_q_l,
         g1_q_d,
     }
@@ -274,11 +275,12 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
 mod tests {
     use std::ops::Neg;
 
+    use super::*;
+    use crate::table::{rand_segments, Table};
     use ark_bn254::Bn254;
     use ark_ff::Field;
+    use ark_std::rand::RngCore;
     use ark_std::{test_rng, UniformRand};
-
-    use super::*;
 
     type Fr = <Bn254 as PairingEngine>::Fr;
     type G1Affine = <Bn254 as PairingEngine>::G1Affine;
@@ -305,10 +307,8 @@ mod tests {
     fn test_segment_multiplicities() {
         let queried_segment_indices = vec![0, 1, 2, 3, 0, 1, 2, 3];
         let num_segments = 4;
-        let multiplicities = segment_multiplicities(
-            &queried_segment_indices,
-            num_segments,
-        ).unwrap();
+        let multiplicities =
+            segment_multiplicities(&queried_segment_indices, num_segments).unwrap();
         assert_eq!(multiplicities.len(), 4);
         assert_eq!(multiplicities[&0], 2);
         assert_eq!(multiplicities[&1], 2);
@@ -322,17 +322,12 @@ mod tests {
         let num_segments = 16;
         let num_queries = 8;
         let segment_size = 4;
-        let pp = PublicParameters::<Bn254>::setup(
-            &mut rng,
-            num_segments,
-            num_queries,
-            segment_size,
-        ).unwrap();
+        let pp =
+            PublicParameters::<Bn254>::setup(&mut rng, num_segments, num_queries, segment_size)
+                .unwrap();
         let queried_segment_indices = vec![0, 1, 2, 3, 0, 1, 2, 3];
-        let multiplicities = segment_multiplicities(
-            &queried_segment_indices,
-            num_segments,
-        ).unwrap();
+        let multiplicities =
+            segment_multiplicities(&queried_segment_indices, num_segments).unwrap();
 
         // Construct polynomial M(X) using Inverse FFT.
         let mut poly_eval_m_list = vec![Fr::zero(); pp.table_size];
@@ -345,8 +340,7 @@ mod tests {
         }
         let poly_coeff_list_m = pp.domain_w.ifft(&poly_eval_m_list);
         let poly_m = DensePolynomial::from_coefficients_vec(poly_coeff_list_m.clone());
-        let g1_m_expected = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &poly_m)
-            .into_affine();
+        let g1_m_expected = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &poly_m).into_affine();
         let inv_generator_domain_w = pp.domain_w.group_gen_inv;
         let poly_coeff_list_m_div_w: Vec<Fr> = poly_coeff_list_m
             .iter()
@@ -354,13 +348,13 @@ mod tests {
             .map(|(i, &c)| c * inv_generator_domain_w.pow(&[i as u64]))
             .collect();
         let poly_m_div_w = DensePolynomial::from_coefficients_vec(poly_coeff_list_m_div_w);
-        let g1_m_div_w_expected = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &poly_m_div_w)
-            .into_affine();
+        let g1_m_div_w_expected = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &poly_m_div_w).into_affine();
 
         let mut poly_coeff_list_x_pow_n_sub_one = vec![Fr::zero(); pp.table_size];
         poly_coeff_list_x_pow_n_sub_one[pp.num_segments] = Fr::one();
         poly_coeff_list_x_pow_n_sub_one[0] = -Fr::one();
-        let poly_x_pow_n_sub_one = DensePolynomial::from_coefficients_vec(poly_coeff_list_x_pow_n_sub_one);
+        let poly_x_pow_n_sub_one =
+            DensePolynomial::from_coefficients_vec(poly_coeff_list_x_pow_n_sub_one);
         let mut poly_q_m = poly_m.clone();
         poly_q_m = poly_q_m.sub(&poly_m_div_w);
         poly_q_m = poly_q_m.naive_mul(&poly_x_pow_n_sub_one);
@@ -383,5 +377,31 @@ mod tests {
         assert_eq!(g1_m_expected, g1_m_got);
         assert_eq!(g1_m_div_w_expected, g1_m_div_w_got);
         assert_eq!(g1_q_m_expected, g1_q_m_got);
+    }
+
+    // TODO: add test cases with different parameters,
+    // e.g., (8, 4, 4), (4, 8, 4).
+
+    #[test]
+    fn test_prove() {
+        let mut rng = test_rng();
+        let pp =
+            PublicParameters::setup(&mut rng, 16, 8, 4).expect("Failed to setup public parameters");
+        let segments = rand_segments::generate(&pp);
+        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> =
+            segments.iter().map(|segment| segment.as_slice()).collect();
+        let t = Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
+
+        let queried_segment_indices: Vec<usize> = (0..pp.num_queries)
+            .map(|_| rng.next_u32() as usize % pp.num_segments)
+            .collect();
+
+        let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
+
+        let mut transcript = Transcript::<<Bn254 as PairingEngine>::Fr>::new();
+
+        let rng = &mut test_rng();
+
+        prove::<Bn254>(&pp, &mut transcript, &witness, rng).unwrap();
     }
 }

@@ -22,4 +22,5 @@ pub enum Error {
     // Caulk Sub-protocol
     FailedToDivideByVanishingPolynomial,
     RemainderAfterDivisionIsNonZero,
+    FailedToCheckMultiUnity,
 }

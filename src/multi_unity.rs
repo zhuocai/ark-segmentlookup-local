@@ -19,6 +19,7 @@ use crate::transcript::Transcript;
 // TODO:
 // fix the issue that when the number of queries is larger than the number of segments,
 // the KZG commit fails.
+#[derive(Copy, Clone)]
 pub struct MultiUnityProof<E: PairingEngine> {
     pub g1_u_bar: E::G1Affine,
     pub g1_h_1: E::G1Affine,
@@ -112,7 +113,6 @@ pub fn multi_unity_prove<E: PairingEngine>(
         if !remainder.is_zero() {
             return Err(Error::RemainderAfterDivisionIsNonZero);
         }
-        println!("len {}", poly_h_s.len());
         poly_h_s_list.push(poly_h_s);
     }
 
@@ -275,12 +275,12 @@ fn blinded_vanishing_poly<E: PairingEngine>(
     DensePolynomial::from_coefficients_vec(rand_poly_coefficients)
 }
 
-pub fn multi_unity_verify<E: PairingEngine, R: RngCore>(
+pub fn multi_unity_verify<E: PairingEngine>(
     pp: &PublicParameters<E>,
     transcript: &mut Transcript<E::Fr>,
     g1_d: &E::G1Affine,
     proof: &MultiUnityProof<E>,
-    rng: &mut R,
+    rng: &mut StdRng,
 ) -> bool {
     let mut pairing_inputs = multi_unity_verify_defer_pairing(
         transcript,

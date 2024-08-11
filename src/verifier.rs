@@ -1,13 +1,17 @@
-use ark_ec::PairingEngine;
-
 use crate::error::Error;
+use crate::multi_unity::multi_unity_verify;
 use crate::prover::Proof;
 use crate::public_parameters::PublicParameters;
-use crate::rng::FiatShamirRng;
 
-pub fn verify<E: PairingEngine, FS: FiatShamirRng>(
+use crate::transcript::Transcript;
+use ark_ec::PairingEngine;
+use ark_std::rand::rngs::StdRng;
+
+pub fn verify<E: PairingEngine>(
     pp: &PublicParameters<E>,
+    transcript: &mut Transcript<E::Fr>,
     proof: &Proof<E>,
+    rng: &mut StdRng,
 ) -> Result<(), Error> {
     // Round 2: Pairing check.
     let g1_m = proof.g1_m;
@@ -23,40 +27,42 @@ pub fn verify<E: PairingEngine, FS: FiatShamirRng>(
     let right_pairing = E::pairing(g1_q_m, g2_z_w);
 
     if left_pairing != right_pairing {
-        println!("Left pairing: {:?}", left_pairing);
         return Err(Error::Pairing1Failed);
+    }
+
+    // Round 3-8: Multi-unity check.
+    if !multi_unity_verify(pp, transcript, &proof.g1_d, &proof.multi_unity_proof, rng) {
+        return Err(Error::FailedToCheckMultiUnity);
     }
 
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {
     use ark_bn254::Bn254;
     use ark_std::rand::RngCore;
     use ark_std::test_rng;
-    use rand_chacha::ChaChaRng;
-    use sha3::Keccak256;
 
     use crate::prover::prove;
-    use crate::rng::SimpleHashFiatShamirRng;
     use crate::table::{rand_segments, Table};
     use crate::witness::Witness;
 
     use super::*;
 
-    type FS = SimpleHashFiatShamirRng<Keccak256, ChaChaRng>;
+    // TODO: add test cases with different parameters,
+    // e.g., (8, 4, 4), (4, 8, 4).
+
     #[test]
     fn test_verify() {
         let mut rng = test_rng();
-        let pp = PublicParameters::setup(&mut rng, 8, 4, 4)
-            .expect("Failed to setup public parameters");
+        let pp =
+            PublicParameters::setup(&mut rng, 16, 8, 4)
+                .expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
-        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> = segments
-            .iter().map(|segment| segment.as_slice()).collect();
-        let t = Table::<Bn254>::new(&pp, &segment_slices)
-            .expect("Failed to create table");
+        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> =
+            segments.iter().map(|segment| segment.as_slice()).collect();
+        let t = Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
 
         let queried_segment_indices: Vec<usize> = (0..pp.num_queries)
             .map(|_| rng.next_u32() as usize % pp.num_segments)
@@ -64,8 +70,14 @@ mod tests {
 
         let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
 
-        let proof: Proof<Bn254> = prove::<Bn254, >(&pp, &witness).unwrap();
+        let mut transcript = Transcript::<<Bn254 as PairingEngine>::Fr>::new();
 
-        assert!(verify::<Bn254, FS>(&pp, &proof).is_ok());
+        let rng = &mut test_rng();
+
+        let proof: Proof<Bn254> = prove::<Bn254>(&pp, &mut transcript, &witness, rng).unwrap();
+
+        let mut transcript = Transcript::<<Bn254 as PairingEngine>::Fr>::new();
+
+        assert!(verify::<Bn254>(&pp, &mut transcript, &proof, rng).is_ok());
     }
 }
