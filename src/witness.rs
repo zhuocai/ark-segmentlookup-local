@@ -10,7 +10,7 @@ pub struct Witness<E: PairingEngine> {
     num_queries: usize,
     segment_size: usize,
     poly_f: DensePolynomial<E::Fr>,
-    poly_eval_list_f: Vec<E::Fr>,
+    pub(crate) poly_eval_list_f: Vec<E::Fr>,
     pub(crate) queried_segment_indices: Vec<usize>,
 }
 

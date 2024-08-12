@@ -41,7 +41,7 @@ pub struct PublicParameters<E: PairingEngine> {
     // q_{i, 2} for i in 1..n*s
     // The commitment of quotient polynomials Q_{i, 2} s.t.
     // L^W_i(X) * X = omega^i * L^W_i(X) + Z_W(X) * Q_{i, 2}(X)
-    g1_q2_list: Vec<E::G1Affine>,
+    pub(crate) g1_q2_list: Vec<E::G1Affine>,
     // q_{i, 3} for i in 1..n*s
     pub(crate) g1_q3_list: Vec<E::G1Affine>,
     // q_{i, 4} for i in 1..n*s

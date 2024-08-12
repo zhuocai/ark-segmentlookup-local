@@ -152,9 +152,9 @@ pub fn multi_unity_prove<E: PairingEngine>(
     );
     let g1_h_2 = CaulkKzg::<E>::bi_poly_commit_g1(&pp.g1_srs, &partial_y_poly_list_h_2, log_num_segments);
 
-    transcript.append_element(b"u", g1_d);
-    transcript.append_element(b"u_bar", &g1_u_bar);
-    transcript.append_element(b"h2", &g1_h_2);
+    transcript.append_element(b"caulk-u", g1_d);
+    transcript.append_element(b"caulk-u_bar", &g1_u_bar);
+    transcript.append_element(b"caulk-h2", &g1_h_2);
     let alpha = transcript.get_and_append_challenge(b"alpha");
 
 
@@ -189,7 +189,7 @@ pub fn multi_unity_prove<E: PairingEngine>(
         convert_to_big_ints(&poly_h_1.coeffs).as_slice(),
     ).into_affine();
 
-    transcript.append_element(b"h1", &g1_h_1);
+    transcript.append_element(b"caulk-h1", &g1_h_1);
     let beta = transcript.get_and_append_challenge(b"beta");
 
     let u_alpha_beta = poly_u_alpha.evaluate(&beta);
@@ -335,12 +335,12 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
     g1_u: &E::G1Affine,
     proof: &MultiUnityProof<E>,
 ) -> Vec<(E::G1Projective, E::G2Projective)> {
-    transcript.append_element(b"u", g1_u);
-    transcript.append_element(b"u_bar", &proof.g1_u_bar);
-    transcript.append_element(b"h2", &proof.g1_h_2);
+    transcript.append_element(b"caulk-u", g1_u);
+    transcript.append_element(b"caulk-u_bar", &proof.g1_u_bar);
+    transcript.append_element(b"caulk-h2", &proof.g1_h_2);
     let alpha = transcript.get_and_append_challenge(b"alpha");
     
-    transcript.append_element(b"h1", &proof.g1_h_1);
+    transcript.append_element(b"caulk-h1", &proof.g1_h_1);
     let beta = transcript.get_and_append_challenge(b"beta");
 
     let u_alpha_beta = proof.fr_v1 * lagrange_basis_log_n[0].evaluate(&beta) + proof.fr_v2;

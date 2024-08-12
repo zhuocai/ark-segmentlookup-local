@@ -2,17 +2,21 @@ use crate::error::Error;
 use crate::multi_unity::multi_unity_verify;
 use crate::prover::Proof;
 use crate::public_parameters::PublicParameters;
+use std::ops::{Add, Mul};
 
+use crate::table::TablePreprocessedParameters;
 use crate::transcript::Transcript;
-use ark_ec::PairingEngine;
+use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_std::rand::rngs::StdRng;
 
 pub fn verify<E: PairingEngine>(
     pp: &PublicParameters<E>,
-    transcript: &mut Transcript<E::Fr>,
+    tpp: &TablePreprocessedParameters<E>,
     proof: &Proof<E>,
     rng: &mut StdRng,
 ) -> Result<(), Error> {
+    let mut transcript = Transcript::<E::Fr>::new();
+
     // Round 2: Pairing check.
     let g1_m = proof.g1_m;
     let g1_neg_m_div_w = -proof.g1_m_div_w;
@@ -31,8 +35,32 @@ pub fn verify<E: PairingEngine>(
     }
 
     // Round 3-8: Multi-unity check.
-    if !multi_unity_verify(pp, transcript, &proof.g1_d, &proof.multi_unity_proof, rng) {
+    if !multi_unity_verify(
+        pp,
+        &mut transcript,
+        &proof.g1_d,
+        &proof.multi_unity_proof,
+        rng,
+    ) {
         return Err(Error::FailedToCheckMultiUnity);
+    }
+
+    // Round 11: Pairing check.
+    let beta = transcript.get_and_append_challenge(b"beta");
+    let delta = transcript.get_and_append_challenge(b"delta");
+    let g1_a = proof.g1_a;
+    let g2_t = tpp.g2_t;
+    let g2_tau = pp.g2_srs[1].clone();
+    let left_pairing = E::pairing(g1_a, g2_t + g2_tau.mul(delta).into_affine());
+
+    let g1_q_a = proof.g1_q_a;
+    let g1_neg_beta_mul_a = g1_a.mul(-beta).into_affine();
+    let g2_one = pp.g2_srs[0].clone();
+    let right_pairing =
+        E::pairing(g1_q_a, g2_z_w).mul(E::pairing(g1_m.add(g1_neg_beta_mul_a), g2_one));
+
+    if left_pairing != right_pairing {
+        return Err(Error::Pairing2Failed);
     }
 
     Ok(())
@@ -57,8 +85,7 @@ mod tests {
     fn test_verify() {
         let mut rng = test_rng();
         let pp =
-            PublicParameters::setup(&mut rng, 16, 8, 4)
-                .expect("Failed to setup public parameters");
+            PublicParameters::setup(&mut rng, 16, 8, 4).expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
         let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> =
             segments.iter().map(|segment| segment.as_slice()).collect();
@@ -70,14 +97,12 @@ mod tests {
 
         let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
 
-        let mut transcript = Transcript::<<Bn254 as PairingEngine>::Fr>::new();
+        let tpp = t.preprocess(&pp).unwrap();
 
         let rng = &mut test_rng();
 
-        let proof: Proof<Bn254> = prove::<Bn254>(&pp, &mut transcript, &witness, rng).unwrap();
+        let proof: Proof<Bn254> = prove::<Bn254>(&pp, &t, &tpp, &witness, rng).unwrap();
 
-        let mut transcript = Transcript::<<Bn254 as PairingEngine>::Fr>::new();
-
-        assert!(verify::<Bn254>(&pp, &mut transcript, &proof, rng).is_ok());
+        assert!(verify::<Bn254>(&pp, &tpp, &proof, rng).is_ok());
     }
 }

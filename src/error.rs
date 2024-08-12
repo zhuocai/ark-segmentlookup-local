@@ -18,6 +18,7 @@ pub enum Error {
     SizeNotPowerOfTwo(usize),
     
     Pairing1Failed,
+    Pairing2Failed,
     
     // Caulk Sub-protocol
     FailedToDivideByVanishingPolynomial,

@@ -14,9 +14,9 @@ pub struct Table<E: PairingEngine> {
     pub(crate) values: Vec<E::Fr>,
 }
 
-pub struct PreprocessedParameters<E: PairingEngine> {
-    t_com2: E::G2Affine,
-    pub(crate) quotient_poly_com1_vec_1: Vec<E::G1Affine>,
+pub struct TablePreprocessedParameters<E: PairingEngine> {
+    pub(crate) g2_t: E::G2Affine,
+    pub(crate) g1_q1_list: Vec<E::G1Affine>,
 }
 
 impl<E: PairingEngine> Table<E> {
@@ -47,7 +47,7 @@ impl<E: PairingEngine> Table<E> {
     pub fn preprocess(
         &self,
         pp: &PublicParameters<E>,
-    ) -> Result<PreprocessedParameters<E>, Error> {
+    ) -> Result<TablePreprocessedParameters<E>, Error> {
         if self.num_segments != pp.num_segments {
             return Err(Error::InvalidNumerOfSegments(self.num_segments));
         }
@@ -67,9 +67,9 @@ impl<E: PairingEngine> Table<E> {
             Err(e) => return Err(e),
         };
 
-        Ok(PreprocessedParameters {
-            t_com2: t_2,
-            quotient_poly_com1_vec_1: qs1,
+        Ok(TablePreprocessedParameters {
+            g2_t: t_2,
+            g1_q1_list: qs1,
         })
     }
 }
