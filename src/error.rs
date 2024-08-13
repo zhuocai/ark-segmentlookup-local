@@ -19,6 +19,7 @@ pub enum Error {
     
     Pairing1Failed,
     Pairing2Failed,
+    DegreeCheckFailed,
     
     // Caulk Sub-protocol
     FailedToDivideByVanishingPolynomial,

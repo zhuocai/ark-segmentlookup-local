@@ -22,13 +22,13 @@ pub fn verify<E: PairingEngine>(
     let g1_neg_m_div_w = -proof.g1_m_div_w;
     let g2_tau_pow_ns = pp.g2_srs[pp.num_segments];
     let g2_neg_one = -pp.g2_srs[0];
-    let g1_q_m = proof.g1_q_m;
-    let g2_z_w = pp.g2_z_w;
+    let g1_qm = proof.g1_qm;
+    let g2_zw = pp.g2_zw;
 
     let left_pairing_lhs = g1_m + g1_neg_m_div_w;
     let left_pairing_rhs = g2_tau_pow_ns + g2_neg_one;
     let left_pairing = E::pairing(left_pairing_lhs, left_pairing_rhs);
-    let right_pairing = E::pairing(g1_q_m, g2_z_w);
+    let right_pairing = E::pairing(g1_qm, g2_zw);
 
     if left_pairing != right_pairing {
         return Err(Error::Pairing1Failed);
@@ -53,14 +53,34 @@ pub fn verify<E: PairingEngine>(
     let g2_tau = pp.g2_srs[1].clone();
     let left_pairing = E::pairing(g1_a, g2_t + g2_tau.mul(delta).into_affine());
 
-    let g1_q_a = proof.g1_q_a;
+    let g1_qa = proof.g1_qa;
     let g1_neg_beta_mul_a = g1_a.mul(-beta).into_affine();
     let g2_one = pp.g2_srs[0].clone();
     let right_pairing =
-        E::pairing(g1_q_a, g2_z_w).mul(E::pairing(g1_m.add(g1_neg_beta_mul_a), g2_one));
+        E::pairing(g1_qa, g2_zw).mul(E::pairing(g1_m.add(g1_neg_beta_mul_a), g2_one));
 
     if left_pairing != right_pairing {
         return Err(Error::Pairing2Failed);
+    }
+
+    // Round 11: Degree check
+    if pp.num_segments > pp.num_queries {
+        let deg_tau = (pp.num_segments - pp.num_queries) * pp.segment_size - 1;
+        let left_pairing = E::pairing(proof.g1_b0, pp.g2_srs[deg_tau]);
+        let right_pairing = E::pairing(proof.g1_px, pp.g2_srs[0]);
+
+        if left_pairing != right_pairing {
+            return Err(Error::DegreeCheckFailed);
+        }
+    } else if pp.num_segments < pp.num_queries {
+        // TODO: current unit test does not cover this case
+        let deg_tau = (pp.num_queries - pp.num_segments) * pp.segment_size - 1;
+        let left_pairing = E::pairing(proof.g1_a0, pp.g2_srs[deg_tau]);
+        let right_pairing = E::pairing(proof.g1_px, pp.g2_srs[0]);
+
+        if left_pairing != right_pairing {
+            return Err(Error::DegreeCheckFailed);
+        }
     }
 
     Ok(())

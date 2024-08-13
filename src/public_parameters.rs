@@ -30,7 +30,7 @@ pub struct PublicParameters<E: PairingEngine> {
     // [tau^i]_2 for i in 0..max*s
     pub(crate) g2_srs: Vec<E::G2Affine>,
     // [z_w(tau)]_2
-    pub(crate) g2_z_w: E::G2Affine,
+    pub(crate) g2_zw: E::G2Affine,
     pub(crate) domain_w: Radix2EvaluationDomain<E::Fr>,
     // [z_v(tau)]_2
     g2_z_v: E::G2Affine,
@@ -51,7 +51,7 @@ pub struct PublicParameters<E: PairingEngine> {
     // [L^W_i(tau / w)]_1 for i in 1..n*s
     pub(crate) g1_l_w_div_w_list: Vec<E::G1Affine>,
     // [(L^W_i(tau) - L^W_i(0)) / tau]_1 for i in 1..n*s
-    l_w_zero_opening_proofs: Vec<E::G1Affine>,
+    pub(crate) g1_l_w_zero_opening_proofs: Vec<E::G1Affine>,
     // [L^V_i(tau)]_1 for i in 1..k*s
     pub(crate) g1_l_v_list: Vec<E::G1Affine>,
     // [L^V_i(tau * v)]_1 for i in 1..k*s
@@ -114,7 +114,7 @@ impl<E: PairingEngine> PublicParameters<E> {
 
         // Step 4-c: Compute [(L^W_i(tau) - L^W_i(0)) / tau]_1 for i in 1..n*s
         // a.k.a. zero openings of the Lagrange basis.
-        let l_w_zero_opening_proofs = match
+        let g1_l_w_zero_opening_proofs = match
         zero_opening_proofs::<E>(
             &g1_srs,
             &domain_w,
@@ -209,7 +209,7 @@ impl<E: PairingEngine> PublicParameters<E> {
             witness_size,
             g1_srs,
             g2_srs,
-            g2_z_w,
+            g2_zw: g2_z_w,
             domain_w,
             g2_z_v,
             domain_v,
@@ -220,7 +220,7 @@ impl<E: PairingEngine> PublicParameters<E> {
             g1_q4_list, // TODO: can be removed
             g1_l_w_list,
             g1_l_w_div_w_list, // TODO: can be removed
-            l_w_zero_opening_proofs,
+            g1_l_w_zero_opening_proofs,
             g1_l_v_list,
             g1_l_v_mul_v_list, // TODO: can be removed
 
