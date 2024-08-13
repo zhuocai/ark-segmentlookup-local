@@ -1,7 +1,7 @@
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{Field, PrimeField};
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain, UVPolynomial};
 use ark_poly::univariate::DensePolynomial;
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain, UVPolynomial};
 use fk::UpperToeplitz;
 
 use crate::error::Error;
@@ -35,7 +35,6 @@ impl<E: PairingEngine> Table<E> {
             }
             values.extend_from_slice(segment);
         }
-
 
         Ok(Self {
             num_segments,
@@ -99,10 +98,11 @@ fn compute_quotients<E: PairingEngine>(
 
     let ks: Vec<_> = domain.fft(&h_commitments[..domain.size()]);
 
-    let n_inv = domain.size_as_field_element()
+    let fr_inv_n = domain
+        .size_as_field_element()
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
-    let normalized_roots: Vec<E::Fr> = domain.elements().map(|g_i| g_i * n_inv).collect();
+    let normalized_roots: Vec<E::Fr> = domain.elements().map(|g_i| g_i * fr_inv_n).collect();
 
     let mut qs: Vec<E::G1Projective> = ks
         .iter()
@@ -138,7 +138,6 @@ pub mod rand_segments {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use ark_bn254::Bn254;
@@ -149,13 +148,11 @@ mod tests {
     #[test]
     fn test_table_new() {
         let mut rng = test_rng();
-        let pp = PublicParameters::setup(&mut rng, 8, 4, 4)
-            .expect("Failed to setup public parameters");
+        let pp =
+            PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
-        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> = segments
-            .iter()
-            .map(|segment| segment.as_slice())
-            .collect();
+        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> =
+            segments.iter().map(|segment| segment.as_slice()).collect();
 
         Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
     }
@@ -163,15 +160,12 @@ mod tests {
     #[test]
     fn test_table_preprocess() {
         let mut rng = test_rng();
-        let pp = PublicParameters::setup(&mut rng, 8, 4, 4)
-            .expect("Failed to setup public parameters");
+        let pp =
+            PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
-        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> = segments
-            .iter()
-            .map(|segment| segment.as_slice())
-            .collect();
-        let t = Table::<Bn254>::new(&pp, &segment_slices)
-            .expect("Failed to create table");
+        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> =
+            segments.iter().map(|segment| segment.as_slice()).collect();
+        let t = Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
 
         t.preprocess(&pp).expect("Failed to preprocess table");
     }

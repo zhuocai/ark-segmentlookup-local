@@ -1,7 +1,7 @@
 use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_ff::{FftField, FftParameters, Field};
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_poly::univariate::DensePolynomial;
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 
 use crate::error::Error;
 use crate::kzg::Kzg;
@@ -57,9 +57,7 @@ pub fn create_sub_domain<E: PairingEngine>(
 }
 
 pub fn roots_of_unity<E: PairingEngine>(domain: &Radix2EvaluationDomain<E::Fr>) -> Vec<E::Fr> {
-    let domain_elements: Vec<E::Fr> = domain.elements().collect();
-
-    domain_elements
+    domain.elements().collect()
 }
 
 #[cfg(test)]
@@ -75,11 +73,14 @@ mod tests {
         let segment_size = 4;
 
         let order_v = num_queries * segment_size;
-        let domain_v = Radix2EvaluationDomain::<<Bn254 as PairingEngine>::Fr>::new(order_v)
-            .unwrap();
+        let domain_v =
+            Radix2EvaluationDomain::<<Bn254 as PairingEngine>::Fr>::new(order_v).unwrap();
         let order_k = num_queries;
         let domain_k = create_sub_domain::<Bn254>(&domain_v, order_k, segment_size).unwrap();
         let group_gen_k = domain_k.group_gen;
-        assert_eq!(group_gen_k.pow([domain_k.size]), <Bn254 as PairingEngine>::Fr::one());
+        assert_eq!(
+            group_gen_k.pow([domain_k.size]),
+            <Bn254 as PairingEngine>::Fr::one()
+        );
     }
 }
