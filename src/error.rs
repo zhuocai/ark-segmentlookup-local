@@ -18,8 +18,11 @@ pub enum Error {
     SizeNotPowerOfTwo(usize),
     
     Pairing1Failed,
+    Pairing2Failed,
+    DegreeCheckFailed,
     
     // Caulk Sub-protocol
     FailedToDivideByVanishingPolynomial,
     RemainderAfterDivisionIsNonZero,
+    FailedToCheckMultiUnity,
 }
