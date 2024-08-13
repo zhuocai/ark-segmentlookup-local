@@ -7,11 +7,15 @@ use std::ops::{Add, Mul};
 use crate::table::TablePreprocessedParameters;
 use crate::transcript::Transcript;
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
+use ark_ff::Field;
+use ark_poly::EvaluationDomain;
 use ark_std::rand::rngs::StdRng;
+use ark_std::{One, Zero};
 
 pub fn verify<E: PairingEngine>(
     pp: &PublicParameters<E>,
     tpp: &TablePreprocessedParameters<E>,
+    statement: E::G1Affine,
     proof: &Proof<E>,
     rng: &mut StdRng,
 ) -> Result<(), Error> {
@@ -83,7 +87,103 @@ pub fn verify<E: PairingEngine>(
         }
     }
 
+    let gamma = transcript.get_and_append_challenge(b"gamma");
+
+    // TODO: Optimize transcript implementation.
+    transcript.append_element(b"eval_b0_at_gamma", &proof.fr_b0_at_gamma);
+    transcript.append_element(b"eval_f_at_gamma", &proof.fr_f_at_gamma);
+    transcript.append_element(b"eval_l_at_gamma", &proof.fr_l_at_gamma);
+    transcript.append_element(b"eval_a_at_zero", &proof.eval_a_at_zero);
+    transcript.append_element(b"eval_l_at_v_mul_gamma", &proof.fr_l_at_v_mul_gamma);
+    transcript.append_element(b"eval_ql_at_gamma", &proof.fr_ql_at_gamma);
+    transcript.append_element(b"eval_d_at_gamma", &proof.fr_d_at_gamma);
+    transcript.append_element(b"eval_qd_at_gamma", &proof.fr_qd_at_gamma);
+
+    let eta = transcript.get_and_append_challenge(b"eta");
+
+    // Round 15-1: Compute b_0 = ns * a_0 / (ks)
+    let table_elem_size = pp.num_segments * pp.segment_size;
+    let fr_table_elem_size = E::Fr::from(table_elem_size as u64);
+    let witness_elem_size = pp.num_queries * pp.segment_size;
+    let fr_inv_witness_elem_size = E::Fr::from(witness_elem_size as u64)
+        .inverse()
+        .ok_or(Error::FailedToInverseFieldElement)?;
+    let fr_b_at_zero = proof.eval_a_at_zero * fr_table_elem_size * fr_inv_witness_elem_size;
+
+    // Round 15-2: Compute q_{B, gamma}
+    // Compute the inverse of zv_{gamma}
+    let fr_zv_at_gamma = pp.domain_v.evaluate_vanishing_polynomial(gamma);
+    let fr_inv_zv_at_gamma = fr_zv_at_gamma
+        .inverse()
+        .ok_or(Error::FailedToInverseFieldElement)?;
+    // Compute b_{gamma} = b_{0, gamma} * gamma + b_0
+    let fr_b_at_gamma = proof.fr_b0_at_gamma * gamma + fr_b_at_zero;
+    let mut fr_qb_at_gamma = proof.fr_f_at_gamma + beta + (delta * proof.fr_f_at_gamma);
+    fr_qb_at_gamma = fr_qb_at_gamma * fr_b_at_gamma - E::Fr::one();
+    fr_qb_at_gamma = fr_qb_at_gamma * fr_inv_zv_at_gamma;
+
+    let g1_proj_l_at_v_mul_gamma = fr_to_g1_proj::<E>(proof.fr_l_at_v_mul_gamma);
+    let g1_proj_l_at_gamma = fr_to_g1_proj::<E>(proof.fr_l_at_gamma);
+    let g1_proj_ql_at_gamma = fr_to_g1_proj::<E>(proof.fr_ql_at_gamma);
+    let g1_proj_d_at_gamma = fr_to_g1_proj::<E>(proof.fr_d_at_gamma);
+    let g1_proj_qd_at_gamma = fr_to_g1_proj::<E>(proof.fr_qd_at_gamma);
+    let g1_proj_b0_at_gamma = fr_to_g1_proj::<E>(proof.fr_b0_at_gamma);
+    let g1_qb_at_gamma = fr_to_g1_proj::<E>(fr_qb_at_gamma);
+
+    let mut g1_results = E::G1Projective::batch_normalization_into_affine(&[
+        g1_proj_l_at_v_mul_gamma,
+        g1_proj_l_at_gamma,
+        g1_proj_ql_at_gamma,
+        g1_proj_d_at_gamma,
+        g1_proj_qd_at_gamma,
+        g1_proj_b0_at_gamma,
+        g1_qb_at_gamma,
+    ]);
+
+    let g1_qb_at_gamma = g1_results.pop().unwrap();
+
+    // Compute p_{gamma} = l_{gamma, v} + eta * l_{gamma} + eta^2 * q_{gamma, L} +
+    // eta^3 * d_{gamma} + eta^4 * q_{gamma, D} + eta^5 * b_{0, gamma} + eta^6 * com +
+    // eta^7 * q_{B, gamma}
+    let mut eta_pow_x = E::Fr::one();
+    let p_gamma_terms: Vec<E::G1Projective> = g1_results
+        .iter()
+        .chain(&[statement, g1_qb_at_gamma])
+        .map(|g1| {
+            let term = g1.mul(-eta_pow_x);
+            eta_pow_x *= eta;
+
+            term
+        })
+        .collect();
+    let mut g1_proj_neg_p_gamma = E::G1Projective::zero();
+    for term in p_gamma_terms {
+        g1_proj_neg_p_gamma = g1_proj_neg_p_gamma.add(&term);
+    }
+    let g1_neg_p_gamma = g1_proj_neg_p_gamma.into_affine();
+
+    // Round 15-4: The third pairing.
+    // let left_pairing = E::pairing(proof.g1_hp, pp.g2_srs[1]);
+    // let g1_delta_mul_hp = proof.g1_hp.mul(delta).into_affine();
+    // let right_pairing = E::pairing(proof.g1_p + g1_neg_p_gamma + g1_delta_mul_hp, pp.g2_srs[0]);
+    //
+    // if left_pairing != right_pairing {
+    //     return Err(Error::Pairing3Failed);
+    // }
+
+    // Round 15-4: The fourth pairing.
+    let g1_neg_a0 = fr_to_g1_proj::<E>(-proof.eval_a_at_zero).into_affine();
+    let left_pairing = E::pairing(proof.g1_a + g1_neg_a0, pp.g2_srs[0]);
+    let right_pairing = E::pairing(proof.g1_a0, pp.g2_srs[1]);
+    if left_pairing != right_pairing {
+        return Err(Error::Pairing4Failed);
+    }
+
     Ok(())
+}
+
+fn fr_to_g1_proj<E: PairingEngine>(fr: E::Fr) -> E::G1Projective {
+    E::G1Affine::prime_subgroup_generator().mul(fr)
 }
 
 #[cfg(test)]
@@ -117,12 +217,21 @@ mod tests {
 
         let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
 
+        let statement = witness.generate_statement(&pp.g1_srs);
+
         let tpp = t.preprocess(&pp).unwrap();
 
         let rng = &mut test_rng();
 
         let proof: Proof<Bn254> = prove::<Bn254>(&pp, &t, &tpp, &witness, rng).unwrap();
 
-        assert!(verify::<Bn254>(&pp, &tpp, &proof, rng).is_ok());
+        let result = match verify::<Bn254>(&pp, &tpp, statement, &proof, rng) {
+            Ok(_) => true,
+            Err(err) => {
+                eprintln!("{:?}", err);
+                false
+            }
+        };
+        assert!(result);
     }
 }

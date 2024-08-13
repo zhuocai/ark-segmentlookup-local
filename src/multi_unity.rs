@@ -46,7 +46,7 @@ pub fn multi_unity_prove<E: PairingEngine>(
     // to compute U_l(X) for l = 1, ..., log(n), U(X, Y), U_bar(X, Y), and Q_2(X, Y).
     // And send [U_bar(\tau^{log(n)}, \tau)]_1, [Q_2(\tau^{log(n)}, \tau)]_1 to the verifier.
     if !pp.num_segments.is_power_of_two() {
-        return Err(Error::InvalidNumerOfSegments(pp.num_segments));
+        return Err(Error::InvalidNumberOfSegments(pp.num_segments));
     }
 
     // Get the coefficients of the polynomial D(X):

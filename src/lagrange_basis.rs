@@ -8,7 +8,10 @@ use crate::error::Error;
 
 // Efficiently compute the commitments to the Lagrange basis using SRS in O(n log n) time.
 // Section 3.3 from the paper BGG17: https://eprint.iacr.org/2017/602.
-pub fn lagrange_basis_g1<C: AffineCurve>(srs: &[C], domain: &Radix2EvaluationDomain<C::ScalarField>) -> Vec<C> {
+pub fn lagrange_basis_g1<C: AffineCurve>(
+    srs: &[C],
+    domain: &Radix2EvaluationDomain<C::ScalarField>,
+) -> Vec<C> {
     let group_order = domain.size();
     assert!(srs.len() >= group_order);
     assert!(group_order.is_power_of_two());
@@ -40,19 +43,20 @@ pub fn lagrange_basis_g1<C: AffineCurve>(srs: &[C], domain: &Radix2EvaluationDom
 pub fn zero_opening_proofs<E: PairingEngine>(
     srs_g1: &[E::G1Affine],
     domain: &Radix2EvaluationDomain<E::Fr>,
-    lagrange_basis_w_com1_vec: &[E::G1Affine],
+    g1_lagrange_basis: &[E::G1Affine],
 ) -> Result<Vec<E::G1Affine>, Error> {
     let domain_size_inverse_fr = domain
         .size_as_field_element()
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
-    let rhs = srs_g1.last()
+    let rhs = srs_g1
+        .last()
         .ok_or(Error::InvalidStructuredReferenceStrings)?
         .mul(-domain_size_inverse_fr);
 
     let domain_size = domain.size();
     let mut opening_proofs: Vec<E::G1Affine> = Vec::with_capacity(domain_size);
-    for (i, com) in lagrange_basis_w_com1_vec.iter().enumerate() {
+    for (i, com) in g1_lagrange_basis.iter().enumerate() {
         let lhs = com.mul(domain.element(domain_size - i));
         opening_proofs.push((lhs + rhs).into());
     }
