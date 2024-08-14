@@ -55,7 +55,7 @@ pub struct PublicParameters<E: PairingEngine> {
     // [L^V_i(tau)]_1 for i in 1..k*s
     pub(crate) g1_l_v_list: Vec<E::G1Affine>,
     // [L^V_i(tau * v)]_1 for i in 1..k*s
-    pub(crate) g1_l_v_mul_v_list: Vec<E::G1Affine>,
+    pub(crate) g1_l_v_div_v_list: Vec<E::G1Affine>,
     pub(crate) log_num_segments: usize, // TODO: optimize.
     pub(crate) domain_log_n: Radix2EvaluationDomain<E::Fr>, // TODO: optimize.
     pub(crate) lagrange_basis_log_n: Vec<DensePolynomial<E::Fr>>, // TODO: optimize.
@@ -122,16 +122,16 @@ impl<E: PairingEngine> PublicParameters<E> {
         // Step 5: Compute [L^V_i(tau)]_1 for i in 1..k*s
         let g1_l_v_list = lagrange_basis_g1(&g1_srs, &domain_v);
 
-        // Step 6: Compute [L^V_i(tau*v)]_1 for i in 1..k*s
-        // L^V_i(X * v) = L^V_{i-1}(X).
-        // We can shift [L^V_i(tau)]_1 to the right by 1 to get the result.
-        let mut g1_l_v_mul_v_list: Vec<E::G1Affine> = Vec::with_capacity(order_v);
-        if let Some(first) = g1_l_v_list.first().cloned() {
+        // Step 6: Compute [L^V_i(tau / v)]_1 for i in 1..k*s
+        // L^V_i(X / v) = L^V_{i+1}(X).
+        // We can shift [L^V_i(tau)]_1 to the left by 1 to get the result.
+        let mut g1_l_v_div_v_list: Vec<E::G1Affine> = Vec::with_capacity(order_v);
+        if let Some(first_element) = g1_l_v_list.first().cloned() {
             g1_l_v_list
                 .iter()
                 .skip(1)
-                .for_each(|com| g1_l_v_mul_v_list.push(com.clone()));
-            g1_l_v_mul_v_list.push(first);
+                .for_each(|com| g1_l_v_div_v_list.push(com.clone()));
+            g1_l_v_div_v_list.push(first_element);
         } else {
             return Err(Error::InvalidLagrangeBasisCommitments(
                 "Lagrange basis commitments for V is empty".to_string(),
@@ -237,7 +237,7 @@ impl<E: PairingEngine> PublicParameters<E> {
             g1_l_w_div_w_list, // TODO: can be removed
             g1_l_w_opening_proofs_at_zero,
             g1_l_v_list,
-            g1_l_v_mul_v_list, // TODO: can be removed
+            g1_l_v_div_v_list, // TODO: can be removed
 
             log_num_segments,     // TODO: optimize.
             domain_log_n,         // TODO: optimize.
