@@ -21,15 +21,15 @@ pub struct Proof<E: PairingEngine> {
     pub(crate) g1_m: E::G1Affine,          // [M(tau)]_1
     pub(crate) g1_m_div_w: E::G1Affine,    // [M(tau / w)]_1
     pub(crate) g1_qm: E::G1Affine,         // [Q_M(tau)]_1
-    g1_l: E::G1Affine,                     // [L(tau)]_1
-    g1_l_mul_v: E::G1Affine,               // [L(tau * v)]_1
-    g1_ql: E::G1Affine,                    // [Q_L(tau)]_1
+    pub(crate) g1_l: E::G1Affine,          // [L(tau)]_1
+    pub(crate) g1_l_div_v: E::G1Affine,    // [L(tau / v)]_1
+    pub(crate) g1_ql: E::G1Affine,         // [Q_L(tau)]_1
     pub(crate) g1_d: E::G1Affine,          // [D(tau)]_1
-    g1_qd: E::G1Affine,                    // [Q_D(tau)]_1
+    pub(crate) g1_qd: E::G1Affine,         // [Q_D(tau)]_1
     pub(crate) g1_a: E::G1Affine,          // [A(tau)]_1
     pub(crate) g1_qa: E::G1Affine,         // [Q_A(tau)]_1
     g1_b: E::G1Affine,                     // [B(tau)]_1
-    g1_qb: E::G1Affine,                    // [Q_B(tau)]_1
+    pub(crate) g1_qb: E::G1Affine,         // [Q_B(tau)]_1
     pub(crate) g1_a0: E::G1Affine,         // [A_0(tau)]_1
     pub(crate) g1_b0: E::G1Affine,         // [B_0(tau)]_1
     pub(crate) g1_px: E::G1Affine,         // [P_A(tau)]_1 or [P_B(tau)]_1 or zero
@@ -42,7 +42,6 @@ pub struct Proof<E: PairingEngine> {
     pub(crate) fr_d_at_gamma: E::Fr,       // d_{gamma} = D(gamma)
     pub(crate) fr_qd_at_gamma: E::Fr,      // q_{gamma, D} = Q_D(gamma)
     pub(crate) g1_hp: E::G1Affine,         // [H_P(tau)]_1
-    pub(crate) g1_p: E::G1Affine,          // [P(tau)]_1
 
     pub(crate) multi_unity_proof: MultiUnityProof<E>, // Proof of the Caulk Sub-protocol
 }
@@ -87,7 +86,7 @@ pub fn prove<E: PairingEngine>(
     // and send [Q_D(tau)]_1 to the verifier.
     let IndexPolynomialsAndQuotients {
         g1_l,
-        g1_l_mul_v,
+        g1_l_div_v,
         g1_d,
         g1_ql,
         g1_qd,
@@ -253,7 +252,6 @@ pub fn prove<E: PairingEngine>(
     // and sends [H_P(tau)]_1 and [P(tau)]_1 to the verifier.
     // Compute P(X) = L(Xv) + eta * L(X) + eta^2 * Q_L(X) + eta^3 * D(X) + eta^4 * Q_D(X) +
     // eta^5 * B_0(X) + eta^6 * F(X) + eta^7 * Q_B(X)
-    let mut poly_p: DensePolynomial<E::Fr> = DensePolynomial::zero();
     let mut eta_pow_x = E::Fr::one();
     let poly_p_terms: Vec<DensePolynomial<E::Fr>> = [
         &poly_l_div_v,
@@ -274,25 +272,25 @@ pub fn prove<E: PairingEngine>(
         DensePolynomial::from_coefficients_vec(coefficients)
     })
     .collect();
-
+    let mut poly_p: DensePolynomial<E::Fr> = DensePolynomial::zero();
     for term in poly_p_terms.iter() {
         poly_p = poly_p.add(term.clone());
     }
 
     // Compute b_{gamma} = b_{0, gamma} * gamma + b_0
-    let fr_b_at_gamma = fr_b0_at_gamma * gamma + poly_b0.evaluate(&E::Fr::zero());
+    let fr_b_at_gamma = fr_b0_at_gamma * gamma + poly_b.evaluate(&E::Fr::zero());
     // Compute q_{B, gamma}
     let mut fr_qb_at_gamma = fr_f_at_gamma + beta + (delta * fr_l_at_gamma);
     fr_qb_at_gamma = fr_qb_at_gamma * fr_b_at_gamma - E::Fr::one();
-    let fr_zv_at_gamma = pp.domain_v.evaluate_vanishing_polynomial(gamma);
-    fr_qb_at_gamma = fr_qb_at_gamma
-        * fr_zv_at_gamma
-            .inverse()
-            .ok_or(Error::FailedToInverseFieldElement)?;
+    let fr_inv_zv_at_gamma = pp
+        .domain_v
+        .evaluate_vanishing_polynomial(gamma)
+        .inverse()
+        .ok_or(Error::FailedToInverseFieldElement)?;
+    fr_qb_at_gamma = fr_qb_at_gamma * fr_inv_zv_at_gamma;
 
     // Compute p_gamma = l_{gamma, v} + eta * l_{gamma} + eta^2 * q_{gamma, L} + eta^3 * d_{gamma} +
     // eta^4 * q_{gamma, D} + eta^5 * b_{0, gamma} + eta^6 * f_{gamma} + eta^7 * q_{B, gamma}
-    let mut fr_p_at_gamma = E::Fr::zero();
     let mut fr_eta_pow_x = E::Fr::one();
     let p_gamma_terms: Vec<E::Fr> = [
         fr_l_at_gamma_div_v,
@@ -312,9 +310,9 @@ pub fn prove<E: PairingEngine>(
         term
     })
     .collect();
-
-    for term in p_gamma_terms.iter() {
-        fr_p_at_gamma = fr_p_at_gamma.add(term);
+    let mut fr_p_at_gamma = E::Fr::zero();
+    for term in p_gamma_terms {
+        fr_p_at_gamma = fr_p_at_gamma.add(&term);
     }
 
     // Compute H_P(X) = (P(X) - p_{gamma}) / (X - gamma)
@@ -325,16 +323,15 @@ pub fn prove<E: PairingEngine>(
         E::Fr::one(),
     ]));
 
-    // Commit to H_P(X) and P(X)
+    // Commit to H_P(X)
     let g1_hp = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_hp).into_affine();
-    let g1_p = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_p).into_affine();
 
     Ok(Proof {
         g1_m,
         g1_m_div_w,
         g1_qm,
         g1_l,
-        g1_l_mul_v,
+        g1_l_div_v,
         g1_ql,
         g1_d,
         g1_qd,
@@ -354,7 +351,6 @@ pub fn prove<E: PairingEngine>(
         fr_d_at_gamma,
         fr_qd_at_gamma,
         g1_hp,
-        g1_p,
 
         multi_unity_proof,
     })
@@ -427,7 +423,7 @@ fn multiplicity_polynomials_and_quotient_g1<E: PairingEngine>(
 // containing [L(tau)]_1, [L(tau * v)]_1, [D(tau)]_1, [Q_L(tau)]_1, and [Q_D(tau)]_1.
 struct IndexPolynomialsAndQuotients<E: PairingEngine> {
     g1_l: E::G1Affine,
-    g1_l_mul_v: E::G1Affine,
+    g1_l_div_v: E::G1Affine,
     g1_d: E::G1Affine,
     g1_ql: E::G1Affine,
     g1_qd: E::G1Affine,
@@ -446,7 +442,7 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
     domain_k: &Radix2EvaluationDomain<E::Fr>,
     domain_v: &Radix2EvaluationDomain<E::Fr>,
     g1_l_v_list: &[E::G1Affine],
-    g1_l_v_mul_v_list: &[E::G1Affine],
+    g1_l_v_div_v_list: &[E::G1Affine],
     g1_srs: &[E::G1Affine],
     queried_segment_indices: &[usize],
     witness_size: usize,
@@ -455,7 +451,7 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
 ) -> Result<IndexPolynomialsAndQuotients<E>, Error> {
     let mut poly_eval_list_l: Vec<E::Fr> = Vec::with_capacity(witness_size);
     let mut g1_proj_l = E::G1Projective::zero(); // [L(tau)]_1
-    let mut g1_proj_l_mul_v = E::G1Projective::zero(); // [L(tau * v)]_1
+    let mut g1_proj_l_div_v = E::G1Projective::zero(); // [L(tau / v)]_1
     let roots_of_unity_w: Vec<E::Fr> = roots_of_unity::<E>(&domain_w);
     let mut witness_element_index: usize = 0;
     let mut poly_eval_list_d: Vec<E::Fr> = Vec::with_capacity(num_queries);
@@ -468,10 +464,10 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
             g1_proj_l = g1_l_v_list[witness_element_index]
                 .mul(root_of_unity_w)
                 .add(g1_proj_l);
-            // Linear combination of [L^V_i(tau * v)]_1
-            g1_proj_l_mul_v = g1_l_v_mul_v_list[witness_element_index]
+            // Linear combination of [L^V_i(tau / v)]_1
+            g1_proj_l_div_v = g1_l_v_div_v_list[witness_element_index]
                 .mul(root_of_unity_w)
-                .add(g1_proj_l_mul_v);
+                .add(g1_proj_l_div_v);
             witness_element_index += 1;
         }
 
@@ -532,7 +528,7 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
 
     Ok(IndexPolynomialsAndQuotients {
         g1_l: g1_proj_l.into_affine(),
-        g1_l_mul_v: g1_proj_l_mul_v.into_affine(),
+        g1_l_div_v: g1_proj_l_div_v.into_affine(),
         g1_d,
         g1_ql,
         g1_qd,

@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::multi_unity::multi_unity_verify;
 use crate::prover::Proof;
 use crate::public_parameters::PublicParameters;
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Mul, Neg, Sub};
 
 use crate::table::TablePreprocessedParameters;
 use crate::transcript::Transcript;
@@ -21,7 +21,7 @@ pub fn verify<E: PairingEngine>(
 ) -> Result<(), Error> {
     let mut transcript = Transcript::<E::Fr>::new();
 
-    // Round 2: Pairing check.
+    // Round 2: The first pairing check.
     let g1_m = proof.g1_m;
     let g1_neg_m_div_w = -proof.g1_m_div_w;
     let g2_tau_pow_ns = pp.g2_srs[pp.num_segments];
@@ -49,7 +49,7 @@ pub fn verify<E: PairingEngine>(
         return Err(Error::FailedToCheckMultiUnity);
     }
 
-    // Round 11: Pairing check.
+    // Round 11: The second pairing check.
     let beta = transcript.get_and_append_challenge(b"beta");
     let delta = transcript.get_and_append_challenge(b"delta");
     let g1_a = proof.g1_a;
@@ -67,7 +67,7 @@ pub fn verify<E: PairingEngine>(
         return Err(Error::Pairing2Failed);
     }
 
-    // Round 11: Degree check
+    // Round 11: Degree pairing check.
     if pp.num_segments > pp.num_queries {
         let deg_tau = (pp.num_segments - pp.num_queries) * pp.segment_size - 1;
         let left_pairing = E::pairing(proof.g1_b0, pp.g2_srs[deg_tau]);
@@ -118,60 +118,73 @@ pub fn verify<E: PairingEngine>(
         .ok_or(Error::FailedToInverseFieldElement)?;
     // Compute b_{gamma} = b_{0, gamma} * gamma + b_0
     let fr_b_at_gamma = proof.fr_b0_at_gamma * gamma + fr_b_at_zero;
-    let mut fr_qb_at_gamma = proof.fr_f_at_gamma + beta + (delta * proof.fr_f_at_gamma);
+    let mut fr_qb_at_gamma = proof.fr_f_at_gamma + beta + (delta * proof.fr_l_at_gamma);
     fr_qb_at_gamma = fr_qb_at_gamma * fr_b_at_gamma - E::Fr::one();
     fr_qb_at_gamma = fr_qb_at_gamma * fr_inv_zv_at_gamma;
 
-    let g1_proj_l_at_gamma_div_v = fr_to_g1_proj::<E>(proof.fr_l_at_gamma_div_v);
-    let g1_proj_l_at_gamma = fr_to_g1_proj::<E>(proof.fr_l_at_gamma);
-    let g1_proj_ql_at_gamma = fr_to_g1_proj::<E>(proof.fr_ql_at_gamma);
-    let g1_proj_d_at_gamma = fr_to_g1_proj::<E>(proof.fr_d_at_gamma);
-    let g1_proj_qd_at_gamma = fr_to_g1_proj::<E>(proof.fr_qd_at_gamma);
-    let g1_proj_b0_at_gamma = fr_to_g1_proj::<E>(proof.fr_b0_at_gamma);
-    let g1_qb_at_gamma = fr_to_g1_proj::<E>(fr_qb_at_gamma);
-
-    let mut g1_results = E::G1Projective::batch_normalization_into_affine(&[
-        g1_proj_l_at_gamma_div_v,
-        g1_proj_l_at_gamma,
-        g1_proj_ql_at_gamma,
-        g1_proj_d_at_gamma,
-        g1_proj_qd_at_gamma,
-        g1_proj_b0_at_gamma,
-        g1_qb_at_gamma,
-    ]);
-
-    let g1_qb_at_gamma = g1_results.pop().unwrap();
-
     // Compute p_{gamma} = l_{gamma, v} + eta * l_{gamma} + eta^2 * q_{gamma, L} +
-    // eta^3 * d_{gamma} + eta^4 * q_{gamma, D} + eta^5 * b_{0, gamma} + eta^6 * com +
+    // eta^3 * d_{gamma} + eta^4 * q_{gamma, D} + eta^5 * b_{0, gamma} + eta^6 * f_{gamma} +
     // eta^7 * q_{B, gamma}
     let mut eta_pow_x = E::Fr::one();
-    let p_gamma_terms: Vec<E::G1Projective> = g1_results
-        .iter()
-        .chain(&[statement, g1_qb_at_gamma])
-        .map(|g1| {
-            let term = g1.mul(-eta_pow_x);
-            eta_pow_x *= eta;
+    let fr_p_at_gamma_terms: Vec<E::Fr> = [
+        &proof.fr_l_at_gamma_div_v,
+        &proof.fr_l_at_gamma,
+        &proof.fr_ql_at_gamma,
+        &proof.fr_d_at_gamma,
+        &proof.fr_qd_at_gamma,
+        &proof.fr_b0_at_gamma,
+        &proof.fr_f_at_gamma,
+        &fr_qb_at_gamma,
+    ]
+    .iter()
+    .map(|fr| {
+        let term = fr.mul(eta_pow_x);
+        eta_pow_x *= eta;
 
-            term
-        })
-        .collect();
-    let mut g1_proj_neg_p_gamma = E::G1Projective::zero();
-    for term in p_gamma_terms {
-        g1_proj_neg_p_gamma = g1_proj_neg_p_gamma.add(&term);
+        term
+    })
+    .collect();
+    let mut fr_p_at_gamma = E::Fr::zero();
+    for term in fr_p_at_gamma_terms {
+        fr_p_at_gamma = fr_p_at_gamma.add(&term);
     }
-    let g1_neg_p_gamma = g1_proj_neg_p_gamma.into_affine();
 
-    // Round 15-4: The third pairing.
-    // let left_pairing = E::pairing(proof.g1_hp, g2_tau);
-    // let g1_delta_mul_hp = proof.g1_hp.mul(delta).into_affine();
-    // let right_pairing = E::pairing(proof.g1_p + g1_neg_p_gamma + g1_delta_mul_hp, g2_one);
-    //
-    // if left_pairing != right_pairing {
-    //     return Err(Error::Pairing3Failed);
-    // }
+    let mut eta_pow_x = E::Fr::one();
+    let g1_p_terms: Vec<E::G1Projective> = [
+        &proof.g1_l_div_v,
+        &proof.g1_l,
+        &proof.g1_ql,
+        &proof.g1_d,
+        &proof.g1_qd,
+        &proof.g1_b0,
+        &statement,
+        &proof.g1_qb,
+    ]
+    .iter()
+    .map(|g1| {
+        let term = g1.mul(eta_pow_x);
+        eta_pow_x *= eta;
 
-    // Round 15-4: The fourth pairing.
+        term
+    })
+    .collect();
+    let mut g1_proj_p = E::G1Projective::zero();
+    for term in g1_p_terms {
+        g1_proj_p = g1_proj_p.add(&term);
+    }
+    let g1_p = g1_proj_p.into_affine();
+
+    // Round 15-4: The third pairing check.
+    let left_pairing = E::pairing(proof.g1_hp, g2_tau);
+    let g1_gamma_mul_hp = proof.g1_hp.mul(gamma).into_affine();
+    let g1_neg_p_at_gamma = fr_to_g1_proj::<E>(-fr_p_at_gamma).into_affine();
+    let right_pairing = E::pairing(g1_p + g1_neg_p_at_gamma + g1_gamma_mul_hp, g2_one);
+
+    if left_pairing != right_pairing {
+        return Err(Error::Pairing3Failed);
+    }
+
+    // Round 15-4: The fourth pairing check.
     let g1_neg_a0 = fr_to_g1_proj::<E>(-proof.fr_a_at_zero).into_affine();
     let left_pairing = E::pairing(proof.g1_a + g1_neg_a0, g2_one);
     let right_pairing = E::pairing(proof.g1_a0, g2_tau);
@@ -182,22 +195,14 @@ pub fn verify<E: PairingEngine>(
     // Round 15-4: The first equation check.
     // TODO: Optimize point operations.
     let fr_gamma_pow_k_sub_one = gamma.pow([pp.num_queries as u64]) - E::Fr::one();
-    let mut g1_equation1 = g1_proj_l_at_gamma_div_v
-        .into_affine()
+    let g1_l_at_gamma_div_v = fr_to_g1_proj::<E>(proof.fr_l_at_gamma_div_v).into_affine();
+    let mut g1_equation1 = g1_l_at_gamma_div_v
         .mul(-(fr_gamma_pow_k_sub_one * pp.domain_w.group_gen))
         .into_affine();
-    g1_equation1 = g1_equation1.add(
-        g1_proj_l_at_gamma
-            .into_affine()
-            .mul(fr_gamma_pow_k_sub_one)
-            .into_affine(),
-    );
-    g1_equation1 = g1_equation1.add(
-        g1_proj_ql_at_gamma
-            .into_affine()
-            .mul(-fr_zv_at_gamma)
-            .into_affine(),
-    );
+    let g1_l_at_gamma = fr_to_g1_proj::<E>(proof.fr_l_at_gamma).into_affine();
+    g1_equation1 = g1_equation1.add(g1_l_at_gamma.mul(fr_gamma_pow_k_sub_one).into_affine());
+    let g1_ql_at_gamma = fr_to_g1_proj::<E>(proof.fr_ql_at_gamma).into_affine();
+    g1_equation1 = g1_equation1.add(g1_ql_at_gamma.mul(-fr_zv_at_gamma).into_affine());
     if g1_equation1 != E::G1Affine::zero() {
         return Err(Error::EquationCheck1Failed);
     }
@@ -205,13 +210,10 @@ pub fn verify<E: PairingEngine>(
     // Round 15-4: The second equation check.
     // TODO: Optimize point operations.
     let fr_zk_at_gamma = pp.domain_k.evaluate_vanishing_polynomial(gamma);
-    let mut g1_equation2 = g1_proj_l_at_gamma.sub(g1_proj_d_at_gamma).into_affine();
-    g1_equation2 = g1_equation2.add(
-        g1_proj_qd_at_gamma
-            .into_affine()
-            .mul(-fr_zk_at_gamma)
-            .into_affine(),
-    );
+    let g1_d_at_gamma = fr_to_g1_proj::<E>(proof.fr_d_at_gamma).into_affine();
+    let mut g1_equation2 = g1_l_at_gamma.add(g1_d_at_gamma.neg());
+    let g1_qd_at_gamma = fr_to_g1_proj::<E>(proof.fr_qd_at_gamma).into_affine();
+    g1_equation2 = g1_equation2.add(g1_qd_at_gamma.mul(-fr_zk_at_gamma).into_affine());
     if g1_equation2 != E::G1Affine::zero() {
         return Err(Error::EquationCheck2Failed);
     }
