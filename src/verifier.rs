@@ -54,12 +54,12 @@ pub fn verify<E: PairingEngine>(
     let delta = transcript.get_and_append_challenge(b"delta");
     let g1_a = proof.g1_a;
     let g2_t = tpp.g2_t;
-    let g2_tau = pp.g2_srs[1].clone();
+    let g2_tau = pp.g2_srs[1];
     let left_pairing = E::pairing(g1_a, g2_t + g2_tau.mul(delta).into_affine());
 
     let g1_qa = proof.g1_qa;
     let g1_neg_beta_mul_a = g1_a.mul(-beta).into_affine();
-    let g2_one = pp.g2_srs[0].clone();
+    let g2_one = pp.g2_srs[0];
     let right_pairing =
         E::pairing(g1_qa, g2_zw).mul(E::pairing(g1_m.add(g1_neg_beta_mul_a), g2_one));
 
@@ -71,7 +71,7 @@ pub fn verify<E: PairingEngine>(
     if pp.num_segments > pp.num_queries {
         let deg_tau = (pp.num_segments - pp.num_queries) * pp.segment_size - 1;
         let left_pairing = E::pairing(proof.g1_b0, pp.g2_srs[deg_tau]);
-        let right_pairing = E::pairing(proof.g1_px, pp.g2_srs[0]);
+        let right_pairing = E::pairing(proof.g1_px, g2_one);
 
         if left_pairing != right_pairing {
             return Err(Error::DegreeCheckFailed);
@@ -80,7 +80,7 @@ pub fn verify<E: PairingEngine>(
         // TODO: current unit test does not cover this case
         let deg_tau = (pp.num_queries - pp.num_segments) * pp.segment_size - 1;
         let left_pairing = E::pairing(proof.g1_a0, pp.g2_srs[deg_tau]);
-        let right_pairing = E::pairing(proof.g1_px, pp.g2_srs[0]);
+        let right_pairing = E::pairing(proof.g1_px, g2_one);
 
         if left_pairing != right_pairing {
             return Err(Error::DegreeCheckFailed);
@@ -93,7 +93,7 @@ pub fn verify<E: PairingEngine>(
     transcript.append_element(b"eval_b0_at_gamma", &proof.fr_b0_at_gamma);
     transcript.append_element(b"eval_f_at_gamma", &proof.fr_f_at_gamma);
     transcript.append_element(b"eval_l_at_gamma", &proof.fr_l_at_gamma);
-    transcript.append_element(b"eval_a_at_zero", &proof.eval_a_at_zero);
+    transcript.append_element(b"eval_a_at_zero", &proof.fr_a_at_zero);
     transcript.append_element(b"eval_l_at_v_mul_gamma", &proof.fr_l_at_v_mul_gamma);
     transcript.append_element(b"eval_ql_at_gamma", &proof.fr_ql_at_gamma);
     transcript.append_element(b"eval_d_at_gamma", &proof.fr_d_at_gamma);
@@ -108,7 +108,7 @@ pub fn verify<E: PairingEngine>(
     let fr_inv_witness_elem_size = E::Fr::from(witness_elem_size as u64)
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
-    let fr_b_at_zero = proof.eval_a_at_zero * fr_table_elem_size * fr_inv_witness_elem_size;
+    let fr_b_at_zero = proof.fr_a_at_zero * fr_table_elem_size * fr_inv_witness_elem_size;
 
     // Round 15-2: Compute q_{B, gamma}
     // Compute the inverse of zv_{gamma}
@@ -163,18 +163,18 @@ pub fn verify<E: PairingEngine>(
     let g1_neg_p_gamma = g1_proj_neg_p_gamma.into_affine();
 
     // Round 15-4: The third pairing.
-    // let left_pairing = E::pairing(proof.g1_hp, pp.g2_srs[1]);
-    // let g1_delta_mul_hp = proof.g1_hp.mul(delta).into_affine();
-    // let right_pairing = E::pairing(proof.g1_p + g1_neg_p_gamma + g1_delta_mul_hp, pp.g2_srs[0]);
-    //
-    // if left_pairing != right_pairing {
-    //     return Err(Error::Pairing3Failed);
-    // }
+    let left_pairing = E::pairing(proof.g1_hp, g2_tau);
+    let g1_delta_mul_hp = proof.g1_hp.mul(delta).into_affine();
+    let right_pairing = E::pairing(proof.g1_p + g1_neg_p_gamma + g1_delta_mul_hp, g2_one);
+
+    if left_pairing != right_pairing {
+        return Err(Error::Pairing3Failed);
+    }
 
     // Round 15-4: The fourth pairing.
-    let g1_neg_a0 = fr_to_g1_proj::<E>(-proof.eval_a_at_zero).into_affine();
-    let left_pairing = E::pairing(proof.g1_a + g1_neg_a0, pp.g2_srs[0]);
-    let right_pairing = E::pairing(proof.g1_a0, pp.g2_srs[1]);
+    let g1_neg_a0 = fr_to_g1_proj::<E>(-proof.fr_a_at_zero).into_affine();
+    let left_pairing = E::pairing(proof.g1_a + g1_neg_a0, g2_one);
+    let right_pairing = E::pairing(proof.g1_a0, g2_tau);
     if left_pairing != right_pairing {
         return Err(Error::Pairing4Failed);
     }
@@ -223,7 +223,13 @@ mod tests {
 
         let rng = &mut test_rng();
 
-        let proof: Proof<Bn254> = prove::<Bn254>(&pp, &t, &tpp, &witness, rng).unwrap();
+        let proof: Proof<Bn254> = match prove::<Bn254>(&pp, &t, &tpp, &witness, rng) {
+            Ok(proof) => proof,
+            Err(err) => {
+                eprintln!("{:?}", err);
+                panic!("Failed to prove");
+            }
+        };
 
         let result = match verify::<Bn254>(&pp, &tpp, statement, &proof, rng) {
             Ok(_) => true,
