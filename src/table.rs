@@ -25,7 +25,7 @@ impl<E: PairingEngine> Table<E> {
         let segment_size = pp.segment_size;
 
         if segment_values.len() != num_segments {
-            return Err(Error::InvalidNumerOfSegments(segment_values.len()));
+            return Err(Error::InvalidNumberOfSegments(segment_values.len()));
         }
 
         let mut values = Vec::with_capacity(num_segments * segment_size);
@@ -48,7 +48,7 @@ impl<E: PairingEngine> Table<E> {
         pp: &PublicParameters<E>,
     ) -> Result<TablePreprocessedParameters<E>, Error> {
         if self.num_segments != pp.num_segments {
-            return Err(Error::InvalidNumerOfSegments(self.num_segments));
+            return Err(Error::InvalidNumberOfSegments(self.num_segments));
         }
 
         if self.segment_size != pp.segment_size {

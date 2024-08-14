@@ -1,8 +1,9 @@
-use ark_ec::PairingEngine;
-use ark_poly::{EvaluationDomain, UVPolynomial};
+use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_poly::univariate::DensePolynomial;
+use ark_poly::{EvaluationDomain, UVPolynomial};
 
 use crate::error::Error;
+use crate::kzg::Kzg;
 use crate::public_parameters::PublicParameters;
 use crate::table::Table;
 
@@ -15,7 +16,11 @@ pub struct Witness<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> Witness<E> {
-    pub fn new(pp: &PublicParameters<E>, table: &Table<E>, queried_segment_indices: &[usize]) -> Result<Self, Error> {
+    pub fn new(
+        pp: &PublicParameters<E>,
+        table: &Table<E>,
+        queried_segment_indices: &[usize],
+    ) -> Result<Self, Error> {
         if queried_segment_indices.len() != pp.num_queries {
             return Err(Error::InvalidNumberOfQueries(queried_segment_indices.len()));
         }
@@ -47,6 +52,10 @@ impl<E: PairingEngine> Witness<E> {
             queried_segment_indices: queried_segment_indices.to_vec(),
         })
     }
+
+    pub fn generate_statement(&self, g1_srs: &[E::G1Affine]) -> E::G1Affine {
+        Kzg::<E>::commit_g1(g1_srs, &self.poly_f).into_affine()
+    }
 }
 
 #[cfg(test)]
@@ -62,13 +71,12 @@ mod tests {
     #[test]
     fn test_witness_new() {
         let mut rng = test_rng();
-        let pp = PublicParameters::setup(&mut rng, 8, 4, 4)
-            .expect("Failed to setup public parameters");
+        let pp =
+            PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
-        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> = segments
-            .iter().map(|segment| segment.as_slice()).collect();
-        let t = Table::<Bn254>::new(&pp, &segment_slices)
-            .expect("Failed to create table");
+        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> =
+            segments.iter().map(|segment| segment.as_slice()).collect();
+        let t = Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
 
         let queried_segment_indices: Vec<usize> = (0..pp.num_queries)
             .map(|_| rng.next_u32() as usize % pp.num_segments)

@@ -2,13 +2,12 @@
 pub enum Error {
     FailedToCreateEvaluationDomain,
     FailedToInverseFieldElement,
-    
 
     InvalidCommitmentLength(String),
     InvalidLagrangeBasisCommitments(String),
     InvalidQuotientPolynomialCommitments(String),
     InvalidStructuredReferenceStrings,
-    InvalidNumerOfSegments(usize),
+    InvalidNumberOfSegments(usize),
     InvalidNumberOfQueries(usize),
     InvalidSegmentIndex(usize),
     InvalidSegmentElementIndex(usize),
@@ -16,11 +15,15 @@ pub enum Error {
     InvalidEvaluationDomainSize(usize),
 
     SizeNotPowerOfTwo(usize),
-    
+
     Pairing1Failed,
     Pairing2Failed,
+    Pairing3Failed,
+    Pairing4Failed,
+    EquationCheck1Failed,
+    EquationCheck2Failed,
     DegreeCheckFailed,
-    
+
     // Caulk Sub-protocol
     FailedToDivideByVanishingPolynomial,
     RemainderAfterDivisionIsNonZero,

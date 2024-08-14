@@ -12,27 +12,36 @@ use crate::witness::Witness;
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::Field;
 use ark_poly::univariate::DensePolynomial;
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain, UVPolynomial};
+use ark_poly::{EvaluationDomain, Polynomial, Radix2EvaluationDomain, UVPolynomial};
 use ark_std::rand::prelude::StdRng;
 use ark_std::{One, Zero};
 
 pub struct Proof<E: PairingEngine> {
     // Round 1 message
-    pub(crate) g1_m: E::G1Affine,       // [M(tau)]_1
-    pub(crate) g1_m_div_w: E::G1Affine, // [M(tau / w)]_1
-    pub(crate) g1_qm: E::G1Affine,     // [Q_M(tau)]_1
-    g1_l: E::G1Affine,                  // [L(tau)]_1
-    g1_l_mul_v: E::G1Affine,            // [L(tau * v)]_1
-    g1_ql: E::G1Affine,                // [Q_L(tau)]_1
-    pub(crate) g1_d: E::G1Affine,       // [D(tau)]_1
-    g1_qd: E::G1Affine,                // [Q_D(tau)]_1
-    pub(crate) g1_a: E::G1Affine,       // [A(tau)]_1
-    pub(crate) g1_qa: E::G1Affine,     // [Q_A(tau)]_1
-    g1_b: E::G1Affine,                  // [B(tau)]_1
-    g1_qb: E::G1Affine,                // [Q_B(tau)]_1
-    pub(crate) g1_a0: E::G1Affine,                 // [A_0(tau)]_1
-    pub(crate) g1_b0: E::G1Affine,                 // [B_0(tau)]_1
-    pub(crate) g1_px: E::G1Affine,                 // [P_A(tau)]_1 or [P_B(tau)]_1 or zero
+    pub(crate) g1_m: E::G1Affine,          // [M(tau)]_1
+    pub(crate) g1_m_div_w: E::G1Affine,    // [M(tau / w)]_1
+    pub(crate) g1_qm: E::G1Affine,         // [Q_M(tau)]_1
+    pub(crate) g1_l: E::G1Affine,          // [L(tau)]_1
+    pub(crate) g1_l_div_v: E::G1Affine,    // [L(tau / v)]_1
+    pub(crate) g1_ql: E::G1Affine,         // [Q_L(tau)]_1
+    pub(crate) g1_d: E::G1Affine,          // [D(tau)]_1
+    pub(crate) g1_qd: E::G1Affine,         // [Q_D(tau)]_1
+    pub(crate) g1_a: E::G1Affine,          // [A(tau)]_1
+    pub(crate) g1_qa: E::G1Affine,         // [Q_A(tau)]_1
+    g1_b: E::G1Affine,                     // [B(tau)]_1
+    pub(crate) g1_qb: E::G1Affine,         // [Q_B(tau)]_1
+    pub(crate) g1_a0: E::G1Affine,         // [A_0(tau)]_1
+    pub(crate) g1_b0: E::G1Affine,         // [B_0(tau)]_1
+    pub(crate) g1_px: E::G1Affine,         // [P_A(tau)]_1 or [P_B(tau)]_1 or zero
+    pub(crate) fr_b0_at_gamma: E::Fr,      // b_{0,gamma} = B_0(gamma)
+    pub(crate) fr_f_at_gamma: E::Fr,       // f_{gamma} = F(gamma)
+    pub(crate) fr_l_at_gamma: E::Fr,       // l_{gamma} = L(gamma)
+    pub(crate) fr_a_at_zero: E::Fr,        // a_0 = A(0)
+    pub(crate) fr_l_at_gamma_div_v: E::Fr, // l_{gamma,v} = L(gamma / v)
+    pub(crate) fr_ql_at_gamma: E::Fr,      // q_{gamma,L} = Q_L(gamma)
+    pub(crate) fr_d_at_gamma: E::Fr,       // d_{gamma} = D(gamma)
+    pub(crate) fr_qd_at_gamma: E::Fr,      // q_{gamma, D} = Q_D(gamma)
+    pub(crate) g1_hp: E::G1Affine,         // [H_P(tau)]_1
 
     pub(crate) multi_unity_proof: MultiUnityProof<E>, // Proof of the Caulk Sub-protocol
 }
@@ -42,9 +51,9 @@ pub fn prove<E: PairingEngine>(
     table: &Table<E>,
     tpp: &TablePreprocessedParameters<E>,
     witness: &Witness<E>,
-    // statement: E::G1Affine,
     rng: &mut StdRng,
 ) -> Result<Proof<E>, Error> {
+    // TODO: fix transcript inputs.
     let mut transcript = Transcript::<E::Fr>::new();
 
     // Round 1-1: Compute the multiplicity polynomial M of degree (ns - 1),
@@ -77,34 +86,36 @@ pub fn prove<E: PairingEngine>(
     // and send [Q_D(tau)]_1 to the verifier.
     let IndexPolynomialsAndQuotients {
         g1_l,
-        g1_l_mul_v,
+        g1_l_div_v,
         g1_d,
-        poly_d,
         g1_ql,
         g1_qd,
+        poly_l,
+        poly_ql,
+        poly_l_div_v,
+        poly_eval_list_l,
         poly_coset_eval_list_l,
+        poly_d,
+        poly_qd,
     } = index_polynomials_and_quotients_g1::<E>(
         &pp.domain_w,
         &pp.domain_k,
         &pp.domain_v,
         &pp.g1_l_v_list,
-        &pp.g1_l_v_mul_v_list,
+        &pp.g1_l_v_div_v_list,
         &pp.g1_srs,
         &witness.queried_segment_indices,
         pp.witness_size,
         pp.segment_size,
         pp.num_queries,
-    );
+    )?;
 
     // Round 2 is performed by the verifier
 
     // Round 3 - Round 8:
     // Using the instantiation of Lemma 5,
     // the prover and verifier engage in a protocol that polynomial L is well-formed.
-    let multi_unity_proof = match multi_unity_prove(pp, &mut transcript, &poly_d, &g1_d, rng) {
-        Ok(proof) => proof,
-        Err(e) => return Err(e),
-    };
+    let multi_unity_proof = multi_unity_prove(pp, &mut transcript, &poly_d, &g1_d, rng)?;
 
     // Round 9: The verifier sends random scalar fields beta, delta to the prover.
     // Use Fiat-Shamir heuristic to make the protocol non-interactive.
@@ -137,10 +148,9 @@ pub fn prove<E: PairingEngine>(
 
     // Round 10-3: The prover computes B(X) of degree ks-1,
     // and sends [B(tau)]_1 to the verifier.
-    let roots_of_unity_v = roots_of_unity::<E>(&pp.domain_v);
     let poly_eval_list_b: Result<Vec<E::Fr>, Error> = (0..pp.witness_size)
         .map(|i| {
-            (beta + witness.poly_eval_list_f[i] + delta * roots_of_unity_v[i])
+            (beta + witness.poly_eval_list_f[i] + delta * poly_eval_list_l[i])
                 .inverse()
                 .ok_or(Error::FailedToInverseFieldElement)
         })
@@ -158,7 +168,7 @@ pub fn prove<E: PairingEngine>(
         .iter()
         .zip(poly_coset_eval_list_f.iter())
         .zip(poly_coset_eval_list_l.iter())
-        .map(|((&b_i, &f_i), &l_i)| b_i * (beta + f_i + delta * l_i) - fr_one)
+        .map(|((&b_i, &f_i), &l_i)| (b_i * (beta + f_i + delta * l_i)) - fr_one)
         .collect();
     pp.domain_v
         .divide_by_vanishing_poly_on_coset_in_place(&mut poly_coset_eval_list_qb);
@@ -170,9 +180,7 @@ pub fn prove<E: PairingEngine>(
     // and sends [A_0(tau)]_1 and [B_0(tau)]_1 to the verifier.
     let mut g1_proj_a0 = E::G1Projective::zero();
     for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
-        if i % pp.segment_size == 0 {
-            g1_proj_a0 = g1_proj_a0 + pp.g1_l_w_zero_opening_proofs[i].mul(a_i);
-        }
+        g1_proj_a0 = g1_proj_a0 + pp.g1_l_w_opening_proofs_at_zero[i].mul(a_i);
     }
     let poly_b0 = DensePolynomial::from_coefficients_slice(&poly_b.coeffs[1..]);
     let g1_b0 = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_b0).into_affine();
@@ -193,19 +201,137 @@ pub fn prove<E: PairingEngine>(
         let coeff_shift = (pp.num_queries - pp.num_segments) * pp.segment_size - 1;
         let mut g1_proj_pa = E::G1Projective::zero();
         for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
-            if i % pp.segment_size == 0 {
-                g1_proj_pa = g1_proj_pa + pp.g1_l_w_zero_opening_proofs[i + coeff_shift].mul(a_i);
-            }
+            g1_proj_pa = g1_proj_pa + pp.g1_l_w_opening_proofs_at_zero[i + coeff_shift].mul(a_i);
         }
         g1_px = g1_proj_pa.into_affine();
     }
+
+    // Round 11-3: The verifier sends random scalar gamma to the prover.
+    // Use Fiat-Shamir heuristic to make the protocol non-interactive.
+    let gamma = transcript.get_and_append_challenge(b"gamma");
+
+    // Round 12: The prover sends b_{0,gamma} = B_0(gamma), f_{gamma} = F(gamma),
+    // l_{gamma} = L(gamma), a_0 = A(0), l_{gamma,v} = L(v*gamma), q_{gamma,L} = Q_L(gamma),
+    // d_{gamma} = D(gamma), and q_{gamma, D} = Q_D(gamma) to the verifier.
+    let fr_b0_at_gamma = poly_b0.evaluate(&gamma);
+    let fr_f_at_gamma = witness.poly_f.evaluate(&gamma);
+    let fr_l_at_gamma = poly_l.evaluate(&gamma);
+    // Compute a_0 using sumcheck lemma.
+    let fr_a_at_zero = {
+        let fr_b_at_zero = poly_b.evaluate(&E::Fr::zero());
+        let table_elem_size = pp.num_segments * pp.segment_size;
+        let fr_inv_table_elem_size = E::Fr::from(table_elem_size as u64)
+            .inverse()
+            .ok_or(Error::FailedToInverseFieldElement)?;
+        let witness_elem_size = pp.num_queries * pp.segment_size;
+        let fr_witness_elem_size = E::Fr::from(witness_elem_size as u64);
+
+        fr_b_at_zero * fr_witness_elem_size * fr_inv_table_elem_size
+    };
+    let fr_gamma_div_v = gamma / pp.domain_v.group_gen;
+    let fr_l_at_gamma_div_v = poly_l.evaluate(&fr_gamma_div_v);
+    let fr_ql_at_gamma = poly_ql.evaluate(&gamma);
+    let fr_d_at_gamma = poly_d.evaluate(&gamma);
+    let fr_qd_at_gamma = poly_qd.evaluate(&gamma);
+
+    // TODO: Optimize transcript implementation.
+    transcript.append_element(b"eval_b0_at_gamma", &fr_b0_at_gamma);
+    transcript.append_element(b"eval_f_at_gamma", &fr_f_at_gamma);
+    transcript.append_element(b"eval_l_at_gamma", &fr_l_at_gamma);
+    transcript.append_element(b"eval_a_at_zero", &fr_a_at_zero);
+    transcript.append_element(b"eval_l_at_v_mul_gamma", &fr_l_at_gamma_div_v);
+    transcript.append_element(b"eval_ql_at_gamma", &fr_ql_at_gamma);
+    transcript.append_element(b"eval_d_at_gamma", &fr_d_at_gamma);
+    transcript.append_element(b"eval_qd_at_gamma", &fr_qd_at_gamma);
+
+    // Round 11-3: The verifier sends random scalar eta to the prover.
+    // Use Fiat-Shamir heuristic to make the protocol non-interactive.
+    let eta = transcript.get_and_append_challenge(b"eta");
+
+    // Round 14: The prover computes P(X), H_P(X),
+    // and sends [H_P(tau)]_1 and [P(tau)]_1 to the verifier.
+    // Compute P(X) = L(Xv) + eta * L(X) + eta^2 * Q_L(X) + eta^3 * D(X) + eta^4 * Q_D(X) +
+    // eta^5 * B_0(X) + eta^6 * F(X) + eta^7 * Q_B(X)
+    let mut eta_pow_x = E::Fr::one();
+    let poly_p_terms: Vec<DensePolynomial<E::Fr>> = [
+        &poly_l_div_v,
+        &poly_l,
+        &poly_ql,
+        &poly_d,
+        &poly_qd,
+        &poly_b0,
+        &witness.poly_f,
+        &poly_qb,
+    ]
+    .iter()
+    .map(|poly| {
+        // Scale the polynomial coefficients by eta^x
+        let coefficients: Vec<E::Fr> = poly.coeffs.iter().map(|&c| c * eta_pow_x).collect();
+        eta_pow_x = eta_pow_x.mul(&eta);
+
+        DensePolynomial::from_coefficients_vec(coefficients)
+    })
+    .collect();
+    let mut poly_p: DensePolynomial<E::Fr> = DensePolynomial::zero();
+    for term in poly_p_terms.iter() {
+        poly_p = poly_p.add(term.clone());
+    }
+
+    // Compute b_{gamma} = b_{0, gamma} * gamma + b_0
+    let fr_b_at_gamma = fr_b0_at_gamma * gamma + poly_b.evaluate(&E::Fr::zero());
+    // Compute q_{B, gamma}
+    let mut fr_qb_at_gamma = fr_f_at_gamma + beta + (delta * fr_l_at_gamma);
+    fr_qb_at_gamma = fr_qb_at_gamma * fr_b_at_gamma - E::Fr::one();
+    let fr_inv_zv_at_gamma = pp
+        .domain_v
+        .evaluate_vanishing_polynomial(gamma)
+        .inverse()
+        .ok_or(Error::FailedToInverseFieldElement)?;
+    fr_qb_at_gamma = fr_qb_at_gamma * fr_inv_zv_at_gamma;
+
+    // Compute p_gamma = l_{gamma, v} + eta * l_{gamma} + eta^2 * q_{gamma, L} + eta^3 * d_{gamma} +
+    // eta^4 * q_{gamma, D} + eta^5 * b_{0, gamma} + eta^6 * f_{gamma} + eta^7 * q_{B, gamma}
+    let mut fr_eta_pow_x = E::Fr::one();
+    let p_gamma_terms: Vec<E::Fr> = [
+        fr_l_at_gamma_div_v,
+        fr_l_at_gamma,
+        fr_ql_at_gamma,
+        fr_d_at_gamma,
+        fr_qd_at_gamma,
+        fr_b0_at_gamma,
+        fr_f_at_gamma,
+        fr_qb_at_gamma,
+    ]
+    .iter()
+    .map(|&eval| {
+        let term = eval * fr_eta_pow_x;
+        fr_eta_pow_x = fr_eta_pow_x.mul(&eta);
+
+        term
+    })
+    .collect();
+    let mut fr_p_at_gamma = E::Fr::zero();
+    for term in p_gamma_terms {
+        fr_p_at_gamma = fr_p_at_gamma.add(&term);
+    }
+
+    // Compute H_P(X) = (P(X) - p_{gamma}) / (X - gamma)
+    let mut poly_hp = poly_p.clone();
+    poly_hp = poly_hp.sub(&DensePolynomial::from_coefficients_slice(&[fr_p_at_gamma]));
+    poly_hp = poly_hp.div(&DensePolynomial::from_coefficients_slice(&[
+        -gamma,
+        E::Fr::one(),
+    ]));
+
+    // Commit to H_P(X)
+    let g1_hp = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_hp).into_affine();
 
     Ok(Proof {
         g1_m,
         g1_m_div_w,
         g1_qm,
         g1_l,
-        g1_l_mul_v,
+        g1_l_div_v,
         g1_ql,
         g1_d,
         g1_qd,
@@ -216,6 +342,16 @@ pub fn prove<E: PairingEngine>(
         g1_a0: g1_proj_a0.into_affine(),
         g1_b0,
         g1_px,
+        fr_b0_at_gamma,
+        fr_f_at_gamma,
+        fr_l_at_gamma,
+        fr_a_at_zero,
+        fr_l_at_gamma_div_v,
+        fr_ql_at_gamma,
+        fr_d_at_gamma,
+        fr_qd_at_gamma,
+        g1_hp,
+
         multi_unity_proof,
     })
 }
@@ -287,12 +423,17 @@ fn multiplicity_polynomials_and_quotient_g1<E: PairingEngine>(
 // containing [L(tau)]_1, [L(tau * v)]_1, [D(tau)]_1, [Q_L(tau)]_1, and [Q_D(tau)]_1.
 struct IndexPolynomialsAndQuotients<E: PairingEngine> {
     g1_l: E::G1Affine,
-    g1_l_mul_v: E::G1Affine,
+    g1_l_div_v: E::G1Affine,
     g1_d: E::G1Affine,
-    poly_d: DensePolynomial<E::Fr>,
     g1_ql: E::G1Affine,
     g1_qd: E::G1Affine,
+    poly_l: DensePolynomial<E::Fr>,
+    poly_ql: DensePolynomial<E::Fr>,
+    poly_l_div_v: DensePolynomial<E::Fr>,
+    poly_eval_list_l: Vec<E::Fr>,
     poly_coset_eval_list_l: Vec<E::Fr>,
+    poly_d: DensePolynomial<E::Fr>,
+    poly_qd: DensePolynomial<E::Fr>,
 }
 
 // Compute the commitments of [L(tau)]_1, [L(tau*v)]_1, [D(tau)]_1, [Q_L(tau)]_1, and [Q_D(tau)]_1
@@ -301,32 +442,32 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
     domain_k: &Radix2EvaluationDomain<E::Fr>,
     domain_v: &Radix2EvaluationDomain<E::Fr>,
     g1_l_v_list: &[E::G1Affine],
-    g1_l_v_mul_v_list: &[E::G1Affine],
+    g1_l_v_div_v_list: &[E::G1Affine],
     g1_srs: &[E::G1Affine],
     queried_segment_indices: &[usize],
     witness_size: usize,
     segment_size: usize,
     num_queries: usize,
-) -> IndexPolynomialsAndQuotients<E> {
+) -> Result<IndexPolynomialsAndQuotients<E>, Error> {
     let mut poly_eval_list_l: Vec<E::Fr> = Vec::with_capacity(witness_size);
     let mut g1_proj_l = E::G1Projective::zero(); // [L(tau)]_1
-    let mut g1_proj_l_mul_v = E::G1Projective::zero(); // [L(tau * v)]_1
+    let mut g1_proj_l_div_v = E::G1Projective::zero(); // [L(tau / v)]_1
     let roots_of_unity_w: Vec<E::Fr> = roots_of_unity::<E>(&domain_w);
     let mut witness_element_index: usize = 0;
     let mut poly_eval_list_d: Vec<E::Fr> = Vec::with_capacity(num_queries);
     for &seg_index in queried_segment_indices.iter() {
         let segment_element_indices = seg_index * segment_size..(seg_index + 1) * segment_size;
-        for j in segment_element_indices {
-            let root_of_unity_w = roots_of_unity_w[j];
+        for elem_index in segment_element_indices {
+            let root_of_unity_w = roots_of_unity_w[elem_index];
             poly_eval_list_l.push(root_of_unity_w);
             // Linear combination of [L^V_i(tau)]_1
             g1_proj_l = g1_l_v_list[witness_element_index]
                 .mul(root_of_unity_w)
                 .add(g1_proj_l);
-            // Linear combination of [L^V_i(tau * v)]_1
-            g1_proj_l_mul_v = g1_l_v_mul_v_list[witness_element_index]
+            // Linear combination of [L^V_i(tau / v)]_1
+            g1_proj_l_div_v = g1_l_v_div_v_list[witness_element_index]
                 .mul(root_of_unity_w)
-                .add(g1_proj_l_mul_v);
+                .add(g1_proj_l_div_v);
             witness_element_index += 1;
         }
 
@@ -338,52 +479,67 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
     let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
     let g1_d = Kzg::<E>::commit_g1(g1_srs, &poly_d).into_affine();
 
-    // Compute the quotient polynomial Q_L(X) s.t. (X^k - 1)*(L(Xv) - w*L(X)) = Z_V(X)*Q_L(X),
-    // Inverse FFT costs O(ks log(ks)) operations
+    // Compute the quotient polynomial Q_L(X) s.t. (X^k - 1) * (L(X) - w * L(X / v)) = Z_V(X) * Q_L(X),
+    // Inverse FFT costs O(ks log(ks)) operations.
     let poly_coeff_list_l = domain_v.ifft(&poly_eval_list_l);
-    // The coefficients of L(Xv). We can scale each L(X) polynomial coefficients by v^i
+    // The coefficients of L(X / v).
+    // We can divide each L(X) polynomial coefficients by v^i.
     let roots_of_unity_v: Vec<E::Fr> = roots_of_unity::<E>(&domain_v);
-    let poly_coeff_list_l_mul_v: Vec<E::Fr> = poly_coeff_list_l
+    let poly_coeff_list_l_div_v: Vec<E::Fr> = poly_coeff_list_l
         .iter()
         .enumerate()
-        .map(|(i, &c)| c * roots_of_unity_v[i])
+        .map(|(i, &c)| c / roots_of_unity_v[i])
         .collect();
-    let poly_l_mul_v = DensePolynomial::from_coefficients_vec(poly_coeff_list_l_mul_v);
-    // The coefficients of w*L(X).
-    let generator_w = roots_of_unity_w[1];
-    let poly_coeff_list_w_mul_l: Vec<E::Fr> =
-        poly_coeff_list_l.iter().map(|&c| c * generator_w).collect();
-    let poly_w_mul_l = DensePolynomial::from_coefficients_vec(poly_coeff_list_w_mul_l);
-    // The coefficients of f(X) = X^k - 1
-    let mut poly_coeff_list_x_pow_k_sub_one = vec![E::Fr::zero(); witness_size];
-    poly_coeff_list_x_pow_k_sub_one[num_queries] = E::Fr::one();
-    poly_coeff_list_x_pow_k_sub_one[0] = -E::Fr::one();
-    let poly_x_pow_k_sub_one =
-        DensePolynomial::from_coefficients_vec(poly_coeff_list_x_pow_k_sub_one);
-    let vanishing_poly_v: DensePolynomial<E::Fr> = domain_v.vanishing_polynomial().into();
-    let mut poly_ql = poly_l_mul_v.sub(&poly_w_mul_l);
-    poly_ql = poly_ql.div(&vanishing_poly_v);
+    let poly_l_div_v = DensePolynomial::from_coefficients_slice(&poly_coeff_list_l_div_v);
+    // The coefficients of w * L(X / v).
+    // We can multiply each L(X / v) polynomial coefficients by w.
+    let generator_w = domain_w.group_gen;
+    let poly_coeff_list_w_mul_l_div_v: Vec<E::Fr> = poly_coeff_list_l_div_v
+        .iter()
+        .map(|&c| c * generator_w)
+        .collect();
+    let poly_w_mul_l_div_v = DensePolynomial::from_coefficients_vec(poly_coeff_list_w_mul_l_div_v);
+    // Compute y(X) = X^k - 1, which is the vanishing polynomial of Domain V.
+    let poly_x_pow_k_sub_one = domain_k.vanishing_polynomial().into();
+    let poly_l = DensePolynomial::from_coefficients_vec(poly_coeff_list_l);
+    let mut poly_ql = poly_l.sub(&poly_w_mul_l_div_v);
     poly_ql = poly_ql.mul(&poly_x_pow_k_sub_one);
+    let remainder: DensePolynomial<E::Fr>;
+    (poly_ql, remainder) = poly_ql
+        .divide_by_vanishing_poly(*domain_v)
+        .ok_or(Error::FailedToDivideByVanishingPolynomial)?;
+    if !remainder.is_zero() {
+        return Err(Error::RemainderAfterDivisionIsNonZero);
+    }
     let g1_ql = Kzg::<E>::commit_g1(&g1_srs, &poly_ql).into_affine();
 
     // Compute Q_D s.t. L(X) - D(X) = Z_K(X)*Q_D(X).
-    let poly_l = DensePolynomial::from_coefficients_vec(poly_coeff_list_l);
     let mut poly_qd = poly_l.sub(&poly_d);
-    let vanishing_poly_k: DensePolynomial<E::Fr> = domain_k.vanishing_polynomial().into();
-    poly_qd = poly_qd.div(&vanishing_poly_k);
+    let remainder: DensePolynomial<E::Fr>;
+    (poly_qd, remainder) = poly_qd
+        .divide_by_vanishing_poly(*domain_k)
+        .ok_or(Error::FailedToDivideByVanishingPolynomial)?;
+    if !remainder.is_zero() {
+        return Err(Error::RemainderAfterDivisionIsNonZero);
+    }
     let g1_qd = Kzg::<E>::commit_g1(&g1_srs, &poly_qd).into_affine();
 
     let poly_coset_eval_list_l = domain_v.coset_fft(&poly_l);
 
-    IndexPolynomialsAndQuotients {
+    Ok(IndexPolynomialsAndQuotients {
         g1_l: g1_proj_l.into_affine(),
-        g1_l_mul_v: g1_proj_l_mul_v.into_affine(),
+        g1_l_div_v: g1_proj_l_div_v.into_affine(),
         g1_d,
-        poly_d,
         g1_ql,
         g1_qd,
+        poly_l,
+        poly_ql,
+        poly_l_div_v,
+        poly_eval_list_l,
         poly_coset_eval_list_l,
-    }
+        poly_d,
+        poly_qd,
+    })
 }
 
 #[cfg(test)]
@@ -472,7 +628,9 @@ mod tests {
         let mut poly_qm = poly_m.clone();
         poly_qm = poly_qm.sub(&poly_m_div_w);
         poly_qm = poly_qm.naive_mul(&poly_x_pow_n_sub_one);
-        poly_qm = poly_qm.div(&pp.domain_w.vanishing_polynomial().into());
+        let remainder: DensePolynomial<Fr>;
+        (poly_qm, remainder) = poly_qm.divide_by_vanishing_poly(pp.domain_w).unwrap();
+        assert!(remainder.is_zero());
         let g1_qm_expected = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &poly_qm).into_affine();
 
         let MultiplicityPolynomialsAndQuotient {
