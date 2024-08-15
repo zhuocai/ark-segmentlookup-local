@@ -28,4 +28,7 @@ pub enum Error {
     FailedToDivideByVanishingPolynomial,
     RemainderAfterDivisionIsNonZero,
     FailedToCheckMultiUnity,
+
+    // Transcript
+    FailedToSerializeElement,
 }

@@ -7,13 +7,12 @@ use ark_ff::Field;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain, UVPolynomial};
 use ark_std::rand::prelude::StdRng;
-use ark_std::rand::RngCore;
 use ark_std::{One, UniformRand, Zero};
 
 use crate::error::Error;
 use crate::kzg::{convert_to_big_ints, CaulkKzg};
 use crate::public_parameters::PublicParameters;
-use crate::transcript::Transcript;
+use crate::transcript::{Label, Transcript};
 
 /// Modified from https://github.com/caulk-crypto/caulk/blob/main/src/multi/unity.rs
 // TODO:
@@ -35,7 +34,7 @@ pub struct MultiUnityProof<E: PairingEngine> {
     pub g1_pi4: E::G1Affine,
     pub g1_pi5: E::G1Affine,
 }
-pub fn multi_unity_prove<E: PairingEngine>(
+pub(crate) fn multi_unity_prove<E: PairingEngine>(
     pp: &PublicParameters<E>,
     transcript: &mut Transcript<E::Fr>,
     poly_d: &DensePolynomial<E::Fr>,
@@ -148,10 +147,12 @@ pub fn multi_unity_prove<E: PairingEngine>(
     let g1_h_2 =
         CaulkKzg::<E>::bi_poly_commit_g1(&pp.g1_srs, &partial_y_poly_list_h_2, log_num_segments);
 
-    transcript.append_element(b"caulk-u", g1_d);
-    transcript.append_element(b"caulk-u_bar", &g1_u_bar);
-    transcript.append_element(b"caulk-h2", &g1_h_2);
-    let alpha = transcript.get_and_append_challenge(b"alpha");
+    transcript.append_elements(&[
+        (Label::CaulkG1D, *g1_d),
+        (Label::CaulkG1UBar, g1_u_bar),
+        (Label::CaulkG1H2, g1_h_2),
+    ])?;
+    let alpha = transcript.get_and_append_challenge(Label::ChallengeCaulkAlpha)?;
 
     // Compute H_1(Y)
     let mut poly_u_alpha = DensePolynomial::zero();
@@ -182,8 +183,8 @@ pub fn multi_unity_prove<E: PairingEngine>(
     )
     .into_affine();
 
-    transcript.append_element(b"caulk-h1", &g1_h_1);
-    let beta = transcript.get_and_append_challenge(b"beta");
+    transcript.append_element(Label::CaulkG1H1, &g1_h_1)?;
+    let beta = transcript.get_and_append_challenge(Label::ChallengeCaulkBeta)?;
 
     let u_alpha_beta = poly_u_alpha.evaluate(&beta);
     let mut poly_p = DensePolynomial::from_coefficients_slice(&[u_alpha_beta.square()]);
@@ -283,13 +284,13 @@ fn blinded_vanishing_poly<E: PairingEngine>(
     DensePolynomial::from_coefficients_vec(rand_poly_coefficients)
 }
 
-pub fn multi_unity_verify<E: PairingEngine>(
+pub(crate) fn multi_unity_verify<E: PairingEngine>(
     pp: &PublicParameters<E>,
     transcript: &mut Transcript<E::Fr>,
     g1_d: &E::G1Affine,
     proof: &MultiUnityProof<E>,
     rng: &mut StdRng,
-) -> bool {
+) -> Result<bool, Error> {
     let mut pairing_inputs = multi_unity_verify_defer_pairing(
         transcript,
         &pp.g1_srs,
@@ -301,7 +302,7 @@ pub fn multi_unity_verify<E: PairingEngine>(
         &pp.lagrange_basis_log_n,
         g1_d,
         proof,
-    );
+    )?;
     assert_eq!(pairing_inputs.len(), 10);
 
     let mut zeta = E::Fr::rand(rng);
@@ -328,7 +329,7 @@ pub fn multi_unity_verify<E: PairingEngine>(
         .collect();
     let res = E::product_of_pairings(prepared_pairing_inputs.iter()).is_one();
 
-    res
+    Ok(res)
 }
 
 fn multi_unity_verify_defer_pairing<E: PairingEngine>(
@@ -340,16 +341,18 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
     domain_log_n: &Radix2EvaluationDomain<E::Fr>,
     log_num_segments: usize,
     lagrange_basis_log_n: &[DensePolynomial<E::Fr>],
-    g1_u: &E::G1Affine,
+    g1_d: &E::G1Affine,
     proof: &MultiUnityProof<E>,
-) -> Vec<(E::G1Projective, E::G2Projective)> {
-    transcript.append_element(b"caulk-u", g1_u);
-    transcript.append_element(b"caulk-u_bar", &proof.g1_u_bar);
-    transcript.append_element(b"caulk-h2", &proof.g1_h_2);
-    let alpha = transcript.get_and_append_challenge(b"alpha");
+) -> Result<Vec<(E::G1Projective, E::G2Projective)>, Error> {
+    transcript.append_elements(&[
+        (Label::CaulkG1D, *g1_d),
+        (Label::CaulkG1UBar, proof.g1_u_bar),
+        (Label::CaulkG1H2, proof.g1_h_2),
+    ])?;
+    let alpha = transcript.get_and_append_challenge(Label::ChallengeCaulkAlpha)?;
 
-    transcript.append_element(b"caulk-h1", &proof.g1_h_1);
-    let beta = transcript.get_and_append_challenge(b"beta");
+    transcript.append_element(Label::CaulkG1H1, &proof.g1_h_1)?;
+    let beta = transcript.get_and_append_challenge(Label::ChallengeCaulkBeta)?;
 
     let u_alpha_beta = proof.fr_v1 * lagrange_basis_log_n[0].evaluate(&beta) + proof.fr_v2;
 
@@ -372,7 +375,7 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
     let check1 = CaulkKzg::<E>::verify_defer_pairing_g1(
         g1_srs,
         g2_srs,
-        g1_u,
+        g1_d,
         None,
         &[alpha],
         &[proof.fr_v1],
@@ -422,7 +425,7 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
     ]
     .concat();
 
-    res
+    Ok(res)
 }
 
 #[cfg(test)]
@@ -431,6 +434,7 @@ mod tests {
     use crate::domain::roots_of_unity;
     use crate::kzg::Kzg;
     use ark_bn254::Bn254;
+    use ark_std::rand::RngCore;
     use ark_std::test_rng;
 
     #[test]
@@ -492,13 +496,9 @@ mod tests {
             multi_unity_prove::<Bn254>(&pp, &mut transcript, &poly_d, &g1_d, &mut rng).unwrap();
 
         let mut transcript = Transcript::new();
-        assert!(multi_unity_verify(
-            &pp,
-            &mut transcript,
-            &g1_d,
-            &multi_unity_proof,
-            &mut rng
-        ));
+        assert!(
+            multi_unity_verify(&pp, &mut transcript, &g1_d, &multi_unity_proof, &mut rng).unwrap()
+        );
 
         let mut incorrect_poly_eval_list_d = poly_eval_list_d.clone();
         incorrect_poly_eval_list_d[0] = <Bn254 as PairingEngine>::Fr::from(456);
@@ -518,7 +518,8 @@ mod tests {
             &incorrect_g1_d,
             &multi_unity_proof,
             &mut rng
-        ));
+        )
+        .unwrap());
 
         let mut transcript = Transcript::new();
         assert!(!multi_unity_prove::<Bn254>(
