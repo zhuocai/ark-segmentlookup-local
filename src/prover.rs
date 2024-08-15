@@ -7,7 +7,7 @@ use crate::kzg::Kzg;
 use crate::multi_unity::{multi_unity_prove, MultiUnityProof};
 use crate::public_parameters::PublicParameters;
 use crate::table::{Table, TablePreprocessedParameters};
-use crate::transcript::Transcript;
+use crate::transcript::{Label, Transcript};
 use crate::witness::Witness;
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::Field;
@@ -28,7 +28,6 @@ pub struct Proof<E: PairingEngine> {
     pub(crate) g1_qd: E::G1Affine,         // [Q_D(tau)]_1
     pub(crate) g1_a: E::G1Affine,          // [A(tau)]_1
     pub(crate) g1_qa: E::G1Affine,         // [Q_A(tau)]_1
-    g1_b: E::G1Affine,                     // [B(tau)]_1
     pub(crate) g1_qb: E::G1Affine,         // [Q_B(tau)]_1
     pub(crate) g1_a0: E::G1Affine,         // [A_0(tau)]_1
     pub(crate) g1_b0: E::G1Affine,         // [B_0(tau)]_1
@@ -53,7 +52,6 @@ pub fn prove<E: PairingEngine>(
     witness: &Witness<E>,
     rng: &mut StdRng,
 ) -> Result<Proof<E>, Error> {
-    // TODO: fix transcript inputs.
     let mut transcript = Transcript::<E::Fr>::new();
 
     // Round 1-1: Compute the multiplicity polynomial M of degree (ns - 1),
@@ -73,6 +71,12 @@ pub fn prove<E: PairingEngine>(
         &pp.g1_q4_list,
         pp.segment_size,
     );
+
+    transcript.append_elements(&[
+        (Label::G1M, g1_m),
+        (Label::G1MDivW, g1_m_div_w),
+        (Label::G1Qm, g1_qm),
+    ])?;
 
     // Round 1-3: Compute the indexing polynomial L(X) of degree (ks - 1),
     // which maps the segment element indices from the witness to the table.
@@ -110,6 +114,14 @@ pub fn prove<E: PairingEngine>(
         pp.num_queries,
     )?;
 
+    transcript.append_elements(&[
+        (Label::G1L, g1_l),
+        (Label::G1LDivV, g1_l_div_v),
+        (Label::G1Ql, g1_ql),
+        (Label::G1D, g1_d),
+        (Label::G1Qd, g1_qd),
+    ])?;
+
     // Round 2 is performed by the verifier
 
     // Round 3 - Round 8:
@@ -119,8 +131,8 @@ pub fn prove<E: PairingEngine>(
 
     // Round 9: The verifier sends random scalar fields beta, delta to the prover.
     // Use Fiat-Shamir heuristic to make the protocol non-interactive.
-    let beta = transcript.get_and_append_challenge(b"beta");
-    let delta = transcript.get_and_append_challenge(b"delta");
+    let beta = transcript.get_and_append_challenge(Label::ChallengeBeta)?;
+    let delta = transcript.get_and_append_challenge(Label::ChallengeDelta)?;
 
     // Round 10-1: The prover computes A(X) of degree ns-1 in sparse form,
     // and sends [A(tau)]_1 to the verifier.
@@ -146,8 +158,10 @@ pub fn prove<E: PairingEngine>(
         }
     }
 
-    // Round 10-3: The prover computes B(X) of degree ks-1,
-    // and sends [B(tau)]_1 to the verifier.
+    let g1_a = g1_proj_a.into_affine();
+    let g1_qa = g1_proj_qa.into_affine();
+
+    // Round 10-3: The prover computes B(X) of degree ks-1.
     let poly_eval_list_b: Result<Vec<E::Fr>, Error> = (0..pp.witness_size)
         .map(|i| {
             (beta + witness.poly_eval_list_f[i] + delta * poly_eval_list_l[i])
@@ -158,7 +172,6 @@ pub fn prove<E: PairingEngine>(
     let poly_eval_list_b = poly_eval_list_b?;
     let poly_coeff_list_b = pp.domain_v.ifft(&poly_eval_list_b);
     let poly_b = DensePolynomial::from_coefficients_vec(poly_coeff_list_b);
-    let g1_b = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_b).into_affine();
 
     // Round 10-4: The prover computes [Q_B(tau)]_1 using the SRS and Lemma 4.
     let poly_coset_eval_list_b = pp.domain_v.coset_fft(&poly_b);
@@ -182,6 +195,7 @@ pub fn prove<E: PairingEngine>(
     for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
         g1_proj_a0 = g1_proj_a0 + pp.g1_l_w_opening_proofs_at_zero[i].mul(a_i);
     }
+    let g1_a0 = g1_proj_a0.into_affine();
     let poly_b0 = DensePolynomial::from_coefficients_slice(&poly_b.coeffs[1..]);
     let g1_b0 = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_b0).into_affine();
 
@@ -206,9 +220,18 @@ pub fn prove<E: PairingEngine>(
         g1_px = g1_proj_pa.into_affine();
     }
 
+    transcript.append_elements(&[
+        (Label::G1A, g1_a),
+        (Label::G1Qa, g1_qa),
+        (Label::G1Qb, g1_qb),
+        (Label::G1A0, g1_a0),
+        (Label::G1B0, g1_b0),
+        (Label::G1Px, g1_px),
+    ])?;
+
     // Round 11-3: The verifier sends random scalar gamma to the prover.
     // Use Fiat-Shamir heuristic to make the protocol non-interactive.
-    let gamma = transcript.get_and_append_challenge(b"gamma");
+    let gamma = transcript.get_and_append_challenge(Label::ChallengeGamma)?;
 
     // Round 12: The prover sends b_{0,gamma} = B_0(gamma), f_{gamma} = F(gamma),
     // l_{gamma} = L(gamma), a_0 = A(0), l_{gamma,v} = L(v*gamma), q_{gamma,L} = Q_L(gamma),
@@ -234,19 +257,20 @@ pub fn prove<E: PairingEngine>(
     let fr_d_at_gamma = poly_d.evaluate(&gamma);
     let fr_qd_at_gamma = poly_qd.evaluate(&gamma);
 
-    // TODO: Optimize transcript implementation.
-    transcript.append_element(b"eval_b0_at_gamma", &fr_b0_at_gamma);
-    transcript.append_element(b"eval_f_at_gamma", &fr_f_at_gamma);
-    transcript.append_element(b"eval_l_at_gamma", &fr_l_at_gamma);
-    transcript.append_element(b"eval_a_at_zero", &fr_a_at_zero);
-    transcript.append_element(b"eval_l_at_v_mul_gamma", &fr_l_at_gamma_div_v);
-    transcript.append_element(b"eval_ql_at_gamma", &fr_ql_at_gamma);
-    transcript.append_element(b"eval_d_at_gamma", &fr_d_at_gamma);
-    transcript.append_element(b"eval_qd_at_gamma", &fr_qd_at_gamma);
+    transcript.append_elements(&[
+        (Label::FrB0AtGamma, fr_b0_at_gamma),
+        (Label::FrFAtGamma, fr_f_at_gamma),
+        (Label::FrLAtGamma, fr_l_at_gamma),
+        (Label::FrAAtZero, fr_a_at_zero),
+        (Label::FrLAtGammaDivV, fr_l_at_gamma_div_v),
+        (Label::FrQlAtGamma, fr_ql_at_gamma),
+        (Label::FrDAtGamma, fr_d_at_gamma),
+        (Label::FrQdAtGamma, fr_qd_at_gamma),
+    ])?;
 
     // Round 11-3: The verifier sends random scalar eta to the prover.
     // Use Fiat-Shamir heuristic to make the protocol non-interactive.
-    let eta = transcript.get_and_append_challenge(b"eta");
+    let eta = transcript.get_and_append_challenge(Label::ChallengeEta)?;
 
     // Round 14: The prover computes P(X), H_P(X),
     // and sends [H_P(tau)]_1 and [P(tau)]_1 to the verifier.
@@ -335,11 +359,10 @@ pub fn prove<E: PairingEngine>(
         g1_ql,
         g1_d,
         g1_qd,
-        g1_a: g1_proj_a.into_affine(),
-        g1_qa: g1_proj_qa.into_affine(),
-        g1_b,
+        g1_a,
+        g1_qa,
         g1_qb,
-        g1_a0: g1_proj_a0.into_affine(),
+        g1_a0,
         g1_b0,
         g1_px,
         fr_b0_at_gamma,

@@ -2,10 +2,10 @@ use crate::error::Error;
 use crate::multi_unity::multi_unity_verify;
 use crate::prover::Proof;
 use crate::public_parameters::PublicParameters;
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, Mul, Neg};
 
 use crate::table::TablePreprocessedParameters;
-use crate::transcript::Transcript;
+use crate::transcript::{Label, Transcript};
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::Field;
 use ark_poly::EvaluationDomain;
@@ -38,6 +38,20 @@ pub fn verify<E: PairingEngine>(
         return Err(Error::Pairing1Failed);
     }
 
+    transcript.append_elements(&[
+        (Label::G1M, g1_m),
+        (Label::G1MDivW, proof.g1_m_div_w),
+        (Label::G1Qm, g1_qm),
+    ])?;
+
+    transcript.append_elements(&[
+        (Label::G1L, proof.g1_l),
+        (Label::G1LDivV, proof.g1_l_div_v),
+        (Label::G1Ql, proof.g1_ql),
+        (Label::G1D, proof.g1_d),
+        (Label::G1Qd, proof.g1_qd),
+    ])?;
+
     // Round 3-8: Multi-unity check.
     if !multi_unity_verify(
         pp,
@@ -45,13 +59,13 @@ pub fn verify<E: PairingEngine>(
         &proof.g1_d,
         &proof.multi_unity_proof,
         rng,
-    ) {
+    )? {
         return Err(Error::FailedToCheckMultiUnity);
     }
 
     // Round 11: The second pairing check.
-    let beta = transcript.get_and_append_challenge(b"beta");
-    let delta = transcript.get_and_append_challenge(b"delta");
+    let beta = transcript.get_and_append_challenge(Label::ChallengeBeta)?;
+    let delta = transcript.get_and_append_challenge(Label::ChallengeDelta)?;
     let g1_a = proof.g1_a;
     let g2_t = tpp.g2_t;
     let g2_tau = pp.g2_srs[1];
@@ -87,19 +101,29 @@ pub fn verify<E: PairingEngine>(
         }
     }
 
-    let gamma = transcript.get_and_append_challenge(b"gamma");
+    transcript.append_elements(&[
+        (Label::G1A, g1_a),
+        (Label::G1Qa, g1_qa),
+        (Label::G1Qb, proof.g1_qb),
+        (Label::G1A0, proof.g1_a0),
+        (Label::G1B0, proof.g1_b0),
+        (Label::G1Px, proof.g1_px),
+    ])?;
 
-    // TODO: Optimize transcript implementation.
-    transcript.append_element(b"eval_b0_at_gamma", &proof.fr_b0_at_gamma);
-    transcript.append_element(b"eval_f_at_gamma", &proof.fr_f_at_gamma);
-    transcript.append_element(b"eval_l_at_gamma", &proof.fr_l_at_gamma);
-    transcript.append_element(b"eval_a_at_zero", &proof.fr_a_at_zero);
-    transcript.append_element(b"eval_l_at_v_mul_gamma", &proof.fr_l_at_gamma_div_v);
-    transcript.append_element(b"eval_ql_at_gamma", &proof.fr_ql_at_gamma);
-    transcript.append_element(b"eval_d_at_gamma", &proof.fr_d_at_gamma);
-    transcript.append_element(b"eval_qd_at_gamma", &proof.fr_qd_at_gamma);
+    let gamma = transcript.get_and_append_challenge(Label::ChallengeGamma)?;
 
-    let eta = transcript.get_and_append_challenge(b"eta");
+    transcript.append_elements(&[
+        (Label::FrB0AtGamma, proof.fr_b0_at_gamma),
+        (Label::FrFAtGamma, proof.fr_f_at_gamma),
+        (Label::FrLAtGamma, proof.fr_l_at_gamma),
+        (Label::FrAAtZero, proof.fr_a_at_zero),
+        (Label::FrLAtGammaDivV, proof.fr_l_at_gamma_div_v),
+        (Label::FrQlAtGamma, proof.fr_ql_at_gamma),
+        (Label::FrDAtGamma, proof.fr_d_at_gamma),
+        (Label::FrQdAtGamma, proof.fr_qd_at_gamma),
+    ])?;
+
+    let eta = transcript.get_and_append_challenge(Label::ChallengeEta)?;
 
     // Round 15-1: Compute b_0 = ns * a_0 / (ks)
     let table_elem_size = pp.num_segments * pp.segment_size;
