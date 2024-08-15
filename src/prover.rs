@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Mul, Sub};
 
 use crate::domain::roots_of_unity;
 use crate::error::Error;
@@ -268,87 +268,27 @@ pub fn prove<E: PairingEngine>(
         (Label::FrQdAtGamma, fr_qd_at_gamma),
     ])?;
 
-    // Round 11-3: The verifier sends random scalar eta to the prover.
-    // Use Fiat-Shamir heuristic to make the protocol non-interactive.
+    // Round 11-3: Use Fiat-Shamir transform to sample eta.
     let eta = transcript.get_and_append_challenge(Label::ChallengeEta)?;
 
-    // Round 14: The prover computes P(X), H_P(X),
-    // and sends [H_P(tau)]_1 and [P(tau)]_1 to the verifier.
-    // Compute P(X) = L(Xv) + eta * L(X) + eta^2 * Q_L(X) + eta^3 * D(X) + eta^4 * Q_D(X) +
-    // eta^5 * B_0(X) + eta^6 * F(X) + eta^7 * Q_B(X)
-    let mut eta_pow_x = E::Fr::one();
-    let poly_p_terms: Vec<DensePolynomial<E::Fr>> = [
-        &poly_l_div_v,
-        &poly_l,
-        &poly_ql,
-        &poly_d,
-        &poly_qd,
-        &poly_b0,
-        &witness.poly_f,
-        &poly_qb,
-    ]
-    .iter()
-    .map(|poly| {
-        // Scale the polynomial coefficients by eta^x
-        let coefficients: Vec<E::Fr> = poly.coeffs.iter().map(|&c| c * eta_pow_x).collect();
-        eta_pow_x = eta_pow_x.mul(&eta);
-
-        DensePolynomial::from_coefficients_vec(coefficients)
-    })
-    .collect();
-    let mut poly_p: DensePolynomial<E::Fr> = DensePolynomial::zero();
-    for term in poly_p_terms.iter() {
-        poly_p = poly_p.add(term.clone());
-    }
-
-    // Compute b_{gamma} = b_{0, gamma} * gamma + b_0
-    let fr_b_at_gamma = fr_b0_at_gamma * gamma + poly_b.evaluate(&E::Fr::zero());
-    // Compute q_{B, gamma}
-    let mut fr_qb_at_gamma = fr_f_at_gamma + beta + (delta * fr_l_at_gamma);
-    fr_qb_at_gamma = fr_qb_at_gamma * fr_b_at_gamma - E::Fr::one();
-    let fr_inv_zv_at_gamma = pp
-        .domain_v
-        .evaluate_vanishing_polynomial(gamma)
-        .inverse()
-        .ok_or(Error::FailedToInverseFieldElement)?;
-    fr_qb_at_gamma = fr_qb_at_gamma * fr_inv_zv_at_gamma;
-
-    // Compute p_gamma = l_{gamma, v} + eta * l_{gamma} + eta^2 * q_{gamma, L} + eta^3 * d_{gamma} +
-    // eta^4 * q_{gamma, D} + eta^5 * b_{0, gamma} + eta^6 * f_{gamma} + eta^7 * q_{B, gamma}
-    let mut fr_eta_pow_x = E::Fr::one();
-    let p_gamma_terms: Vec<E::Fr> = [
-        fr_l_at_gamma_div_v,
-        fr_l_at_gamma,
-        fr_ql_at_gamma,
-        fr_d_at_gamma,
-        fr_qd_at_gamma,
-        fr_b0_at_gamma,
-        fr_f_at_gamma,
-        fr_qb_at_gamma,
-    ]
-    .iter()
-    .map(|&eval| {
-        let term = eval * fr_eta_pow_x;
-        fr_eta_pow_x = fr_eta_pow_x.mul(&eta);
-
-        term
-    })
-    .collect();
-    let mut fr_p_at_gamma = E::Fr::zero();
-    for term in p_gamma_terms {
-        fr_p_at_gamma = fr_p_at_gamma.add(&term);
-    }
-
-    // Compute H_P(X) = (P(X) - p_{gamma}) / (X - gamma)
-    let mut poly_hp = poly_p.clone();
-    poly_hp = poly_hp.sub(&DensePolynomial::from_coefficients_slice(&[fr_p_at_gamma]));
-    poly_hp = poly_hp.div(&DensePolynomial::from_coefficients_slice(&[
-        -gamma,
-        E::Fr::one(),
-    ]));
-
-    // Commit to H_P(X)
-    let g1_hp = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_hp).into_affine();
+    // Round 14: Compute the commitment of H_P(X) = (P(X) - p_{gamma}) / (X - gamma),
+    // which is a KZG batch opening proof of the polynomials to be checked,
+    // and send [H_P(tau)]_1 to the verifier.
+    let g1_hp = Kzg::<E>::batch_open_g1(
+        &pp.g1_srs,
+        &[
+            poly_l_div_v,
+            poly_l,
+            poly_ql,
+            poly_d,
+            poly_qd,
+            poly_b0,
+            witness.poly_f.clone(),
+            poly_qb,
+        ],
+        gamma,
+        eta,
+    );
 
     Ok(Proof {
         g1_m,

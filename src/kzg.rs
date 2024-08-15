@@ -57,32 +57,29 @@ impl<E: PairingEngine> Kzg<E> {
     }
 
     pub fn batch_open_g1(
-        srs: &[E::G1Affine],
-        polys: &[DensePolynomial<E::Fr>],
-        opening_challenge: E::Fr,
-        separation_challenge: E::Fr,
+        g1_srs: &[E::G1Affine],
+        poly_list: &[DensePolynomial<E::Fr>],
+        fr_opening: E::Fr,
+        fr_separation: E::Fr,
     ) -> E::G1Affine {
-        let powers_of_gamma = iter::successors(Some(separation_challenge), |p| {
-            Some(*p * separation_challenge)
-        });
+        let powers_of_sep = iter::successors(Some(fr_separation), |p| Some(*p * fr_separation));
 
-        let mut batched = polys[0].clone();
-        for (p_i, gamma_pow_i) in polys.iter().skip(1).zip(powers_of_gamma) {
-            batched += (gamma_pow_i, p_i);
+        let mut batched = poly_list[0].clone();
+        for (p_i, fr_sep_pow_i) in poly_list.iter().skip(1).zip(powers_of_sep) {
+            batched += (fr_sep_pow_i, p_i);
         }
 
-        let q = &batched
-            / &DensePolynomial::from_coefficients_slice(&[-opening_challenge, E::Fr::one()]);
+        let q = &batched / &DensePolynomial::from_coefficients_slice(&[-fr_opening, E::Fr::one()]);
 
-        if srs.len() - 1 < q.degree() {
+        if g1_srs.len() - 1 < q.degree() {
             panic!(
                 "Batch open g1: SRS size to small! Can't commit to polynomial of degree {} with srs of size {}",
                 q.degree(),
-                srs.len()
+                g1_srs.len()
             );
         }
 
-        Self::commit_g1(srs, &q).into()
+        Self::commit_g1(g1_srs, &q).into()
     }
 }
 
@@ -156,7 +153,7 @@ impl<E: PairingEngine> CaulkKzg<E> {
             &srs[(global_max_deg - d)..],
             convert_to_big_ints(&witness_polynomial.coeffs).as_slice(),
         )
-            .into_affine();
+        .into_affine();
 
         (eval, proof)
     }
@@ -175,10 +172,10 @@ impl<E: PairingEngine> CaulkKzg<E> {
                 poly_formatted.push(E::Fr::zero().into_repr());
             }
         }
-        
+
         assert!(g1_srs.len() >= poly_formatted.len());
-        let g1_poly = VariableBaseMSM::multi_scalar_mul(g1_srs, poly_formatted.as_slice())
-            .into_affine();
+        let g1_poly =
+            VariableBaseMSM::multi_scalar_mul(g1_srs, poly_formatted.as_slice()).into_affine();
 
         g1_poly
     }
@@ -234,7 +231,7 @@ impl<E: PairingEngine> CaulkKzg<E> {
             g1_srs,
             convert_to_big_ints(&poly_partial_eval.coeffs).as_slice(),
         )
-            .into_affine();
+        .into_affine();
 
         let mut witness_bipolynomial = Vec::new();
         let poly_reverse: Vec<_> = polynomials.iter().rev().collect();
@@ -254,13 +251,13 @@ impl<E: PairingEngine> CaulkKzg<E> {
 
     pub fn verify_defer_pairing_g1(
         // Verify that @c_com is a commitment to C(X) such that C(x)=z
-        g1_srs: &[E::G1Affine], // generator of G1
-        g2_srs: &[E::G2Affine], // [1]_2, [x]_2, [x^2]_2, ...
-        g1_com: &E::G1Affine,          // commitment
-        deg_max: Option<&usize>,      // max degree
-        points: &[E::Fr],             // x such that eval = C(x)
-        evaluations: &[E::Fr],              // evaluation
-        pi: &E::G1Affine,             // proof
+        g1_srs: &[E::G1Affine],  // generator of G1
+        g2_srs: &[E::G2Affine],  // [1]_2, [x]_2, [x^2]_2, ...
+        g1_com: &E::G1Affine,    // commitment
+        deg_max: Option<&usize>, // max degree
+        points: &[E::Fr],        // x such that eval = C(x)
+        evaluations: &[E::Fr],   // evaluation
+        pi: &E::G1Affine,        // proof
     ) -> Vec<(E::G1Projective, E::G2Projective)> {
         // Interpolation set
         // tau_i(X) = lagrange_tau[i] = polynomial equal to 0 at point[j] for j!= i and
@@ -340,7 +337,7 @@ impl<E: PairingEngine> CaulkKzg<E> {
             ),
             (
                 pi.into_projective(),
-                g2_srs[deg_x].into_projective() -  g2_srs[0].mul(*point),
+                g2_srs[deg_x].into_projective() - g2_srs[0].mul(*point),
             ),
         ];
         res
