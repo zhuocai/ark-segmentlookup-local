@@ -66,7 +66,6 @@ pub fn prove<E: PairingEngine>(
         &segment_multiplicities,
         &pp.g1_l_w_list,
         &pp.g1_q3_list,
-        &pp.g1_q4_list,
         pp.segment_size,
         pp.table_element_size,
     );
@@ -347,7 +346,7 @@ fn multiplicity_polynomials_and_quotient_g1<E: PairingEngine>(
     segment_multiplicities: &BTreeMap<usize, usize>,
     g1_l_w_list: &[E::G1Affine],
     g1_q3_list: &[E::G1Affine],
-    g1_q4_list: &[E::G1Affine],
+    // g1_q4_list: &[E::G1Affine],
     segment_size: usize,
     table_element_size: usize,
 ) -> MultiplicityPolynomialsAndQuotient<E> {
@@ -370,7 +369,9 @@ fn multiplicity_polynomials_and_quotient_g1<E: PairingEngine>(
             // Linear combination of q_{i, 3}.
             g1_proj_qm = g1_q3_list[elem_index].mul(fr_mul).add(g1_proj_qm);
             // Linear combination of q_{i, 4}.
-            g1_proj_qm = g1_q4_list[elem_index]
+            // q_{i, 4} is equivalent to shift q_{i, 3} to the left by 1.
+            let shifted_elem_index = (elem_index + 1) % table_element_size;
+            g1_proj_qm = g1_q3_list[shifted_elem_index]
                 .mul(-fr_mul) // negate the coefficient
                 .add(g1_proj_qm);
         }
@@ -608,7 +609,6 @@ mod tests {
             &multiplicities,
             &pp.g1_l_w_list,
             &pp.g1_q3_list,
-            &pp.g1_q4_list,
             segment_size,
             pp.table_element_size,
         );

@@ -37,8 +37,6 @@ pub struct PublicParameters<E: PairingEngine> {
     pub(crate) g1_q2_list: Vec<E::G1Affine>,
     // q_{i, 3} for i in 1..n*s.
     pub(crate) g1_q3_list: Vec<E::G1Affine>,
-    // q_{i, 4} for i in 1..n*s.
-    pub(crate) g1_q4_list: Vec<E::G1Affine>,
     // [L^W_i(tau)]_1 for i in 1..n*s.
     pub(crate) g1_l_w_list: Vec<E::G1Affine>,
     // [(L^W_i(tau) - L^W_i(0)) / tau]_1 for i in 1..n*s.
@@ -141,21 +139,6 @@ impl<E: PairingEngine> PublicParameters<E> {
             })
             .collect();
 
-        // Step 6: Compute quotient polynomial commitments q_{i, 4} for i in 1..n*s.
-        // q_{i, 4} is equivalent to shift q_{i, 3} to the left by 1.
-        let mut g1_q4_list: Vec<E::G1Affine> = Vec::with_capacity(order_w);
-        if let Some(first_element) = g1_q3_list.first().cloned() {
-            g1_q3_list
-                .iter()
-                .skip(1)
-                .for_each(|com| g1_q4_list.push(com.clone()));
-            g1_q4_list.push(first_element);
-        } else {
-            return Err(Error::InvalidQuotientPolynomialCommitments(
-                "Quotient polynomial commitments for q_{i, 3} is empty".to_string(),
-            ));
-        }
-
         // TODO: to be optimized.
         let log_num_segments = num_table_segments.trailing_zeros() as usize;
         let domain_log_n: Radix2EvaluationDomain<E::Fr> =
@@ -189,7 +172,6 @@ impl<E: PairingEngine> PublicParameters<E> {
             g2_zw,
             g1_q2_list,
             g1_q3_list,
-            g1_q4_list, // TODO: can be removed
             g1_l_w_list,
             g1_l_w_opening_proofs_at_zero,
             g1_l_v_list,

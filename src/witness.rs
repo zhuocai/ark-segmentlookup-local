@@ -8,7 +8,7 @@ use crate::public_parameters::PublicParameters;
 use crate::table::Table;
 
 pub struct Witness<E: PairingEngine> {
-    num_witnesses: usize,
+    num_witness_segments: usize,
     segment_size: usize,
     pub(crate) poly_f: DensePolynomial<E::Fr>,
     pub(crate) poly_eval_list_f: Vec<E::Fr>,
@@ -46,7 +46,7 @@ impl<E: PairingEngine> Witness<E> {
         let poly_f = DensePolynomial::from_coefficients_vec(poly_coeff_list_f);
 
         Ok(Self {
-            num_witnesses: pp.num_witness_segments,
+            num_witness_segments: pp.num_witness_segments,
             segment_size: pp.segment_size,
             poly_f,
             poly_eval_list_f,
