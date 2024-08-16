@@ -1,12 +1,12 @@
+use crate::error::Error;
+use crate::kzg::Kzg;
 use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_ff::{FftField, FftParameters, Field};
 use ark_poly::univariate::DensePolynomial;
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain, UVPolynomial};
+use ark_std::One;
 
-use crate::error::Error;
-use crate::kzg::Kzg;
-
-pub fn vanishing_poly_g2<E: PairingEngine>(
+pub(crate) fn vanishing_poly_g2<E: PairingEngine>(
     g2_srs: &[E::G2Affine],
     domain: &Radix2EvaluationDomain<E::Fr>,
 ) -> E::G2Affine {
@@ -15,7 +15,7 @@ pub fn vanishing_poly_g2<E: PairingEngine>(
     Kzg::<E>::commit_g2(&g2_srs, &vanishing_poly).into_affine()
 }
 
-pub fn create_sub_domain<E: PairingEngine>(
+pub(crate) fn create_sub_domain<E: PairingEngine>(
     larger_domain: &Radix2EvaluationDomain<E::Fr>,
     order: usize,
     segment_size: usize,
@@ -56,14 +56,23 @@ pub fn create_sub_domain<E: PairingEngine>(
     })
 }
 
-pub fn roots_of_unity<E: PairingEngine>(domain: &Radix2EvaluationDomain<E::Fr>) -> Vec<E::Fr> {
+pub(crate) fn roots_of_unity<E: PairingEngine>(
+    domain: &Radix2EvaluationDomain<E::Fr>,
+) -> Vec<E::Fr> {
     domain.elements().collect()
+}
+
+pub(crate) fn identity_poly<E: PairingEngine>(
+    domain: &Radix2EvaluationDomain<E::Fr>,
+) -> DensePolynomial<E::Fr> {
+    let id_list = vec![E::Fr::one(); domain.size()];
+
+    Evaluations::from_vec_and_domain(id_list, *domain).interpolate()
 }
 
 #[cfg(test)]
 mod tests {
     use ark_bn254::Bn254;
-    use ark_std::One;
 
     use super::*;
 

@@ -19,20 +19,20 @@ use crate::transcript::{Label, Transcript};
 // fix the issue that when the number of queries is larger than the number of segments,
 // the KZG commit fails.
 #[derive(Copy, Clone)]
-pub struct MultiUnityProof<E: PairingEngine> {
-    pub g1_u_bar: E::G1Affine,
-    pub g1_h_1: E::G1Affine,
-    pub g1_h_2: E::G1Affine,
-    pub g1_u_bar_alpha: E::G1Affine,
-    pub g1_h_2_alpha: E::G1Affine,
-    pub fr_v1: E::Fr,
-    pub fr_v2: E::Fr,
-    pub fr_v3: E::Fr,
-    pub g1_pi1: E::G1Affine,
-    pub g1_pi2: E::G1Affine,
-    pub g1_pi3: E::G1Affine,
-    pub g1_pi4: E::G1Affine,
-    pub g1_pi5: E::G1Affine,
+pub(crate) struct MultiUnityProof<E: PairingEngine> {
+    g1_u_bar: E::G1Affine,
+    g1_h_1: E::G1Affine,
+    g1_h_2: E::G1Affine,
+    g1_u_bar_alpha: E::G1Affine,
+    g1_h_2_alpha: E::G1Affine,
+    fr_v1: E::Fr,
+    fr_v2: E::Fr,
+    fr_v3: E::Fr,
+    g1_pi1: E::G1Affine,
+    g1_pi2: E::G1Affine,
+    g1_pi3: E::G1Affine,
+    g1_pi4: E::G1Affine,
+    g1_pi5: E::G1Affine,
 }
 pub(crate) fn multi_unity_prove<E: PairingEngine>(
     pp: &PublicParameters<E>,
@@ -44,8 +44,8 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     // Round 1: The prover takes the input srs and U_0(X) amd samples log(n) randomnesses
     // to compute U_l(X) for l = 1, ..., log(n), U(X, Y), U_bar(X, Y), and Q_2(X, Y).
     // And send [U_bar(\tau^{log(n)}, \tau)]_1, [Q_2(\tau^{log(n)}, \tau)]_1 to the verifier.
-    if !pp.num_segments.is_power_of_two() {
-        return Err(Error::InvalidNumberOfSegments(pp.num_segments));
+    if !pp.num_table_segments.is_power_of_two() {
+        return Err(Error::InvalidNumberOfSegments(pp.num_table_segments));
     }
 
     // Get the coefficients of the polynomial D(X):
@@ -53,13 +53,14 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     let poly_coeff_list_d = poly_d.coeffs.clone();
     let mut poly_eval_list_d = pp.domain_k.fft(&poly_coeff_list_d);
 
-    let log_num_segments = pp.log_num_segments;
-    let mut poly_u_list: Vec<DensePolynomial<E::Fr>> = Vec::with_capacity(log_num_segments - 1);
+    let log_num_table_segments = pp.log_num_table_segments;
+    let mut poly_u_list: Vec<DensePolynomial<E::Fr>> =
+        Vec::with_capacity(log_num_table_segments - 1);
 
     // Compute U_l(X) for l = 1, ..., log(n)-1
     // u_poly_list contains U_1(X), U_2(X), ..., U_{log(n)-1}(X)
     let vanishing_poly_k: DensePolynomial<E::Fr> = pp.domain_k.vanishing_polynomial().into();
-    for _ in 1..log_num_segments {
+    for _ in 1..log_num_table_segments {
         // In-place squaring of the evaluations of D(X)
         for eval in &mut poly_eval_list_d {
             *eval = eval.square();
@@ -100,7 +101,7 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
         .collect();
 
     let mut poly_h_s_list: Vec<DensePolynomial<E::Fr>> = Vec::new();
-    for s in 1..=log_num_segments {
+    for s in 1..=log_num_table_segments {
         let (poly_h_s, remainder) = (&(&poly_u_list[s - 1] * &poly_u_list[s - 1])
             - &poly_u_list[s])
             .divide_by_vanishing_poly(pp.domain_k)
@@ -134,7 +135,7 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
         for (s, h_s_poly) in poly_h_s_list
             .iter()
             .enumerate()
-            .take(log_num_segments)
+            .take(log_num_table_segments)
             .skip(1)
         {
             let h_s_j = DensePolynomial::from_coefficients_slice(&[h_s_poly[j]]);
@@ -142,10 +143,16 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
         }
     }
 
-    let g1_u_bar =
-        CaulkKzg::<E>::bi_poly_commit_g1(&pp.g1_srs, &partial_y_poly_list_u_bar, log_num_segments);
-    let g1_h_2 =
-        CaulkKzg::<E>::bi_poly_commit_g1(&pp.g1_srs, &partial_y_poly_list_h_2, log_num_segments);
+    let g1_u_bar = CaulkKzg::<E>::bi_poly_commit_g1(
+        &pp.g1_srs,
+        &partial_y_poly_list_u_bar,
+        log_num_table_segments,
+    );
+    let g1_h_2 = CaulkKzg::<E>::bi_poly_commit_g1(
+        &pp.g1_srs,
+        &partial_y_poly_list_h_2,
+        log_num_table_segments,
+    );
 
     transcript.append_elements(&[
         (Label::CaulkG1D, *g1_d),
@@ -159,7 +166,7 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
 
     let mut u_sqr_alpha_list = DensePolynomial::zero();
 
-    for (s, poly_u) in poly_u_list.iter().enumerate().take(log_num_segments) {
+    for (s, poly_u) in poly_u_list.iter().enumerate().take(log_num_table_segments) {
         let u_s_alpha = poly_u.evaluate(&alpha);
         let mut temp = DensePolynomial::from_coefficients_slice(&[u_s_alpha]);
         poly_u_alpha += &(&temp * &lagrange_basis[s]);
@@ -194,7 +201,7 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     for (s, ploy_u) in poly_u_list
         .iter()
         .enumerate()
-        .take(log_num_segments)
+        .take(log_num_table_segments)
         .skip(1)
     {
         let u_s_alpha = ploy_u.evaluate(&alpha);
@@ -202,7 +209,8 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     }
 
     let temp = u_bar_alpha_shift_beta
-        + (identity_poly.evaluate(&alpha) * lagrange_basis[log_num_segments - 1].evaluate(&beta));
+        + (identity_poly.evaluate(&alpha)
+            * lagrange_basis[log_num_table_segments - 1].evaluate(&beta));
     let temp = DensePolynomial::from_coefficients_slice(&[temp]);
 
     poly_p = &poly_p - &temp;
@@ -298,7 +306,7 @@ pub(crate) fn multi_unity_verify<E: PairingEngine>(
         pp.identity_poly_k.clone(),
         &pp.domain_k,
         &pp.domain_log_n,
-        pp.log_num_segments,
+        pp.log_num_table_segments,
         &pp.lagrange_basis_log_n,
         g1_d,
         proof,
@@ -449,14 +457,14 @@ mod tests {
         let pp =
             PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
 
-        let queried_segment_indices: Vec<usize> = (0..pp.num_queries)
-            .map(|_| rng.next_u32() as usize % pp.num_segments)
+        let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
+            .map(|_| rng.next_u32() as usize % pp.num_table_segments)
             .collect();
 
         let roots_of_unity_w: Vec<<Bn254 as PairingEngine>::Fr> =
             roots_of_unity::<Bn254>(&pp.domain_w);
         let mut poly_eval_list_d: Vec<<Bn254 as PairingEngine>::Fr> =
-            Vec::with_capacity(pp.num_queries);
+            Vec::with_capacity(pp.num_witness_segments);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
             poly_eval_list_d.push(root_of_unity_w);
@@ -476,13 +484,13 @@ mod tests {
         let mut rng = test_rng();
         let pp =
             PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
-        let queried_segment_indices: Vec<usize> = (0..pp.num_queries)
-            .map(|_| rng.next_u32() as usize % pp.num_segments)
+        let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
+            .map(|_| rng.next_u32() as usize % pp.num_table_segments)
             .collect();
         let roots_of_unity_w: Vec<<Bn254 as PairingEngine>::Fr> =
             roots_of_unity::<Bn254>(&pp.domain_w);
         let mut poly_eval_list_d: Vec<<Bn254 as PairingEngine>::Fr> =
-            Vec::with_capacity(pp.num_queries);
+            Vec::with_capacity(pp.num_witness_segments);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
             poly_eval_list_d.push(root_of_unity_w);
