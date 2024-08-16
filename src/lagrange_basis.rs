@@ -1,14 +1,40 @@
-use std::iter;
-
+use crate::domain::roots_of_unity;
+use crate::error::Error;
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{Field, PrimeField};
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
+use ark_poly::univariate::DensePolynomial;
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain, UVPolynomial};
+use ark_std::One;
+use std::iter;
+use std::ops::{Div, Mul};
 
-use crate::error::Error;
+pub(crate) fn lagrange_basis<E: PairingEngine>(
+    domain: &Radix2EvaluationDomain<E::Fr>,
+) -> Vec<DensePolynomial<E::Fr>> {
+    let vanishing_poly: DensePolynomial<E::Fr> = domain.vanishing_polynomial().into();
+    let roots_of_unity = roots_of_unity::<E>(&domain);
+    let roots_of_unity_div_domain_size: Vec<E::Fr> = roots_of_unity
+        .iter()
+        .map(|&root| root / domain.size_as_field_element())
+        .collect();
+    let mut lagrange_basis: Vec<DensePolynomial<E::Fr>> = Vec::with_capacity(domain.size());
+    for i in 0..domain.size() {
+        let mut poly_base: DensePolynomial<E::Fr> =
+            vanishing_poly.div(&DensePolynomial::from_coefficients_vec(vec![
+                -roots_of_unity[i],
+                E::Fr::one(),
+            ]));
+        poly_base = poly_base.mul(&DensePolynomial::from_coefficients_vec(vec![
+            roots_of_unity_div_domain_size[i],
+        ]));
+        lagrange_basis.push(poly_base);
+    }
+    lagrange_basis
+}
 
 // Efficiently compute the commitments to the Lagrange basis using SRS in O(n log n) time.
 // Section 3.3 from the paper BGG17: https://eprint.iacr.org/2017/602.
-pub fn lagrange_basis_g1<C: AffineCurve>(
+pub(crate) fn lagrange_basis_g1<C: AffineCurve>(
     srs: &[C],
     domain: &Radix2EvaluationDomain<C::ScalarField>,
 ) -> Vec<C> {
@@ -40,7 +66,7 @@ pub fn lagrange_basis_g1<C: AffineCurve>(
 }
 
 // See Page 12 of CQ paper for efficient computation.
-pub fn zero_opening_proofs<E: PairingEngine>(
+pub(crate) fn zero_opening_proofs<E: PairingEngine>(
     srs_g1: &[E::G1Affine],
     domain: &Radix2EvaluationDomain<E::Fr>,
     g1_lagrange_basis: &[E::G1Affine],

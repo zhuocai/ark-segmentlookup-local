@@ -3,15 +3,15 @@ use std::cmp::max;
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{Field, PrimeField};
 use ark_poly::univariate::DensePolynomial;
-use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_std::rand::rngs::StdRng;
 use ark_std::rand::RngCore;
-use ark_std::{cfg_into_iter, One, UniformRand, Zero};
+use ark_std::{One, UniformRand, Zero};
 
-use crate::domain::{create_sub_domain, roots_of_unity, vanishing_poly_g2};
+use crate::domain::{create_sub_domain, identity_poly, roots_of_unity, vanishing_poly_g2};
 use crate::error::Error;
 use crate::kzg::unsafe_setup_from_tau;
-use crate::lagrange_basis::{lagrange_basis_g1, zero_opening_proofs};
+use crate::lagrange_basis::{lagrange_basis, lagrange_basis_g1, zero_opening_proofs};
 
 #[derive(Debug)]
 pub struct PublicParameters<E: PairingEngine> {
@@ -50,10 +50,10 @@ pub struct PublicParameters<E: PairingEngine> {
     pub(crate) domain_k: Radix2EvaluationDomain<E::Fr>,
 
     // Caulk Sub-protocol parameters.
-    pub(crate) log_num_segments: usize, // TODO: optimize.
-    pub(crate) domain_log_n: Radix2EvaluationDomain<E::Fr>, // TODO: optimize.
-    pub(crate) lagrange_basis_log_n: Vec<DensePolynomial<E::Fr>>, // TODO: optimize.
-    pub(crate) identity_poly_k: DensePolynomial<E::Fr>, // TODO: optimize.
+    pub(crate) log_num_table_segments: usize,
+    pub(crate) domain_log_n: Radix2EvaluationDomain<E::Fr>,
+    pub(crate) lagrange_basis_log_n: Vec<DensePolynomial<E::Fr>>,
+    pub(crate) identity_poly_k: DensePolynomial<E::Fr>,
 }
 
 impl<E: PairingEngine> PublicParameters<E> {
@@ -139,27 +139,12 @@ impl<E: PairingEngine> PublicParameters<E> {
             })
             .collect();
 
-        // TODO: to be optimized.
-        let log_num_segments = num_table_segments.trailing_zeros() as usize;
+        let log_num_table_segments = num_table_segments.trailing_zeros() as usize;
         let domain_log_n: Radix2EvaluationDomain<E::Fr> =
-            Radix2EvaluationDomain::<E::Fr>::new(log_num_segments)
+            Radix2EvaluationDomain::<E::Fr>::new(log_num_table_segments)
                 .ok_or(Error::FailedToCreateEvaluationDomain)?;
-        // Compute the lagrange basis of domain_n
-        let mut lagrange_basis_log_n: Vec<DensePolynomial<E::Fr>> = Vec::new();
-        for i in 0..domain_log_n.size() {
-            let evaluations: Vec<E::Fr> = cfg_into_iter!(0..domain_log_n.size())
-                .map(|k| if k == i { E::Fr::one() } else { E::Fr::zero() })
-                .collect();
-            lagrange_basis_log_n
-                .push(Evaluations::from_vec_and_domain(evaluations, domain_log_n).interpolate());
-        }
-
-        // TODO: change or optimize this.
-        let mut id_list = Vec::new();
-        for _ in 0..num_witness_segments {
-            id_list.push(E::Fr::one());
-        }
-        let identity_poly_k = Evaluations::from_vec_and_domain(id_list, domain_k).interpolate();
+        let lagrange_basis_log_n = lagrange_basis::<E>(&domain_log_n);
+        let identity_poly_k = identity_poly::<E>(&domain_k);
 
         Ok(PublicParameters {
             num_table_segments,
@@ -179,10 +164,10 @@ impl<E: PairingEngine> PublicParameters<E> {
             domain_v,
             domain_k,
 
-            log_num_segments,     // TODO: optimize.
-            domain_log_n,         // TODO: optimize.
-            lagrange_basis_log_n, // TODO: optimize.
-            identity_poly_k,      // TODO: optimize.
+            log_num_table_segments,
+            domain_log_n,
+            lagrange_basis_log_n,
+            identity_poly_k,
         })
     }
 }

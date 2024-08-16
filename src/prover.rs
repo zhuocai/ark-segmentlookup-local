@@ -17,29 +17,30 @@ use ark_std::rand::prelude::StdRng;
 use ark_std::{One, Zero};
 
 pub struct Proof<E: PairingEngine> {
-    pub(crate) g1_m: E::G1Affine,          // [M(tau)]_1
-    pub(crate) g1_m_div_w: E::G1Affine,    // [M(tau / w)]_1
-    pub(crate) g1_qm: E::G1Affine,         // [Q_M(tau)]_1
-    pub(crate) g1_l: E::G1Affine,          // [L(tau)]_1
-    pub(crate) g1_l_div_v: E::G1Affine,    // [L(tau / v)]_1
-    pub(crate) g1_ql: E::G1Affine,         // [Q_L(tau)]_1
-    pub(crate) g1_d: E::G1Affine,          // [D(tau)]_1
-    pub(crate) g1_qd: E::G1Affine,         // [Q_D(tau)]_1
-    pub(crate) g1_a: E::G1Affine,          // [A(tau)]_1
-    pub(crate) g1_qa: E::G1Affine,         // [Q_A(tau)]_1
-    pub(crate) g1_qb: E::G1Affine,         // [Q_B(tau)]_1
-    pub(crate) g1_a0: E::G1Affine,         // [A_0(tau)]_1
-    pub(crate) g1_b0: E::G1Affine,         // [B_0(tau)]_1
-    pub(crate) g1_px: E::G1Affine,         // [P_A(tau)]_1 or [P_B(tau)]_1 or zero
-    pub(crate) fr_b0_at_gamma: E::Fr,      // b_{0,gamma} = B_0(gamma)
-    pub(crate) fr_f_at_gamma: E::Fr,       // f_{gamma} = F(gamma)
-    pub(crate) fr_l_at_gamma: E::Fr,       // l_{gamma} = L(gamma)
-    pub(crate) fr_a_at_zero: E::Fr,        // a_0 = A(0)
+    pub(crate) g1_m: E::G1Affine,       // [M(tau)]_1
+    pub(crate) g1_m_div_w: E::G1Affine, // [M(tau / w)]_1
+    pub(crate) g1_qm: E::G1Affine,      // [Q_M(tau)]_1
+    pub(crate) g1_l: E::G1Affine,       // [L(tau)]_1
+    pub(crate) g1_l_div_v: E::G1Affine, // [L(tau / v)]_1
+    pub(crate) g1_ql: E::G1Affine,      // [Q_L(tau)]_1
+    pub(crate) g1_d: E::G1Affine,       // [D(tau)]_1
+    pub(crate) g1_qd: E::G1Affine,      // [Q_D(tau)]_1
+    pub(crate) g1_a: E::G1Affine,       // [A(tau)]_1
+    pub(crate) g1_qa: E::G1Affine,      // [Q_A(tau)]_1
+    pub(crate) g1_qb: E::G1Affine,      // [Q_B(tau)]_1
+    pub(crate) g1_a0: E::G1Affine,      // [A_0(tau)]_1
+    pub(crate) g1_b0: E::G1Affine,      // [B_0(tau)]_1
+    pub(crate) g1_px: E::G1Affine,      // [P_A(tau)]_1 or [P_B(tau)]_1 or zero
+    pub(crate) g1_hp: E::G1Affine,      // [H_P(tau)]_1
+
+    pub(crate) fr_b0_at_gamma: E::Fr, // b_{0,gamma} = B_0(gamma)
+    pub(crate) fr_f_at_gamma: E::Fr,  // f_{gamma} = F(gamma)
+    pub(crate) fr_l_at_gamma: E::Fr,  // l_{gamma} = L(gamma)
+    pub(crate) fr_a_at_zero: E::Fr,   // a_0 = A(0)
     pub(crate) fr_l_at_gamma_div_v: E::Fr, // l_{gamma,v} = L(gamma / v)
-    pub(crate) fr_ql_at_gamma: E::Fr,      // q_{gamma,L} = Q_L(gamma)
-    pub(crate) fr_d_at_gamma: E::Fr,       // d_{gamma} = D(gamma)
-    pub(crate) fr_qd_at_gamma: E::Fr,      // q_{gamma, D} = Q_D(gamma)
-    pub(crate) g1_hp: E::G1Affine,         // [H_P(tau)]_1
+    pub(crate) fr_ql_at_gamma: E::Fr, // q_{gamma,L} = Q_L(gamma)
+    pub(crate) fr_d_at_gamma: E::Fr,  // d_{gamma} = D(gamma)
+    pub(crate) fr_qd_at_gamma: E::Fr, // q_{gamma, D} = Q_D(gamma)
 
     pub(crate) multi_unity_proof: MultiUnityProof<E>, // Proof of the Caulk Sub-protocol
 }
@@ -302,6 +303,8 @@ pub fn prove<E: PairingEngine>(
         g1_a0,
         g1_b0,
         g1_px,
+        g1_hp,
+
         fr_b0_at_gamma,
         fr_f_at_gamma,
         fr_l_at_gamma,
@@ -310,7 +313,6 @@ pub fn prove<E: PairingEngine>(
         fr_ql_at_gamma,
         fr_d_at_gamma,
         fr_qd_at_gamma,
-        g1_hp,
 
         multi_unity_proof,
     })
