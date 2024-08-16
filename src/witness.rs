@@ -8,7 +8,7 @@ use crate::public_parameters::PublicParameters;
 use crate::table::Table;
 
 pub struct Witness<E: PairingEngine> {
-    num_queries: usize,
+    num_witnesses: usize,
     segment_size: usize,
     pub(crate) poly_f: DensePolynomial<E::Fr>,
     pub(crate) poly_eval_list_f: Vec<E::Fr>,
@@ -21,11 +21,11 @@ impl<E: PairingEngine> Witness<E> {
         table: &Table<E>,
         queried_segment_indices: &[usize],
     ) -> Result<Self, Error> {
-        if queried_segment_indices.len() != pp.num_queries {
+        if queried_segment_indices.len() != pp.num_witnesses {
             return Err(Error::InvalidNumberOfQueries(queried_segment_indices.len()));
         }
 
-        let mut table_element_indices = Vec::with_capacity(pp.num_queries * pp.segment_size);
+        let mut table_element_indices = Vec::with_capacity(pp.num_witnesses * pp.segment_size);
         for &segment_index in queried_segment_indices {
             for j in 0..pp.segment_size {
                 let index = segment_index * pp.segment_size + j;
@@ -45,7 +45,7 @@ impl<E: PairingEngine> Witness<E> {
         let poly_f = DensePolynomial::from_coefficients_vec(poly_coeff_list_f);
 
         Ok(Self {
-            num_queries: pp.num_queries,
+            num_witnesses: pp.num_witnesses,
             segment_size: pp.segment_size,
             poly_f,
             poly_eval_list_f,
@@ -78,7 +78,7 @@ mod tests {
             segments.iter().map(|segment| segment.as_slice()).collect();
         let t = Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
 
-        let queried_segment_indices: Vec<usize> = (0..pp.num_queries)
+        let queried_segment_indices: Vec<usize> = (0..pp.num_witnesses)
             .map(|_| rng.next_u32() as usize % pp.num_segments)
             .collect();
 

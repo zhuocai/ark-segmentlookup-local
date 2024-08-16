@@ -66,10 +66,11 @@ pub fn prove<E: PairingEngine>(
     } = multiplicity_polynomials_and_quotient_g1::<E>(
         &segment_multiplicities,
         &pp.g1_l_w_list,
-        &pp.g1_l_w_div_w_list,
+        // &pp.g1_l_w_div_w_list,
         &pp.g1_q3_list,
         &pp.g1_q4_list,
         pp.segment_size,
+        pp.table_element_size,
     );
 
     transcript.append_elements(&[
@@ -109,9 +110,9 @@ pub fn prove<E: PairingEngine>(
         &pp.g1_l_v_div_v_list,
         &pp.g1_srs,
         &witness.queried_segment_indices,
-        pp.witness_size,
+        pp.witness_element_size,
         pp.segment_size,
-        pp.num_queries,
+        pp.num_witnesses,
     )?;
 
     transcript.append_elements(&[
@@ -162,7 +163,7 @@ pub fn prove<E: PairingEngine>(
     let g1_qa = g1_proj_qa.into_affine();
 
     // Round 10-3: The prover computes B(X) of degree ks-1.
-    let poly_eval_list_b: Result<Vec<E::Fr>, Error> = (0..pp.witness_size)
+    let poly_eval_list_b: Result<Vec<E::Fr>, Error> = (0..pp.witness_element_size)
         .map(|i| {
             (beta + witness.poly_eval_list_f[i] + delta * poly_eval_list_l[i])
                 .inverse()
@@ -202,17 +203,17 @@ pub fn prove<E: PairingEngine>(
     // Round 10-6: Degree check.
     // This step is only necessary when k != n.
     let mut g1_px = E::G1Affine::zero();
-    if pp.num_segments > pp.num_queries {
+    if pp.num_segments > pp.num_witnesses {
         // If n > k, the prover computes P_B(X) and sends [P_B(tau)]_1 to the verifier.
-        let coeff_shift = (pp.num_segments - pp.num_queries) * pp.segment_size - 1;
+        let coeff_shift = (pp.num_segments - pp.num_witnesses) * pp.segment_size - 1;
         let mut poly_coeff_list_pb = vec![E::Fr::zero(); coeff_shift];
         poly_coeff_list_pb.extend_from_slice(&poly_b0.coeffs);
         let poly_pb = DensePolynomial::from_coefficients_vec(poly_coeff_list_pb);
         g1_px = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_pb).into_affine();
-    } else if pp.num_segments < pp.num_queries {
+    } else if pp.num_segments < pp.num_witnesses {
         // If n < k, the prover computes P_A(X) and sends [P_A(tau)]_1 to the verifier.
         // TODO: current unit test does not cover this case
-        let coeff_shift = (pp.num_queries - pp.num_segments) * pp.segment_size - 1;
+        let coeff_shift = (pp.num_witnesses - pp.num_segments) * pp.segment_size - 1;
         let mut g1_proj_pa = E::G1Projective::zero();
         for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
             g1_proj_pa = g1_proj_pa + pp.g1_l_w_opening_proofs_at_zero[i + coeff_shift].mul(a_i);
@@ -246,7 +247,7 @@ pub fn prove<E: PairingEngine>(
         let fr_inv_table_elem_size = E::Fr::from(table_elem_size as u64)
             .inverse()
             .ok_or(Error::FailedToInverseFieldElement)?;
-        let witness_elem_size = pp.num_queries * pp.segment_size;
+        let witness_elem_size = pp.num_witnesses * pp.segment_size;
         let fr_witness_elem_size = E::Fr::from(witness_elem_size as u64);
 
         fr_b_at_zero * fr_witness_elem_size * fr_inv_table_elem_size
@@ -348,10 +349,10 @@ struct MultiplicityPolynomialsAndQuotient<E: PairingEngine> {
 fn multiplicity_polynomials_and_quotient_g1<E: PairingEngine>(
     segment_multiplicities: &BTreeMap<usize, usize>,
     g1_l_w_list: &[E::G1Affine],
-    g1_l_w_div_w_list: &[E::G1Affine],
     g1_q3_list: &[E::G1Affine],
     g1_q4_list: &[E::G1Affine],
     segment_size: usize,
+    table_element_size: usize,
 ) -> MultiplicityPolynomialsAndQuotient<E> {
     let mut g1_proj_m = E::G1Projective::zero(); // [M(tau)]_1
     let mut g1_proj_m_div_w = E::G1Projective::zero(); // [M(tau / w)]_1
@@ -363,7 +364,10 @@ fn multiplicity_polynomials_and_quotient_g1<E: PairingEngine>(
             // Linear combination of [L^W_i(tau)]_1
             g1_proj_m = g1_l_w_list[elem_index].mul(fr_mul).add(g1_proj_m);
             // Linear combination of [L^W_i(tau / w)]_1
-            g1_proj_m_div_w = g1_l_w_div_w_list[elem_index]
+            // L^W_i(tau / w) = L^W_{i+1}(tau) * w
+            // We can shift [L^W_i(tau)]_1 to the left by 1 to get [L^W_i(tau / w)]_1.
+            let shifted_elem_index = (elem_index + 1) % table_element_size;
+            g1_proj_m_div_w = g1_l_w_list[shifted_elem_index]
                 .mul(fr_mul)
                 .add(g1_proj_m_div_w);
             // Linear combination of q_{i, 3}
@@ -423,7 +427,7 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
         for elem_index in segment_element_indices {
             let root_of_unity_w = roots_of_unity_w[elem_index];
             poly_eval_list_l.push(root_of_unity_w);
-            // Linear combination of [L^V_i(tau)]_1
+            // Linear combination of [L^V_i(tau)]_1.
             g1_proj_l = g1_l_v_list[witness_element_index]
                 .mul(root_of_unity_w)
                 .add(g1_proj_l);
@@ -563,7 +567,7 @@ mod tests {
             segment_multiplicities(&queried_segment_indices, num_segments).unwrap();
 
         // Construct polynomial M(X) using Inverse FFT.
-        let mut poly_eval_m_list = vec![Fr::zero(); pp.table_size];
+        let mut poly_eval_m_list = vec![Fr::zero(); pp.table_element_size];
         for (&i, &m) in multiplicities.iter() {
             let segment_element_indices = i * segment_size..(i + 1) * segment_size;
             let fr_multiplicity = Fr::from(m as u64);
@@ -583,7 +587,7 @@ mod tests {
         let poly_m_div_w = DensePolynomial::from_coefficients_vec(poly_coeff_list_m_div_w);
         let g1_m_div_w_expected = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &poly_m_div_w).into_affine();
 
-        let mut poly_coeff_list_x_pow_n_sub_one = vec![Fr::zero(); pp.table_size];
+        let mut poly_coeff_list_x_pow_n_sub_one = vec![Fr::zero(); pp.table_element_size];
         poly_coeff_list_x_pow_n_sub_one[pp.num_segments] = Fr::one();
         poly_coeff_list_x_pow_n_sub_one[0] = -Fr::one();
         let poly_x_pow_n_sub_one =
@@ -603,10 +607,10 @@ mod tests {
         } = multiplicity_polynomials_and_quotient_g1::<Bn254>(
             &multiplicities,
             &pp.g1_l_w_list,
-            &pp.g1_l_w_div_w_list,
             &pp.g1_q3_list,
             &pp.g1_q4_list,
             segment_size,
+            pp.table_element_size,
         );
 
         assert_eq!(g1_m_expected, g1_m_got);
@@ -627,7 +631,7 @@ mod tests {
             segments.iter().map(|segment| segment.as_slice()).collect();
         let t = Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
 
-        let queried_segment_indices: Vec<usize> = (0..pp.num_queries)
+        let queried_segment_indices: Vec<usize> = (0..pp.num_witnesses)
             .map(|_| rng.next_u32() as usize % pp.num_segments)
             .collect();
 

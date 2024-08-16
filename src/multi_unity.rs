@@ -449,14 +449,14 @@ mod tests {
         let pp =
             PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
 
-        let queried_segment_indices: Vec<usize> = (0..pp.num_queries)
+        let queried_segment_indices: Vec<usize> = (0..pp.num_witnesses)
             .map(|_| rng.next_u32() as usize % pp.num_segments)
             .collect();
 
         let roots_of_unity_w: Vec<<Bn254 as PairingEngine>::Fr> =
             roots_of_unity::<Bn254>(&pp.domain_w);
         let mut poly_eval_list_d: Vec<<Bn254 as PairingEngine>::Fr> =
-            Vec::with_capacity(pp.num_queries);
+            Vec::with_capacity(pp.num_witnesses);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
             poly_eval_list_d.push(root_of_unity_w);
@@ -476,13 +476,13 @@ mod tests {
         let mut rng = test_rng();
         let pp =
             PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
-        let queried_segment_indices: Vec<usize> = (0..pp.num_queries)
+        let queried_segment_indices: Vec<usize> = (0..pp.num_witnesses)
             .map(|_| rng.next_u32() as usize % pp.num_segments)
             .collect();
         let roots_of_unity_w: Vec<<Bn254 as PairingEngine>::Fr> =
             roots_of_unity::<Bn254>(&pp.domain_w);
         let mut poly_eval_list_d: Vec<<Bn254 as PairingEngine>::Fr> =
-            Vec::with_capacity(pp.num_queries);
+            Vec::with_capacity(pp.num_witnesses);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
             poly_eval_list_d.push(root_of_unity_w);

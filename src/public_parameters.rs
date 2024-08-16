@@ -18,13 +18,13 @@ pub struct PublicParameters<E: PairingEngine> {
     // Number of total segments (n)
     pub(crate) num_segments: usize,
     // Number of queries (segments) in one witness. This is fixed for all queries (k)
-    pub(crate) num_queries: usize,
+    pub(crate) num_witnesses: usize,
     // Segment size (s)
     pub(crate) segment_size: usize,
     // Table size (n * s)
-    pub(crate) table_size: usize,
+    pub(crate) table_element_size: usize,
     // Witness size (k * s)
-    pub(crate) witness_size: usize,
+    pub(crate) witness_element_size: usize,
     // [tau^i]_1 for i in 0..max*s
     pub(crate) g1_srs: Vec<E::G1Affine>,
     // [tau^i]_2 for i in 0..max*s
@@ -32,11 +32,7 @@ pub struct PublicParameters<E: PairingEngine> {
     // [z_w(tau)]_2
     pub(crate) g2_zw: E::G2Affine,
     pub(crate) domain_w: Radix2EvaluationDomain<E::Fr>,
-    // [z_v(tau)]_2
-    g2_z_v: E::G2Affine,
     pub(crate) domain_v: Radix2EvaluationDomain<E::Fr>,
-    // [z_k(tau)]_2
-    g2_z_k: E::G2Affine,
     pub(crate) domain_k: Radix2EvaluationDomain<E::Fr>,
     // q_{i, 2} for i in 1..n*s
     // The commitment of quotient polynomials Q_{i, 2} s.t.
@@ -48,14 +44,13 @@ pub struct PublicParameters<E: PairingEngine> {
     pub(crate) g1_q4_list: Vec<E::G1Affine>,
     // [L^W_i(tau)]_1 for i in 1..n*s
     pub(crate) g1_l_w_list: Vec<E::G1Affine>,
-    // [L^W_i(tau / w)]_1 for i in 1..n*s
-    pub(crate) g1_l_w_div_w_list: Vec<E::G1Affine>,
     // [(L^W_i(tau) - L^W_i(0)) / tau]_1 for i in 1..n*s
     pub(crate) g1_l_w_opening_proofs_at_zero: Vec<E::G1Affine>,
     // [L^V_i(tau)]_1 for i in 1..k*s
     pub(crate) g1_l_v_list: Vec<E::G1Affine>,
     // [L^V_i(tau * v)]_1 for i in 1..k*s
     pub(crate) g1_l_v_div_v_list: Vec<E::G1Affine>,
+    // Caulk Sub-protocol parameters.
     pub(crate) log_num_segments: usize, // TODO: optimize.
     pub(crate) domain_log_n: Radix2EvaluationDomain<E::Fr>, // TODO: optimize.
     pub(crate) lagrange_basis_log_n: Vec<DensePolynomial<E::Fr>>, // TODO: optimize.
@@ -66,15 +61,15 @@ impl<E: PairingEngine> PublicParameters<E> {
     pub fn setup<R: RngCore>(
         rng: &mut R,
         num_segments: usize,
-        num_queries: usize,
+        num_witnesses: usize,
         segment_size: usize,
     ) -> Result<PublicParameters<E>, Error> {
-        let table_size = num_segments * segment_size;
-        let witness_size = num_queries * segment_size;
+        let table_element_size = num_segments * segment_size;
+        let witness_element_size = num_witnesses * segment_size;
 
         // Step 1: Choose a random tau. Let max = max(k, n). Compute SRS from tau
         let tau = E::Fr::rand(rng);
-        let max_power_of_tau = max(num_segments, num_queries) * segment_size - 1;
+        let max_power_of_tau = max(num_segments, num_witnesses) * segment_size - 1;
         let (g1_srs, g2_srs) =
             unsafe_setup_from_tau::<E, StdRng>(max_power_of_tau, max_power_of_tau + 1, tau);
 
@@ -82,19 +77,17 @@ impl<E: PairingEngine> PublicParameters<E> {
         let order_w = num_segments * segment_size;
         let domain_w: Radix2EvaluationDomain<E::Fr> = Radix2EvaluationDomain::<E::Fr>::new(order_w)
             .ok_or(Error::FailedToCreateEvaluationDomain)?;
-        let g2_z_w = vanishing_poly_g2::<E>(&g2_srs, &domain_w);
+        let g2_zw = vanishing_poly_g2::<E>(&g2_srs, &domain_w);
 
         // Step 2: Compute [Z_V(tau)]_2
-        let order_v = num_queries * segment_size;
+        let order_v = num_witnesses * segment_size;
         let domain_v: Radix2EvaluationDomain<E::Fr> = Radix2EvaluationDomain::<E::Fr>::new(order_v)
             .ok_or(Error::FailedToCreateEvaluationDomain)?;
-        let g2_z_v = vanishing_poly_g2::<E>(&g2_srs, &domain_v);
 
         // Step 2: Compute [Z_K(tau)]_2
         // K = {v^{is}, i \in [0, k - 1]}
-        let order_k = num_queries;
+        let order_k = num_witnesses;
         let domain_k = create_sub_domain::<E>(&domain_v, order_k, segment_size)?;
-        let g2_z_k = vanishing_poly_g2::<E>(&g2_srs, &domain_k);
 
         // Step 4-a: Compute q_{i, 2} = [Q_{i,2}(tau)]_1 for i in 1..n*s
         // Q_{i,2}(X) = w^i / (ns)
@@ -164,7 +157,7 @@ impl<E: PairingEngine> PublicParameters<E> {
             .collect();
 
         // Step 6: Compute quotient polynomial commitments q_{i, 4} for i in 1..n*s
-        // q_{i, 4} is equivalent to shift q_{i, 3} to left by 1.
+        // q_{i, 4} is equivalent to shift q_{i, 3} to the left by 1.
         let mut g1_q4_list: Vec<E::G1Affine> = Vec::with_capacity(order_w);
         if let Some(first_element) = g1_q3_list.first().cloned() {
             g1_q3_list
@@ -211,30 +204,27 @@ impl<E: PairingEngine> PublicParameters<E> {
 
         // TODO: change or optimize this.
         let mut id_list = Vec::new();
-        for _ in 0..num_queries {
+        for _ in 0..num_witnesses {
             id_list.push(E::Fr::one());
         }
         let identity_poly_k = Evaluations::from_vec_and_domain(id_list, domain_k).interpolate();
 
         Ok(PublicParameters {
             num_segments,
-            num_queries,
+            num_witnesses,
             segment_size,
-            table_size,
-            witness_size,
+            table_element_size,
+            witness_element_size,
             g1_srs,
             g2_srs,
-            g2_zw: g2_z_w,
+            g2_zw,
             domain_w,
-            g2_z_v,
             domain_v,
-            g2_z_k,
             domain_k,
             g1_q2_list,
             g1_q3_list,
             g1_q4_list, // TODO: can be removed
             g1_l_w_list,
-            g1_l_w_div_w_list, // TODO: can be removed
             g1_l_w_opening_proofs_at_zero,
             g1_l_v_list,
             g1_l_v_div_v_list, // TODO: can be removed
@@ -257,7 +247,6 @@ mod test {
     #[test]
     fn test_public_parameters_setup() {
         let mut rng = test_rng();
-        let pp = PublicParameters::<Bn254>::setup::<StdRng>(&mut rng, 8, 4, 4).unwrap();
-        println!("{:?}", pp);
+        PublicParameters::<Bn254>::setup::<StdRng>(&mut rng, 8, 4, 4).unwrap();
     }
 }
