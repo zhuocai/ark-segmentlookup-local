@@ -21,7 +21,7 @@ pub struct TablePreprocessedParameters<E: PairingEngine> {
 
 impl<E: PairingEngine> Table<E> {
     pub fn new(pp: &PublicParameters<E>, segment_values: &[&[E::Fr]]) -> Result<Self, Error> {
-        let num_segments = pp.num_segments;
+        let num_segments = pp.num_table_segments;
         let segment_size = pp.segment_size;
 
         if segment_values.len() != num_segments {
@@ -47,7 +47,7 @@ impl<E: PairingEngine> Table<E> {
         &self,
         pp: &PublicParameters<E>,
     ) -> Result<TablePreprocessedParameters<E>, Error> {
-        if self.num_segments != pp.num_segments {
+        if self.num_segments != pp.num_table_segments {
             return Err(Error::InvalidNumberOfSegments(self.num_segments));
         }
 
@@ -125,8 +125,8 @@ pub mod rand_segments {
 
     pub fn generate(pp: &PublicParameters<Bn254>) -> Vec<Vec<<Bn254 as PairingEngine>::Fr>> {
         let mut rng = ark_std::test_rng();
-        let mut segments = Vec::with_capacity(pp.num_segments);
-        for _ in 0..pp.num_segments {
+        let mut segments = Vec::with_capacity(pp.num_table_segments);
+        for _ in 0..pp.num_table_segments {
             let mut segment = Vec::with_capacity(pp.segment_size);
             for _ in 0..pp.segment_size {
                 segment.push(<Bn254 as PairingEngine>::Fr::rand(&mut rng));

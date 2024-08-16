@@ -44,8 +44,8 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     // Round 1: The prover takes the input srs and U_0(X) amd samples log(n) randomnesses
     // to compute U_l(X) for l = 1, ..., log(n), U(X, Y), U_bar(X, Y), and Q_2(X, Y).
     // And send [U_bar(\tau^{log(n)}, \tau)]_1, [Q_2(\tau^{log(n)}, \tau)]_1 to the verifier.
-    if !pp.num_segments.is_power_of_two() {
-        return Err(Error::InvalidNumberOfSegments(pp.num_segments));
+    if !pp.num_table_segments.is_power_of_two() {
+        return Err(Error::InvalidNumberOfSegments(pp.num_table_segments));
     }
 
     // Get the coefficients of the polynomial D(X):
@@ -449,14 +449,14 @@ mod tests {
         let pp =
             PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
 
-        let queried_segment_indices: Vec<usize> = (0..pp.num_witnesses)
-            .map(|_| rng.next_u32() as usize % pp.num_segments)
+        let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
+            .map(|_| rng.next_u32() as usize % pp.num_table_segments)
             .collect();
 
         let roots_of_unity_w: Vec<<Bn254 as PairingEngine>::Fr> =
             roots_of_unity::<Bn254>(&pp.domain_w);
         let mut poly_eval_list_d: Vec<<Bn254 as PairingEngine>::Fr> =
-            Vec::with_capacity(pp.num_witnesses);
+            Vec::with_capacity(pp.num_witness_segments);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
             poly_eval_list_d.push(root_of_unity_w);
@@ -476,13 +476,13 @@ mod tests {
         let mut rng = test_rng();
         let pp =
             PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
-        let queried_segment_indices: Vec<usize> = (0..pp.num_witnesses)
-            .map(|_| rng.next_u32() as usize % pp.num_segments)
+        let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
+            .map(|_| rng.next_u32() as usize % pp.num_table_segments)
             .collect();
         let roots_of_unity_w: Vec<<Bn254 as PairingEngine>::Fr> =
             roots_of_unity::<Bn254>(&pp.domain_w);
         let mut poly_eval_list_d: Vec<<Bn254 as PairingEngine>::Fr> =
-            Vec::with_capacity(pp.num_witnesses);
+            Vec::with_capacity(pp.num_witness_segments);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
             poly_eval_list_d.push(root_of_unity_w);

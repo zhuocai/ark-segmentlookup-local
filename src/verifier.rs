@@ -24,7 +24,7 @@ pub fn verify<E: PairingEngine>(
     // Round 2: The first pairing check.
     let g1_m = proof.g1_m;
     let g1_neg_m_div_w = -proof.g1_m_div_w;
-    let g2_tau_pow_ns = pp.g2_srs[pp.num_segments];
+    let g2_tau_pow_ns = pp.g2_srs[pp.num_table_segments];
     let g2_neg_one = -pp.g2_srs[0];
     let g1_qm = proof.g1_qm;
     let g2_zw = pp.g2_zw;
@@ -82,17 +82,17 @@ pub fn verify<E: PairingEngine>(
     }
 
     // Round 11: Degree pairing check.
-    if pp.num_segments > pp.num_witnesses {
-        let deg_tau = (pp.num_segments - pp.num_witnesses) * pp.segment_size - 1;
+    if pp.num_table_segments > pp.num_witness_segments {
+        let deg_tau = (pp.num_table_segments - pp.num_witness_segments) * pp.segment_size - 1;
         let left_pairing = E::pairing(proof.g1_b0, pp.g2_srs[deg_tau]);
         let right_pairing = E::pairing(proof.g1_px, g2_one);
 
         if left_pairing != right_pairing {
             return Err(Error::DegreeCheckFailed);
         }
-    } else if pp.num_segments < pp.num_witnesses {
+    } else if pp.num_table_segments < pp.num_witness_segments {
         // TODO: current unit test does not cover this case
-        let deg_tau = (pp.num_witnesses - pp.num_segments) * pp.segment_size - 1;
+        let deg_tau = (pp.num_witness_segments - pp.num_table_segments) * pp.segment_size - 1;
         let left_pairing = E::pairing(proof.g1_a0, pp.g2_srs[deg_tau]);
         let right_pairing = E::pairing(proof.g1_px, g2_one);
 
@@ -126,9 +126,9 @@ pub fn verify<E: PairingEngine>(
     let eta = transcript.get_and_append_challenge(Label::ChallengeEta)?;
 
     // Round 15-1: Compute b_0 = ns * a_0 / (ks)
-    let table_elem_size = pp.num_segments * pp.segment_size;
+    let table_elem_size = pp.num_table_segments * pp.segment_size;
     let fr_table_elem_size = E::Fr::from(table_elem_size as u64);
-    let witness_elem_size = pp.num_witnesses * pp.segment_size;
+    let witness_elem_size = pp.num_witness_segments * pp.segment_size;
     let fr_inv_witness_elem_size = E::Fr::from(witness_elem_size as u64)
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
@@ -218,7 +218,7 @@ pub fn verify<E: PairingEngine>(
 
     // Round 15-4: The first equation check.
     // TODO: Optimize point operations.
-    let fr_gamma_pow_k_sub_one = gamma.pow([pp.num_witnesses as u64]) - E::Fr::one();
+    let fr_gamma_pow_k_sub_one = gamma.pow([pp.num_witness_segments as u64]) - E::Fr::one();
     let g1_l_at_gamma_div_v = fr_to_g1_proj::<E>(proof.fr_l_at_gamma_div_v).into_affine();
     let mut g1_equation1 = g1_l_at_gamma_div_v
         .mul(-(fr_gamma_pow_k_sub_one * pp.domain_w.group_gen))
@@ -274,8 +274,8 @@ mod tests {
             segments.iter().map(|segment| segment.as_slice()).collect();
         let t = Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
 
-        let queried_segment_indices: Vec<usize> = (0..pp.num_witnesses)
-            .map(|_| rng.next_u32() as usize % pp.num_segments)
+        let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
+            .map(|_| rng.next_u32() as usize % pp.num_table_segments)
             .collect();
 
         let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
