@@ -6,7 +6,7 @@ use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_std::rand::rngs::StdRng;
 use ark_std::rand::RngCore;
-use ark_std::{One, UniformRand, Zero};
+use ark_std::{UniformRand, Zero};
 
 use crate::domain::{create_sub_domain, identity_poly, roots_of_unity, vanishing_poly_g2};
 use crate::error::Error;
@@ -50,6 +50,8 @@ pub struct PublicParameters<E: PairingEngine> {
     pub(crate) domain_k: Radix2EvaluationDomain<E::Fr>,
 
     // Caulk Sub-protocol parameters.
+    pub(crate) g1_srs_caulk: Vec<E::G1Affine>,
+    pub(crate) g2_srs_caulk: Vec<E::G2Affine>,
     pub(crate) log_num_table_segments: usize,
     pub(crate) domain_log_n: Radix2EvaluationDomain<E::Fr>,
     pub(crate) lagrange_basis_log_n: Vec<DensePolynomial<E::Fr>>,
@@ -57,20 +59,26 @@ pub struct PublicParameters<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> PublicParameters<E> {
-    pub fn setup<R: RngCore>(
-        rng: &mut R,
+    pub fn setup(
+        rng: &mut StdRng,
         num_table_segments: usize,
         num_witness_segments: usize,
         segment_size: usize,
     ) -> Result<PublicParameters<E>, Error> {
         let table_element_size = num_table_segments * segment_size;
         let witness_element_size = num_witness_segments * segment_size;
+        let log_num_table_segments = num_table_segments.trailing_zeros() as usize;
 
         // Step 1: Choose a random tau. Let max = max(k, n). Compute SRS from tau.
         let tau = E::Fr::rand(rng);
-        let max_power_of_tau = max(num_table_segments, num_witness_segments) * segment_size - 1;
-        let (g1_srs, g2_srs) =
-            unsafe_setup_from_tau::<E, StdRng>(max_power_of_tau, max_power_of_tau + 1, tau);
+        let max_pow_of_tau = max(num_table_segments, num_witness_segments) * segment_size - 1;
+        let max_pow_of_tau_caulk = (num_witness_segments.pow(2) - 2) * log_num_table_segments;
+        let (g1_srs, g2_srs, g1_srs_caulk, g2_srs_caulk) = unsafe_setup_from_tau::<E, StdRng>(
+            max_pow_of_tau,
+            max_pow_of_tau + 1,
+            max_pow_of_tau_caulk,
+            tau,
+        );
 
         // Step 2: Compute [Z_W(tau)]_2.
         let order_w = num_table_segments * segment_size;
@@ -139,7 +147,6 @@ impl<E: PairingEngine> PublicParameters<E> {
             })
             .collect();
 
-        let log_num_table_segments = num_table_segments.trailing_zeros() as usize;
         let domain_log_n: Radix2EvaluationDomain<E::Fr> =
             Radix2EvaluationDomain::<E::Fr>::new(log_num_table_segments)
                 .ok_or(Error::FailedToCreateEvaluationDomain)?;
@@ -164,6 +171,8 @@ impl<E: PairingEngine> PublicParameters<E> {
             domain_v,
             domain_k,
 
+            g1_srs_caulk,
+            g2_srs_caulk,
             log_num_table_segments,
             domain_log_n,
             lagrange_basis_log_n,
@@ -182,6 +191,6 @@ mod test {
     #[test]
     fn test_public_parameters_setup() {
         let mut rng = test_rng();
-        PublicParameters::<Bn254>::setup::<StdRng>(&mut rng, 8, 4, 4).unwrap();
+        PublicParameters::<Bn254>::setup(&mut rng, 8, 4, 4).unwrap();
     }
 }

@@ -144,12 +144,12 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     }
 
     let g1_u_bar = CaulkKzg::<E>::bi_poly_commit_g1(
-        &pp.g1_srs,
+        &pp.g1_srs_caulk,
         &partial_y_poly_list_u_bar,
         log_num_table_segments,
     );
     let g1_h_2 = CaulkKzg::<E>::bi_poly_commit_g1(
-        &pp.g1_srs,
+        &pp.g1_srs_caulk,
         &partial_y_poly_list_h_2,
         log_num_table_segments,
     );
@@ -182,10 +182,10 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
         return Err(Error::RemainderAfterDivisionIsNonZero);
     }
 
-    assert!(pp.g1_srs.len() >= poly_h_1.len());
+    assert!(pp.g1_srs_caulk.len() >= poly_h_1.len());
 
     let g1_h_1 = VariableBaseMSM::multi_scalar_mul(
-        &pp.g1_srs,
+        &pp.g1_srs_caulk,
         convert_to_big_ints(&poly_h_1.coeffs).as_slice(),
     )
     .into_affine();
@@ -233,28 +233,28 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     assert!(poly_p.evaluate(&beta) == E::Fr::zero());
 
     let (eval_list1, g1_pi1) =
-        CaulkKzg::<E>::batch_open_g1(&pp.g1_srs, &poly_u_list[0], None, &[alpha]);
+        CaulkKzg::<E>::batch_open_g1(&pp.g1_srs_caulk, &poly_u_list[0], None, &[alpha]);
     let (g1_u_bar_alpha, g1_pi2, poly_u_bar_alpha) = CaulkKzg::<E>::partial_open_g1(
-        &pp.g1_srs,
+        &pp.g1_srs_caulk,
         &partial_y_poly_list_u_bar,
         domain_log_n.size(),
         &alpha,
     );
     let (g1_h_2_alpha, g1_pi3, _) = CaulkKzg::<E>::partial_open_g1(
-        &pp.g1_srs,
+        &pp.g1_srs_caulk,
         &partial_y_poly_list_h_2,
         domain_log_n.size(),
         &alpha,
     );
     let (eval_list2, g1_pi4) = CaulkKzg::<E>::batch_open_g1(
-        &pp.g1_srs,
+        &pp.g1_srs_caulk,
         &poly_u_bar_alpha,
         Some(&(domain_log_n.size() - 1)),
         &[E::Fr::one(), beta, beta * domain_log_n.element(1)],
     );
     assert!(eval_list2[0] == E::Fr::zero());
     let (eval_list3, g1_pi5) = CaulkKzg::<E>::batch_open_g1(
-        &pp.g1_srs,
+        &pp.g1_srs_caulk,
         &poly_p,
         Some(&(domain_log_n.size() - 1)),
         &[beta],
@@ -301,8 +301,8 @@ pub(crate) fn multi_unity_verify<E: PairingEngine>(
 ) -> Result<bool, Error> {
     let mut pairing_inputs = multi_unity_verify_defer_pairing(
         transcript,
-        &pp.g1_srs,
-        &pp.g2_srs,
+        &pp.g1_srs_caulk,
+        &pp.g2_srs_caulk,
         pp.identity_poly_k.clone(),
         &pp.domain_k,
         &pp.domain_log_n,
@@ -472,7 +472,7 @@ mod tests {
 
         let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
         let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
-        let g1_d = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &poly_d).into_affine();
+        let g1_d = Kzg::<Bn254>::commit_g1(&pp.g1_srs_caulk, &poly_d).into_affine();
 
         let mut transcript = Transcript::new();
 
@@ -497,7 +497,7 @@ mod tests {
         }
         let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
         let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
-        let g1_d = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &poly_d).into_affine();
+        let g1_d = Kzg::<Bn254>::commit_g1(&pp.g1_srs_caulk, &poly_d).into_affine();
 
         let mut transcript = Transcript::new();
         let multi_unity_proof =
@@ -512,7 +512,8 @@ mod tests {
         incorrect_poly_eval_list_d[0] = <Bn254 as PairingEngine>::Fr::from(456);
         let incorrect_poly_coeff_list_d = pp.domain_k.ifft(&incorrect_poly_eval_list_d);
         let incorrect_poly_d = DensePolynomial::from_coefficients_vec(incorrect_poly_coeff_list_d);
-        let incorrect_g1_d = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &incorrect_poly_d).into_affine();
+        let incorrect_g1_d =
+            Kzg::<Bn254>::commit_g1(&pp.g1_srs_caulk, &incorrect_poly_d).into_affine();
 
         let mut transcript = Transcript::new();
 

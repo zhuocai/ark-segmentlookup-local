@@ -77,7 +77,7 @@ impl Label {
             Label::FrDAtGamma => b"fr_d_at_gamma",
             Label::FrQdAtGamma => b"fr_qd_at_gamma",
             Label::CaulkG1D => b"caulk_g1_d",
-            Label::CaulkG1UBar => b"caulk_g1_ubar",
+            Label::CaulkG1UBar => b"caulk_g1_u_bar",
             Label::CaulkG1H2 => b"caulk_g1_h2",
             Label::CaulkG1H1 => b"caulk_g1_h1",
         }

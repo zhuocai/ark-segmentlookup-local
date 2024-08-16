@@ -61,10 +61,7 @@ impl<E: PairingEngine> Table<E> {
 
         let table_poly = DensePolynomial::from_coefficients_slice(&domain.ifft(&self.values));
         let t_2: E::G2Affine = Kzg::<E>::commit_g2(srs_g2, &table_poly).into();
-        let qs1 = match compute_quotients::<E>(&table_poly, &domain, srs_g1) {
-            Ok(qs) => qs,
-            Err(e) => return Err(e),
-        };
+        let qs1 = compute_quotients::<E>(&table_poly, &domain, srs_g1)?;
 
         Ok(TablePreprocessedParameters {
             g2_t: t_2,
@@ -84,11 +81,13 @@ fn compute_quotients<E: PairingEngine>(
     */
     let toeplitz = UpperToeplitz::from_poly(t);
 
+    let domain_size = domain.size();
+    let srs_g1 = srs_g1.iter().take(domain_size).collect::<Vec<_>>();
     let mut srs_proj: Vec<E::G1Projective> = srs_g1.iter().map(|t| t.into_projective()).collect();
     srs_proj.reverse();
 
     let h_commitments: Vec<E::G1Projective> = toeplitz.mul_by_vec(&srs_proj);
-    if h_commitments.len() != 2 * domain.size() {
+    if h_commitments.len() != 2 * domain_size {
         return Err(Error::InvalidCommitmentLength(format!(
             "Expected h_commitments length to be {}, but was {}",
             2 * domain.size(),
@@ -117,19 +116,18 @@ fn compute_quotients<E: PairingEngine>(
 
 #[cfg(test)]
 pub mod rand_segments {
-    use ark_bn254::Bn254;
     use ark_ec::PairingEngine;
     use ark_std::UniformRand;
 
     use crate::public_parameters::PublicParameters;
 
-    pub fn generate(pp: &PublicParameters<Bn254>) -> Vec<Vec<<Bn254 as PairingEngine>::Fr>> {
+    pub fn generate<E: PairingEngine>(pp: &PublicParameters<E>) -> Vec<Vec<E::Fr>> {
         let mut rng = ark_std::test_rng();
         let mut segments = Vec::with_capacity(pp.num_table_segments);
         for _ in 0..pp.num_table_segments {
             let mut segment = Vec::with_capacity(pp.segment_size);
             for _ in 0..pp.segment_size {
-                segment.push(<Bn254 as PairingEngine>::Fr::rand(&mut rng));
+                segment.push(E::Fr::rand(&mut rng));
             }
             segments.push(segment);
         }
@@ -150,7 +148,7 @@ mod tests {
         let mut rng = test_rng();
         let pp =
             PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
-        let segments = rand_segments::generate(&pp);
+        let segments = rand_segments::generate::<Bn254>(&pp);
         let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> =
             segments.iter().map(|segment| segment.as_slice()).collect();
 
