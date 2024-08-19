@@ -15,9 +15,9 @@ use crate::lagrange_basis::{lagrange_basis, lagrange_basis_g1, zero_opening_proo
 #[derive(Debug)]
 pub struct PublicParameters<E: PairingEngine> {
     // Number of total segments in the table (n).
-    pub(crate) num_table_segments: usize,
+    pub num_table_segments: usize,
     // Number of segments in the witness. This is fixed for all queries (k).
-    pub(crate) num_witness_segments: usize,
+    pub num_witness_segments: usize,
     // Segment size (s).
     pub(crate) segment_size: usize,
     // Table size (n * s).
@@ -25,7 +25,7 @@ pub struct PublicParameters<E: PairingEngine> {
     // Witness size (k * s).
     pub(crate) witness_element_size: usize,
     // [tau^i]_1 for i in 0..max*s.
-    pub(crate) g1_srs: Vec<E::G1Affine>,
+    pub g1_srs: Vec<E::G1Affine>,
     // [tau^i]_2 for i in 0..max*s.
     pub(crate) g2_srs: Vec<E::G2Affine>,
     // [Z_W(tau)]_2.
@@ -71,7 +71,7 @@ impl<E: PairingEngine> PublicParameters<E> {
         // Step 1: Choose a random tau. Let max = max(k, n). Compute SRS from tau.
         let tau = E::Fr::rand(rng);
         let max_pow_of_tau_g1 = max(num_table_segments, num_witness_segments) * segment_size - 1;
-        let max_pow_of_tau_caulk_g1 = (num_witness_segments.pow(2) - 1) * log_num_table_segments;
+        let max_pow_of_tau_caulk_g1 = (num_witness_segments + 1) * num_table_segments;
         let (g1_srs, g2_srs, g1_srs_caulk, g2_srs_caulk) =
             unsafe_setup_from_tau::<E, StdRng>(max_pow_of_tau_g1, max_pow_of_tau_caulk_g1, tau);
 

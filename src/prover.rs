@@ -635,9 +635,8 @@ mod tests {
         let pp =
             PublicParameters::setup(&mut rng, 16, 8, 4).expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
-        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> =
-            segments.iter().map(|segment| segment.as_slice()).collect();
-        let t = Table::<Bn254>::new(&pp, &segment_slices).unwrap();
+
+        let t = Table::<Bn254>::new(&pp, segments).unwrap();
 
         let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)
