@@ -76,9 +76,7 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     // Store each term U_l(X) * \rho_l(Y) in a vector
     let lagrange_basis = &pp.lagrange_basis_log_n;
 
-    let partial_y_poly_list_u_bar: Vec<DensePolynomial<E::Fr>> = if poly_u_list.is_empty() {
-        Vec::new()
-    } else {
+    let partial_y_poly_list_u_bar: Vec<DensePolynomial<E::Fr>> = {
         let num_coefficients = poly_u_list[0].len();
         let mut partial_y_poly_list_u_bar = Vec::with_capacity(num_coefficients);
         for coeff_index in 0..num_coefficients {
@@ -121,20 +119,7 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     }
 
     // TODO: Optimize the code segment.
-    let partial_y_poly_list_h_2 = if poly_h_s_list.is_empty() {
-        Vec::new()
-    } else if poly_h_s_list.len() == 1 {
-        let num_coefficients = poly_h_s_list[0].len();
-        let mut partial_y_poly_list_h_2: Vec<DensePolynomial<E::Fr>> =
-            Vec::with_capacity(num_coefficients);
-        // Add H_1(X) * \rho_1(Y) and pad with zero polynomials if needed.
-        for j in 0..num_coefficients {
-            let h_0_j = DensePolynomial::from_coefficients_slice(&[poly_h_s_list[0][j]]);
-            partial_y_poly_list_h_2.push(&h_0_j * &lagrange_basis[0]);
-        }
-
-        partial_y_poly_list_h_2
-    } else {
+    let partial_y_poly_list_h_2 = {
         let num_coefficients = poly_h_s_list[1].len();
         let mut partial_y_poly_list_h_2: Vec<DensePolynomial<E::Fr>> =
             Vec::with_capacity(num_coefficients);
@@ -174,6 +159,7 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
         &partial_y_poly_list_u_bar,
         log_num_table_segments,
     );
+
     let g1_h_2 = CaulkKzg::<E>::bi_poly_commit_g1(
         &pp.g1_srs_caulk,
         &partial_y_poly_list_h_2,
@@ -185,6 +171,7 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
         (Label::CaulkG1UBar, g1_u_bar),
         (Label::CaulkG1H2, g1_h_2),
     ])?;
+
     let alpha = transcript.get_and_append_challenge(Label::ChallengeCaulkAlpha)?;
 
     // Compute H_1(Y)

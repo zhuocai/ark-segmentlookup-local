@@ -63,90 +63,33 @@ mod tests {
     }
 
     #[test]
-    fn test_2_2_4() {
-        let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(2, 2, 4);
+    fn test_success_prove_and_verify() {
+        let inputs = [
+            // (2, 2, 1), this doesn't work due to next_pow2() in fk library.
+            (2, 2, 2),
+            (2, 2, 4),
+            (4, 4, 1),
+            (4, 4, 4),
+            (4, 16, 4),
+            (8, 8, 1),
+            (8, 8, 4),
+            (8, 16, 4),
+            (16, 8, 4),
+        ];
 
-        let rng = &mut test_rng();
+        for (num_table_segments, num_witness_segments, segment_size) in inputs.iter() {
+            let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(
+                *num_table_segments,
+                *num_witness_segments,
+                *segment_size,
+            );
 
-        let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
+            let rng = &mut test_rng();
 
-        verify(&pp, &tpp, statement, &proof, rng).unwrap();
-    }
+            let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
 
-    #[test]
-    fn test_4_4_1() {
-        let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(4, 4, 1);
-
-        let rng = &mut test_rng();
-
-        let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
-
-        verify(&pp, &tpp, statement, &proof, rng).unwrap();
-    }
-
-    #[test]
-    fn test_4_4_4() {
-        let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(4, 4, 4);
-
-        let rng = &mut test_rng();
-
-        let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
-
-        verify(&pp, &tpp, statement, &proof, rng).unwrap();
-    }
-
-    #[test]
-    fn test_4_16_4() {
-        let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(4, 16, 4);
-
-        let rng = &mut test_rng();
-
-        let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
-
-        verify(&pp, &tpp, statement, &proof, rng).unwrap();
-    }
-
-    #[test]
-    fn test_8_8_1() {
-        let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(8, 8, 1);
-
-        let rng = &mut test_rng();
-
-        let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
-
-        verify(&pp, &tpp, statement, &proof, rng).unwrap();
-    }
-
-    #[test]
-    fn test_8_8_4() {
-        let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(8, 8, 4);
-
-        let rng = &mut test_rng();
-
-        let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
-
-        verify(&pp, &tpp, statement, &proof, rng).unwrap();
-    }
-
-    #[test]
-    fn test_8_16_4() {
-        let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(8, 16, 4);
-
-        let rng = &mut test_rng();
-
-        let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
-
-        verify(&pp, &tpp, statement, &proof, rng).unwrap();
-    }
-
-    #[test]
-    fn test_16_8_4() {
-        let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(16, 8, 4);
-
-        let rng = &mut test_rng();
-
-        let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
-
-        verify(&pp, &tpp, statement, &proof, rng).unwrap();
+            let result = verify(&pp, &tpp, statement, &proof, rng);
+            assert!(result.is_ok(), "Failed to verify proof: {:?} num_table_segments: {}, num_witness_segments: {}, segment_size: {}", result, num_table_segments, num_witness_segments, segment_size);
+        }
     }
 }
