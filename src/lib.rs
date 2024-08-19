@@ -8,7 +8,7 @@ pub mod public_parameters;
 pub mod table;
 mod transcript;
 pub mod verifier;
-mod witness;
+pub mod witness;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right
@@ -45,9 +45,8 @@ mod tests {
         )
         .unwrap();
         let segments = rand_segments::generate(&pp);
-        let segment_slices: Vec<&[E::Fr]> =
-            segments.iter().map(|segment| segment.as_slice()).collect();
-        let t = Table::<E>::new(&pp, &segment_slices).expect("Failed to create table");
+
+        let t = Table::<E>::new(&pp, segments).expect("Failed to create table");
 
         let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)
@@ -76,8 +75,11 @@ mod tests {
             (8, 16, 4),
             (16, 8, 4),
         ];
-
         for (num_table_segments, num_witness_segments, segment_size) in inputs.iter() {
+            println!(
+                "num_table_segments: {}, num_witness_segments: {}, segment_size: {}",
+                num_table_segments, num_witness_segments, segment_size
+            );
             let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(
                 *num_table_segments,
                 *num_witness_segments,

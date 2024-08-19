@@ -20,7 +20,7 @@ pub struct TablePreprocessedParameters<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> Table<E> {
-    pub fn new(pp: &PublicParameters<E>, segment_values: &[&[E::Fr]]) -> Result<Self, Error> {
+    pub fn new(pp: &PublicParameters<E>, segment_values: Vec<Vec<E::Fr>>) -> Result<Self, Error> {
         let num_segments = pp.num_table_segments;
         let segment_size = pp.segment_size;
 
@@ -33,7 +33,7 @@ impl<E: PairingEngine> Table<E> {
             if segment.len() != segment_size {
                 return Err(Error::InvalidSegmentSize(segment.len()));
             }
-            values.extend_from_slice(segment);
+            values.extend_from_slice(&segment);
         }
 
         Ok(Self {
@@ -149,10 +149,8 @@ mod tests {
         let pp =
             PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
         let segments = rand_segments::generate::<Bn254>(&pp);
-        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> =
-            segments.iter().map(|segment| segment.as_slice()).collect();
 
-        Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
+        Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
     }
 
     #[test]
@@ -161,9 +159,8 @@ mod tests {
         let pp =
             PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
-        let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> =
-            segments.iter().map(|segment| segment.as_slice()).collect();
-        let t = Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
+
+        let t = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
 
         t.preprocess(&pp).expect("Failed to preprocess table");
     }
