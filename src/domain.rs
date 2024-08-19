@@ -3,7 +3,7 @@ use crate::kzg::Kzg;
 use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_ff::{FftField, FftParameters, Field};
 use ark_poly::univariate::DensePolynomial;
-use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain, UVPolynomial};
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use ark_std::One;
 
 pub(crate) fn vanishing_poly_g2<E: PairingEngine>(

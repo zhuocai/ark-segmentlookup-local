@@ -5,7 +5,6 @@ use ark_ff::{Field, PrimeField};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_std::rand::rngs::StdRng;
-use ark_std::rand::RngCore;
 use ark_std::{UniformRand, Zero};
 
 use crate::domain::{create_sub_domain, identity_poly, roots_of_unity, vanishing_poly_g2};
@@ -67,18 +66,14 @@ impl<E: PairingEngine> PublicParameters<E> {
     ) -> Result<PublicParameters<E>, Error> {
         let table_element_size = num_table_segments * segment_size;
         let witness_element_size = num_witness_segments * segment_size;
-        let log_num_table_segments = num_table_segments.trailing_zeros() as usize;
+        let log_num_table_segments = max(num_table_segments.trailing_zeros() as usize, 2);
 
         // Step 1: Choose a random tau. Let max = max(k, n). Compute SRS from tau.
         let tau = E::Fr::rand(rng);
-        let max_pow_of_tau = max(num_table_segments, num_witness_segments) * segment_size - 1;
-        let max_pow_of_tau_caulk = (num_witness_segments.pow(2) - 2) * log_num_table_segments;
-        let (g1_srs, g2_srs, g1_srs_caulk, g2_srs_caulk) = unsafe_setup_from_tau::<E, StdRng>(
-            max_pow_of_tau,
-            max_pow_of_tau + 1,
-            max_pow_of_tau_caulk,
-            tau,
-        );
+        let max_pow_of_tau_g1 = max(num_table_segments, num_witness_segments) * segment_size - 1;
+        let max_pow_of_tau_caulk_g1 = (num_witness_segments.pow(2) - 1) * log_num_table_segments;
+        let (g1_srs, g2_srs, g1_srs_caulk, g2_srs_caulk) =
+            unsafe_setup_from_tau::<E, StdRng>(max_pow_of_tau_g1, max_pow_of_tau_caulk_g1, tau);
 
         // Step 2: Compute [Z_W(tau)]_2.
         let order_w = num_table_segments * segment_size;

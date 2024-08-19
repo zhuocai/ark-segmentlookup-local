@@ -105,8 +105,7 @@ mod tests {
         let domain = Radix2EvaluationDomain::<Fr>::new(n).unwrap();
         let lagrange_basis = lagrange_basis::<Bn254>(&domain);
 
-        let (srs_g1, _, _, _) =
-            unsafe_setup_from_rng::<Bn254, StdRng>(n - 1, n, 0, &mut test_rng());
+        let (srs_g1, _, _, _) = unsafe_setup_from_rng::<Bn254, StdRng>(n - 1, 0, &mut test_rng());
         let lagrange_basis_1: Vec<G1Affine> = lagrange_basis
             .iter()
             .map(|li| Kzg::<Bn254>::commit_g1(&srs_g1, li).into())
@@ -124,8 +123,7 @@ mod tests {
         assert_eq!(li_proofs_slow, li_proofs_fast);
 
         // Different domain size and SRS size.
-        let (srs_g1, _, _, _) =
-            unsafe_setup_from_rng::<Bn254, StdRng>(n + 100, n, 0, &mut test_rng());
+        let (srs_g1, _, _, _) = unsafe_setup_from_rng::<Bn254, StdRng>(n + 100, 0, &mut test_rng());
         let li_proofs_fast =
             zero_opening_proofs::<Bn254>(&srs_g1, &domain, &lagrange_basis_1).unwrap();
 

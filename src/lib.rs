@@ -5,7 +5,6 @@ mod lagrange_basis;
 pub mod multi_unity;
 pub mod prover;
 pub mod public_parameters;
-mod rng;
 pub mod table;
 mod transcript;
 pub mod verifier;
@@ -63,20 +62,53 @@ mod tests {
         (pp, t, witness, statement, tpp)
     }
 
-    // #[test]
-    // fn test_2_2_4() {
-    //     let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(2, 2, 4);
-    //
-    //     let rng = &mut test_rng();
-    //
-    //     let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
-    //
-    //     verify(&pp, &tpp, statement, &proof, rng).unwrap();
-    // }
+    #[test]
+    fn test_2_2_4() {
+        let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(2, 2, 4);
+
+        let rng = &mut test_rng();
+
+        let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
+
+        verify(&pp, &tpp, statement, &proof, rng).unwrap();
+    }
+
+    #[test]
+    fn test_4_4_1() {
+        let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(4, 4, 1);
+
+        let rng = &mut test_rng();
+
+        let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
+
+        verify(&pp, &tpp, statement, &proof, rng).unwrap();
+    }
+
+    #[test]
+    fn test_4_4_4() {
+        let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(4, 4, 4);
+
+        let rng = &mut test_rng();
+
+        let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
+
+        verify(&pp, &tpp, statement, &proof, rng).unwrap();
+    }
 
     #[test]
     fn test_4_16_4() {
         let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(4, 16, 4);
+
+        let rng = &mut test_rng();
+
+        let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
+
+        verify(&pp, &tpp, statement, &proof, rng).unwrap();
+    }
+
+    #[test]
+    fn test_8_8_1() {
+        let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(8, 8, 1);
 
         let rng = &mut test_rng();
 

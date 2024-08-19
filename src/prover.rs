@@ -530,7 +530,7 @@ mod tests {
 
     type Fr = <Bn254 as PairingEngine>::Fr;
     type G1Affine = <Bn254 as PairingEngine>::G1Affine;
-    type G2Affine = <Bn254 as PairingEngine>::G2Affine;
+    // type G2Affine = <Bn254 as PairingEngine>::G2Affine;
 
     #[test]
     fn test_mul_and_neg() {
