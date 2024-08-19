@@ -86,26 +86,40 @@ impl<E: PairingEngine> Kzg<E> {
 /// Create srs from rng
 pub fn unsafe_setup_from_rng<E: PairingEngine, R: RngCore>(
     max_power_g1: usize,
-    max_power_g2: usize,
+    max_power_caulk_g1: usize,
     rng: &mut R,
-) -> (Vec<E::G1Affine>, Vec<E::G2Affine>) {
+) -> (
+    Vec<E::G1Affine>,
+    Vec<E::G2Affine>,
+    Vec<E::G1Affine>,
+    Vec<E::G2Affine>,
+) {
     let tau = E::Fr::rand(rng);
 
-    unsafe_setup_from_tau::<E, R>(max_power_g1, max_power_g2, tau)
+    unsafe_setup_from_tau::<E, R>(max_power_g1, max_power_caulk_g1, tau)
 }
 
 /// Create srs from specific tau
 pub fn unsafe_setup_from_tau<E: PairingEngine, R: RngCore>(
     max_power_g1: usize,
-    max_power_g2: usize,
+    max_power_caulk_g1: usize,
     tau: E::Fr,
-) -> (Vec<E::G1Affine>, Vec<E::G2Affine>) {
-    let powers_of_tau_size = max(max_power_g1 + 1, max_power_g2 + 1);
+) -> (
+    Vec<E::G1Affine>,
+    Vec<E::G2Affine>,
+    Vec<E::G1Affine>,
+    Vec<E::G2Affine>,
+) {
+    let max_power_g2 = max_power_g1 + 1;
+    let max_power_caulk_g2 = max_power_caulk_g1 + 1;
+    let powers_of_tau_size = max(max_power_g2 + 1, max_power_caulk_g2 + 1);
     let powers_of_tau = powers_of_tau::<E>(tau, powers_of_tau_size);
     let g1_srs = srs::<E::G1Affine>(&powers_of_tau, max_power_g1);
     let g2_srs = srs::<E::G2Affine>(&powers_of_tau, max_power_g2);
+    let g1_srs_caulk = srs::<E::G1Affine>(&powers_of_tau, max_power_caulk_g1);
+    let g2_srs_caulk = srs::<E::G2Affine>(&powers_of_tau, max_power_caulk_g2);
 
-    (g1_srs, g2_srs)
+    (g1_srs, g2_srs, g1_srs_caulk, g2_srs_caulk)
 }
 
 fn powers_of_tau<E: PairingEngine>(tau: E::Fr, size: usize) -> Vec<E::Fr> {
@@ -135,6 +149,9 @@ impl<E: PairingEngine> CaulkKzg<E> {
         max_deg: Option<&usize>,
         challenge: &E::Fr,
     ) -> (E::Fr, E::G1Affine) {
+        if poly.is_zero() {
+            return (E::Fr::zero(), E::G1Projective::zero().into_affine());
+        }
         let eval = poly.evaluate(challenge);
 
         let global_max_deg = srs.len();
@@ -163,6 +180,10 @@ impl<E: PairingEngine> CaulkKzg<E> {
         polynomials: &[DensePolynomial<E::Fr>],
         deg_x: usize,
     ) -> E::G1Affine {
+        if polynomials.len() == 0 {
+            return E::G1Affine::zero();
+        }
+
         let mut poly_formatted = Vec::new();
 
         for poly in polynomials {
@@ -186,6 +207,12 @@ impl<E: PairingEngine> CaulkKzg<E> {
         max_deg: Option<&usize>,
         points: &[E::Fr],
     ) -> (Vec<E::Fr>, E::G1Affine) {
+        if poly.is_zero() {
+            return (
+                vec![E::Fr::zero(); points.len()],
+                E::G1Projective::zero().into_affine(),
+            );
+        }
         let mut evals = Vec::new();
         let mut proofs = Vec::new();
         for p in points.iter() {
@@ -219,6 +246,14 @@ impl<E: PairingEngine> CaulkKzg<E> {
         deg_x: usize,
         point: &E::Fr,
     ) -> (E::G1Affine, E::G1Affine, DensePolynomial<E::Fr>) {
+        if polynomials.len() == 0 {
+            let proof = Self::bi_poly_commit_g1(g1_srs, &polynomials, deg_x);
+            return (
+                E::G1Affine::zero(),
+                proof,
+                DensePolynomial::from_coefficients_slice(&[E::Fr::zero()]),
+            );
+        }
         let mut poly_partial_eval = DensePolynomial::from_coefficients_vec(vec![E::Fr::zero()]);
         let mut alpha = E::Fr::one();
         for coeff in polynomials {

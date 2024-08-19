@@ -75,10 +75,7 @@ pub(crate) fn zero_opening_proofs<E: PairingEngine>(
         .size_as_field_element()
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
-    let rhs = srs_g1
-        .last()
-        .ok_or(Error::InvalidStructuredReferenceStrings)?
-        .mul(-domain_size_inverse_fr);
+    let rhs = srs_g1[domain.size() - 1].mul(-domain_size_inverse_fr);
 
     let domain_size = domain.size();
     let mut opening_proofs: Vec<E::G1Affine> = Vec::with_capacity(domain_size);
@@ -88,4 +85,48 @@ pub(crate) fn zero_opening_proofs<E: PairingEngine>(
     }
 
     Ok(opening_proofs)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::kzg::{unsafe_setup_from_rng, Kzg};
+    use ark_bn254::Bn254;
+    use ark_std::rand::rngs::StdRng;
+    use ark_std::{test_rng, Zero};
+
+    use super::*;
+
+    type Fr = <Bn254 as PairingEngine>::Fr;
+    type G1Affine = <Bn254 as PairingEngine>::G1Affine;
+
+    #[test]
+    fn test_zero_opening_proofs() {
+        let n = 32;
+        let domain = Radix2EvaluationDomain::<Fr>::new(n).unwrap();
+        let lagrange_basis = lagrange_basis::<Bn254>(&domain);
+
+        let (srs_g1, _, _, _) = unsafe_setup_from_rng::<Bn254, StdRng>(n - 1, 0, &mut test_rng());
+        let lagrange_basis_1: Vec<G1Affine> = lagrange_basis
+            .iter()
+            .map(|li| Kzg::<Bn254>::commit_g1(&srs_g1, li).into())
+            .collect();
+
+        let zero = Fr::zero();
+        let li_proofs_slow: Vec<G1Affine> = lagrange_basis
+            .iter()
+            .map(|li| Kzg::<Bn254>::open_g1(&srs_g1, li, zero).1)
+            .collect();
+
+        let li_proofs_fast =
+            zero_opening_proofs::<Bn254>(&srs_g1, &domain, &lagrange_basis_1).unwrap();
+
+        assert_eq!(li_proofs_slow, li_proofs_fast);
+
+        // Different domain size and SRS size.
+        let (srs_g1, _, _, _) = unsafe_setup_from_rng::<Bn254, StdRng>(n + 100, 0, &mut test_rng());
+        let li_proofs_fast =
+            zero_opening_proofs::<Bn254>(&srs_g1, &domain, &lagrange_basis_1).unwrap();
+
+        assert_eq!(li_proofs_slow, li_proofs_fast);
+    }
 }

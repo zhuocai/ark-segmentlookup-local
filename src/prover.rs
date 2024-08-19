@@ -209,13 +209,19 @@ pub fn prove<E: PairingEngine>(
         g1_px = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_pb).into_affine();
     } else if pp.num_table_segments < pp.num_witness_segments {
         // If n < k, the prover computes P_A(X) and sends [P_A(tau)]_1 to the verifier.
-        // TODO: current unit test does not cover this case
-        let coeff_shift = (pp.num_witness_segments - pp.num_table_segments) * pp.segment_size - 1;
-        let mut g1_proj_pa = E::G1Projective::zero();
+        // We can use Inverse FFT to compute the polynomial A(X),
+        // since the runtime does not exceed O(ks log ks) as n < k.
+        let mut poly_eval_list_a = vec![E::Fr::zero(); pp.table_element_size];
         for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
-            g1_proj_pa = g1_proj_pa + pp.g1_l_w_opening_proofs_at_zero[i + coeff_shift].mul(a_i);
+            poly_eval_list_a[i] = a_i;
         }
-        g1_px = g1_proj_pa.into_affine();
+        let poly_coeff_list_a = pp.domain_w.ifft(&poly_eval_list_a);
+        let poly_coeff_list_a0 = poly_coeff_list_a[1..].to_vec();
+        let coeff_shift = (pp.num_witness_segments - pp.num_table_segments) * pp.segment_size - 1;
+        let mut poly_coeff_list_pa = vec![E::Fr::zero(); coeff_shift];
+        poly_coeff_list_pa.extend_from_slice(&poly_coeff_list_a0);
+        let poly_pa = DensePolynomial::from_coefficients_vec(poly_coeff_list_pa);
+        g1_px = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_pa).into_affine();
     }
 
     transcript.append_elements(&[
@@ -524,7 +530,7 @@ mod tests {
 
     type Fr = <Bn254 as PairingEngine>::Fr;
     type G1Affine = <Bn254 as PairingEngine>::G1Affine;
-    type G2Affine = <Bn254 as PairingEngine>::G2Affine;
+    // type G2Affine = <Bn254 as PairingEngine>::G2Affine;
 
     #[test]
     fn test_mul_and_neg() {
@@ -557,7 +563,7 @@ mod tests {
     }
 
     #[test]
-    fn test_com1_multiplicity_polynomials_and_quotient() {
+    fn test_multiplicity_polynomials_and_quotient_g1() {
         let mut rng = test_rng();
         let num_segments = 16;
         let num_queries = 8;
@@ -631,7 +637,7 @@ mod tests {
         let segments = rand_segments::generate(&pp);
         let segment_slices: Vec<&[<Bn254 as PairingEngine>::Fr]> =
             segments.iter().map(|segment| segment.as_slice()).collect();
-        let t = Table::<Bn254>::new(&pp, &segment_slices).expect("Failed to create table");
+        let t = Table::<Bn254>::new(&pp, &segment_slices).unwrap();
 
         let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)
