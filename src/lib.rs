@@ -74,7 +74,9 @@ mod tests {
             (8, 8, 1),
             (8, 8, 4),
             (8, 16, 4),
+            (16, 1, 4),
             (16, 8, 4),
+            (64, 1, 32),
         ];
         for (num_table_segments, num_witness_segments, segment_size) in inputs.iter() {
             println!(

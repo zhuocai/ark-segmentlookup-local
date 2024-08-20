@@ -29,6 +29,15 @@ pub(crate) fn create_sub_domain<E: PairingEngine>(
     if !order.is_power_of_two() {
         return Err(Error::InvalidEvaluationDomainSize(order));
     }
+    let original_order = original_domain.size();
+    if segment_size > original_order {
+        return Err(Error::InvalidSegmentSize(segment_size));
+    }
+    if segment_size == original_order {
+        let domain_1 = Radix2EvaluationDomain::<<E as PairingEngine>::Fr>::new(1)
+            .ok_or(Error::FailedToCreateEvaluationDomain)?;
+        return Ok(domain_1);
+    }
 
     let size: u64 = order as u64;
     let log_size_of_group = order.trailing_zeros();
