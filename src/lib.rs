@@ -67,6 +67,7 @@ mod tests {
             // (2, 2, 1), this doesn't work due to next_pow2() in fk library.
             (2, 2, 2),
             (2, 2, 4),
+            (4, 1, 1),
             (4, 4, 1),
             (4, 4, 4),
             (4, 16, 4),

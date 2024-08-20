@@ -16,10 +16,16 @@ pub(crate) fn vanishing_poly_g2<E: PairingEngine>(
 }
 
 pub(crate) fn create_sub_domain<E: PairingEngine>(
-    larger_domain: &Radix2EvaluationDomain<E::Fr>,
+    original_domain: &Radix2EvaluationDomain<E::Fr>,
     order: usize,
     segment_size: usize,
 ) -> Result<Radix2EvaluationDomain<E::Fr>, Error> {
+    if segment_size == 0 {
+        return Err(Error::InvalidSegmentSize(segment_size));
+    }
+    if segment_size == 1 {
+        return Ok(original_domain.clone());
+    }
     if !order.is_power_of_two() {
         return Err(Error::InvalidEvaluationDomainSize(order));
     }
@@ -30,7 +36,7 @@ pub(crate) fn create_sub_domain<E: PairingEngine>(
         return Err(Error::InvalidEvaluationDomainSize(order));
     }
 
-    let roots_of_unity_larger_domain = roots_of_unity::<E>(&larger_domain);
+    let roots_of_unity_larger_domain = roots_of_unity::<E>(&original_domain);
     let group_gen = roots_of_unity_larger_domain[segment_size];
     let size_as_field_element = E::Fr::from(size);
     let size_inv = size_as_field_element
