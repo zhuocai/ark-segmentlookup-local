@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::ops::{Add, Mul, Sub};
 
-use crate::domain::roots_of_unity;
+use crate::domain::{divide_by_vanishing_poly_checked, roots_of_unity};
 use crate::error::Error;
 use crate::kzg::Kzg;
 use crate::multi_unity::{multi_unity_prove, MultiUnityProof};
@@ -480,24 +480,12 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
     let poly_l = DensePolynomial::from_coefficients_vec(poly_coeff_list_l);
     let mut poly_ql = poly_l.sub(&poly_w_mul_l_div_v);
     poly_ql = poly_ql.mul(&poly_x_pow_k_sub_one);
-    let remainder: DensePolynomial<E::Fr>;
-    (poly_ql, remainder) = poly_ql
-        .divide_by_vanishing_poly(*domain_v)
-        .ok_or(Error::FailedToDivideByVanishingPolynomial)?;
-    if !remainder.is_zero() {
-        return Err(Error::RemainderAfterDivisionIsNonZero);
-    }
+    let poly_ql = divide_by_vanishing_poly_checked::<E>(domain_v, &poly_ql)?;
     let g1_ql = Kzg::<E>::commit_g1(&g1_srs, &poly_ql).into_affine();
 
     // Compute Q_D s.t. L(X) - D(X) = Z_K(X) * Q_D(X).
     let mut poly_qd = poly_l.sub(&poly_d);
-    let remainder: DensePolynomial<E::Fr>;
-    (poly_qd, remainder) = poly_qd
-        .divide_by_vanishing_poly(*domain_k)
-        .ok_or(Error::FailedToDivideByVanishingPolynomial)?;
-    if !remainder.is_zero() {
-        return Err(Error::RemainderAfterDivisionIsNonZero);
-    }
+    poly_qd = divide_by_vanishing_poly_checked::<E>(domain_k, &poly_qd)?;
     let g1_qd = Kzg::<E>::commit_g1(&g1_srs, &poly_qd).into_affine();
 
     let poly_coset_eval_list_l = domain_v.coset_fft(&poly_l);
@@ -604,9 +592,7 @@ mod tests {
         let mut poly_qm = poly_m.clone();
         poly_qm = poly_qm.sub(&poly_m_div_w);
         poly_qm = poly_qm.naive_mul(&poly_x_pow_n_sub_one);
-        let remainder: DensePolynomial<Fr>;
-        (poly_qm, remainder) = poly_qm.divide_by_vanishing_poly(pp.domain_w).unwrap();
-        assert!(remainder.is_zero());
+        let poly_qm = divide_by_vanishing_poly_checked::<Bn254>(&pp.domain_w, &poly_qm).unwrap();
         let g1_qm_expected = Kzg::<Bn254>::commit_g1(&pp.g1_srs, &poly_qm).into_affine();
 
         let MultiplicityPolynomialsAndQuotient {
@@ -626,28 +612,33 @@ mod tests {
         assert_eq!(g1_qm_expected, g1_qm_got);
     }
 
-    // TODO: add test cases with different parameters,
-    // e.g., (8, 4, 4), (4, 8, 4).
-
     #[test]
-    fn test_prove() {
+    fn test_successful_prove() {
         let mut rng = test_rng();
-        let pp =
-            PublicParameters::setup(&mut rng, 16, 8, 4).expect("Failed to setup public parameters");
-        let segments = rand_segments::generate(&pp);
+        let inputs = [(4, 8, 4), (8, 4, 4), (8, 16, 4), (16, 8, 4)];
+        for (num_table_segments, num_witness_segments, segment_size) in inputs.into_iter() {
+            let pp = PublicParameters::setup(
+                &mut rng,
+                num_table_segments,
+                num_witness_segments,
+                segment_size,
+            )
+            .expect("Failed to setup public parameters");
+            let segments = rand_segments::generate(&pp);
 
-        let t = Table::<Bn254>::new(&pp, segments).unwrap();
+            let t = Table::<Bn254>::new(&pp, segments).unwrap();
 
-        let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
-            .map(|_| rng.next_u32() as usize % pp.num_table_segments)
-            .collect();
+            let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
+                .map(|_| rng.next_u32() as usize % pp.num_table_segments)
+                .collect();
 
-        let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
+            let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
 
-        let tpp = t.preprocess(&pp).unwrap();
+            let tpp = t.preprocess(&pp).unwrap();
 
-        let rng = &mut test_rng();
+            let rng = &mut test_rng();
 
-        prove::<Bn254>(&pp, &t, &tpp, &witness, rng).unwrap();
+            prove::<Bn254>(&pp, &t, &tpp, &witness, rng).unwrap();
+        }
     }
 }

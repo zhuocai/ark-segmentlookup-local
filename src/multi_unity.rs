@@ -1,6 +1,11 @@
 use std::iter;
 use std::ops::MulAssign;
 
+use crate::domain::divide_by_vanishing_poly_checked;
+use crate::error::Error;
+use crate::kzg::{convert_to_big_ints, CaulkKzg};
+use crate::public_parameters::PublicParameters;
+use crate::transcript::{Label, Transcript};
 use ark_ec::msm::VariableBaseMSM;
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::Field;
@@ -9,15 +14,7 @@ use ark_poly::{EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain
 use ark_std::rand::prelude::StdRng;
 use ark_std::{One, UniformRand, Zero};
 
-use crate::error::Error;
-use crate::kzg::{convert_to_big_ints, CaulkKzg};
-use crate::public_parameters::PublicParameters;
-use crate::transcript::{Label, Transcript};
-
 /// Modified from https://github.com/caulk-crypto/caulk/blob/main/src/multi/unity.rs
-// TODO:
-// fix the issue that when the number of queries is larger than the number of segments,
-// the KZG commit fails.
 #[derive(Copy, Clone)]
 pub(crate) struct MultiUnityProof<E: PairingEngine> {
     g1_u_bar: E::G1Affine,
@@ -107,14 +104,10 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
 
     let mut poly_h_s_list: Vec<DensePolynomial<E::Fr>> = Vec::new();
     for s in 1..=log_num_table_segments {
-        let (poly_h_s, remainder) = (&(&poly_u_list[s - 1] * &poly_u_list[s - 1])
-            - &poly_u_list[s])
-            .divide_by_vanishing_poly(pp.domain_k)
-            .ok_or(Error::FailedToDivideByVanishingPolynomial)?;
-
-        if !remainder.is_zero() {
-            return Err(Error::RemainderAfterDivisionIsNonZero);
-        }
+        let poly_h_s = divide_by_vanishing_poly_checked::<E>(
+            &pp.domain_k,
+            &(&(&poly_u_list[s - 1] * &poly_u_list[s - 1]) - &poly_u_list[s]),
+        )?;
         poly_h_s_list.push(poly_h_s);
     }
 
@@ -188,12 +181,10 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
         u_sqr_alpha_list += &(&temp * &lagrange_basis[s]);
     }
     let domain_log_n = &pp.domain_log_n;
-    let (poly_h_1, remainder) = (&(&poly_u_alpha * &poly_u_alpha) - &u_sqr_alpha_list)
-        .divide_by_vanishing_poly(domain_log_n.clone())
-        .unwrap();
-    if !remainder.is_zero() {
-        return Err(Error::RemainderAfterDivisionIsNonZero);
-    }
+    let poly_h_1 = divide_by_vanishing_poly_checked::<E>(
+        domain_log_n,
+        &(&(&poly_u_alpha * &poly_u_alpha) - &u_sqr_alpha_list),
+    )?;
 
     assert!(pp.g1_srs_caulk.len() >= poly_h_1.len());
 

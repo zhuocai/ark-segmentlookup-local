@@ -4,7 +4,7 @@ use ark_ec::{PairingEngine, ProjectiveCurve};
 use ark_ff::{FftField, FftParameters, Field};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
-use ark_std::One;
+use ark_std::{One, Zero};
 
 pub(crate) fn vanishing_poly_g2<E: PairingEngine>(
     g2_srs: &[E::G2Affine],
@@ -83,6 +83,21 @@ pub(crate) fn identity_poly<E: PairingEngine>(
     let id_list = vec![E::Fr::one(); domain.size()];
 
     Evaluations::from_vec_and_domain(id_list, *domain).interpolate()
+}
+
+pub(crate) fn divide_by_vanishing_poly_checked<E: PairingEngine>(
+    domain: &Radix2EvaluationDomain<E::Fr>,
+    poly: &DensePolynomial<E::Fr>,
+) -> Result<DensePolynomial<E::Fr>, Error> {
+    let (quotient, remainder) = poly
+        .divide_by_vanishing_poly(*domain)
+        .ok_or(Error::FailedToDivideByVanishingPolynomial)?;
+
+    if !remainder.is_zero() {
+        return Err(Error::RemainderAfterDivisionIsNonZero);
+    }
+
+    Ok(quotient)
 }
 
 #[cfg(test)]

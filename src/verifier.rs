@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::multi_unity::multi_unity_verify;
 use crate::prover::Proof;
 use crate::public_parameters::PublicParameters;
-use std::ops::{Add, Mul, Neg};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg};
 
 use crate::table::TablePreprocessedParameters;
 use crate::transcript::{Label, Transcript};
@@ -91,7 +91,6 @@ pub fn verify<E: PairingEngine>(
             return Err(Error::DegreeCheckFailed);
         }
     } else if pp.num_table_segments < pp.num_witness_segments {
-        // TODO: current unit test does not cover this case
         let deg_tau = (pp.num_witness_segments - pp.num_table_segments) * pp.segment_size - 1;
         let left_pairing = E::pairing(proof.g1_a0, pp.g2_srs[deg_tau]);
         let right_pairing = E::pairing(proof.g1_px, g2_one);
@@ -216,29 +215,38 @@ pub fn verify<E: PairingEngine>(
         return Err(Error::Pairing4Failed);
     }
 
-    // Round 15-4: The first equation check.
-    // TODO: Optimize point operations.
+    // Round 15-4: The first point check.
     let fr_gamma_pow_k_sub_one = gamma.pow([pp.num_witness_segments as u64]) - E::Fr::one();
-    let g1_l_at_gamma_div_v = fr_to_g1_proj::<E>(proof.fr_l_at_gamma_div_v).into_affine();
-    let mut g1_equation1 = g1_l_at_gamma_div_v
-        .mul(-(fr_gamma_pow_k_sub_one * pp.domain_w.group_gen))
-        .into_affine();
-    let g1_l_at_gamma = fr_to_g1_proj::<E>(proof.fr_l_at_gamma).into_affine();
-    g1_equation1 = g1_equation1.add(g1_l_at_gamma.mul(fr_gamma_pow_k_sub_one).into_affine());
-    let g1_ql_at_gamma = fr_to_g1_proj::<E>(proof.fr_ql_at_gamma).into_affine();
-    g1_equation1 = g1_equation1.add(g1_ql_at_gamma.mul(-fr_zv_at_gamma).into_affine());
-    if g1_equation1 != E::G1Affine::zero() {
+    let fr_neg_gamma_pow_k_sub_one = -fr_gamma_pow_k_sub_one;
+    let fr_neg_zv_at_gamma = -fr_zv_at_gamma;
+
+    let mut g1_proj_l_at_gamma_div_v = fr_to_g1_proj::<E>(proof.fr_l_at_gamma_div_v);
+    let mut g1_proj_l_at_gamma = fr_to_g1_proj::<E>(proof.fr_l_at_gamma);
+    let mut g1_proj_ql_at_gamma = fr_to_g1_proj::<E>(proof.fr_ql_at_gamma);
+
+    g1_proj_l_at_gamma_div_v.mul_assign(fr_neg_gamma_pow_k_sub_one * pp.domain_w.group_gen);
+    g1_proj_l_at_gamma.mul_assign(fr_gamma_pow_k_sub_one);
+    g1_proj_ql_at_gamma.mul_assign(fr_neg_zv_at_gamma);
+    let mut g1_proj_check1 = g1_proj_l_at_gamma_div_v.clone();
+    g1_proj_check1.add_assign(g1_proj_l_at_gamma);
+    g1_proj_check1.add_assign(g1_proj_ql_at_gamma);
+
+    if g1_proj_check1 != E::G1Projective::zero() {
         return Err(Error::EquationCheck1Failed);
     }
 
-    // Round 15-4: The second equation check.
-    // TODO: Optimize point operations.
+    // Round 15-4: The second point check.
+    let mut g1_proj_l_at_gamma = fr_to_g1_proj::<E>(proof.fr_l_at_gamma);
     let fr_zk_at_gamma = pp.domain_k.evaluate_vanishing_polynomial(gamma);
-    let g1_d_at_gamma = fr_to_g1_proj::<E>(proof.fr_d_at_gamma).into_affine();
-    let mut g1_equation2 = g1_l_at_gamma.add(g1_d_at_gamma.neg());
-    let g1_qd_at_gamma = fr_to_g1_proj::<E>(proof.fr_qd_at_gamma).into_affine();
-    g1_equation2 = g1_equation2.add(g1_qd_at_gamma.mul(-fr_zk_at_gamma).into_affine());
-    if g1_equation2 != E::G1Affine::zero() {
+    let g1_d_at_gamma = fr_to_g1_proj::<E>(proof.fr_d_at_gamma);
+
+    g1_proj_l_at_gamma.add_assign(g1_d_at_gamma.neg());
+    let mut g1_proj_check2 = g1_proj_l_at_gamma.clone();
+    let mut g1_proj_qd_at_gamma = fr_to_g1_proj::<E>(proof.fr_qd_at_gamma);
+    g1_proj_qd_at_gamma.mul_assign(-fr_zk_at_gamma);
+    g1_proj_check2.add_assign(g1_proj_qd_at_gamma);
+
+    if g1_proj_check2 != E::G1Projective::zero() {
         return Err(Error::EquationCheck2Failed);
     }
 
@@ -253,7 +261,7 @@ fn fr_to_g1_proj<E: PairingEngine>(fr: E::Fr) -> E::G1Projective {
 mod tests {
     use ark_bn254::Bn254;
     use ark_std::rand::RngCore;
-    use ark_std::test_rng;
+    use ark_std::{test_rng, UniformRand};
 
     use crate::prover::prove;
     use crate::table::{rand_segments, Table};
@@ -261,45 +269,124 @@ mod tests {
 
     use super::*;
 
-    // TODO: add test cases with different parameters,
-    // e.g., (8, 4, 4), (4, 8, 4).
+    type Fr = <Bn254 as PairingEngine>::Fr;
+    type G1Affine = <Bn254 as PairingEngine>::G1Affine;
 
     #[test]
-    fn test_verify() {
+    fn test_successful_verify() {
         let mut rng = test_rng();
-        let pp =
-            PublicParameters::setup(&mut rng, 16, 8, 4).expect("Failed to setup public parameters");
-        let segments = rand_segments::generate(&pp);
 
-        let t = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
+        let inputs = [(4, 8, 4), (8, 4, 4), (16, 8, 4)];
 
-        let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
-            .map(|_| rng.next_u32() as usize % pp.num_table_segments)
-            .collect();
+        for (num_table_segments, num_witness_segments, segment_size) in inputs.into_iter() {
+            let pp = PublicParameters::setup(
+                &mut rng,
+                num_table_segments,
+                num_witness_segments,
+                segment_size,
+            )
+            .expect("Failed to setup public parameters");
+            let segments = rand_segments::generate(&pp);
 
-        let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
+            let t = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
 
-        let statement = witness.generate_statement(&pp.g1_srs);
+            let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
+                .map(|_| rng.next_u32() as usize % pp.num_table_segments)
+                .collect();
 
-        let tpp = t.preprocess(&pp).unwrap();
+            let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
 
-        let rng = &mut test_rng();
+            let statement = witness.generate_statement(&pp.g1_srs);
 
-        let proof: Proof<Bn254> = match prove::<Bn254>(&pp, &t, &tpp, &witness, rng) {
-            Ok(proof) => proof,
-            Err(err) => {
-                eprintln!("{:?}", err);
-                panic!("Failed to prove");
-            }
-        };
+            let tpp = t.preprocess(&pp).unwrap();
 
-        let result = match verify::<Bn254>(&pp, &tpp, statement, &proof, rng) {
-            Ok(_) => true,
-            Err(err) => {
-                eprintln!("{:?}", err);
-                false
-            }
-        };
-        assert!(result);
+            let rng = &mut test_rng();
+
+            let proof = prove::<Bn254>(&pp, &t, &tpp, &witness, rng).expect("Failed to prove");
+
+            assert!(verify::<Bn254>(&pp, &tpp, statement, &proof, rng).is_ok());
+        }
+    }
+
+    #[test]
+    fn test_failed_verify() {
+        let mut rng = test_rng();
+
+        let inputs = [(4, 8, 4), (8, 4, 4), (16, 8, 4)];
+
+        for (num_table_segments, num_witness_segments, segment_size) in inputs.into_iter() {
+            let pp = PublicParameters::setup(
+                &mut rng,
+                num_table_segments,
+                num_witness_segments,
+                segment_size,
+            )
+            .expect("Failed to setup public parameters");
+            let segments = rand_segments::generate(&pp);
+
+            let t = Table::<Bn254>::new(&pp, segments.clone()).expect("Failed to create table");
+
+            let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
+                .map(|_| rng.next_u32() as usize % pp.num_table_segments)
+                .collect();
+
+            let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
+
+            let statement = witness.generate_statement(&pp.g1_srs);
+
+            let tpp = t.preprocess(&pp).unwrap();
+
+            let rng = &mut test_rng();
+
+            // Wrong table
+            let new_segments = segments
+                .into_iter()
+                .map(|segment| {
+                    segment
+                        .iter()
+                        .map(|&s| s + Fr::rand(rng))
+                        .collect::<Vec<Fr>>()
+                })
+                .collect();
+            let new_t = Table::<Bn254>::new(&pp, new_segments).expect("Failed to create table");
+
+            let proof = prove::<Bn254>(&pp, &new_t, &tpp, &witness, rng).expect("Failed to prove");
+
+            assert!(!verify::<Bn254>(&pp, &tpp, statement, &proof, rng).is_ok());
+
+            // Wrong witness from wrong table
+            let new_queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
+                .map(|_| rng.next_u32() as usize % pp.num_table_segments)
+                .collect();
+            let new_witness = Witness::new(&pp, &new_t, &new_queried_segment_indices).unwrap();
+
+            let proof = prove::<Bn254>(&pp, &t, &tpp, &new_witness, rng).expect("Failed to prove");
+
+            assert!(!verify::<Bn254>(&pp, &tpp, statement, &proof, rng).is_ok());
+
+            // Wrong witness from wrong indices
+            let new_queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
+                .map(|_| rng.next_u32() as usize % pp.num_table_segments)
+                .collect();
+            let new_witness = Witness {
+                num_witness_segments: pp.num_witness_segments,
+                segment_size: pp.segment_size,
+                poly_f: witness.poly_f.clone(),
+                poly_eval_list_f: witness.poly_eval_list_f.clone(),
+                queried_segment_indices: new_queried_segment_indices,
+            };
+
+            let proof = prove::<Bn254>(&pp, &t, &tpp, &new_witness, rng).expect("Failed to prove");
+
+            assert!(!verify::<Bn254>(&pp, &tpp, statement, &proof, rng).is_ok());
+
+            // Wrong statement
+            let new_statement = G1Affine::prime_subgroup_generator()
+                .mul(Fr::rand(rng))
+                .into_affine();
+            let proof = prove::<Bn254>(&pp, &t, &tpp, &witness, rng).expect("Failed to prove");
+
+            assert!(!verify::<Bn254>(&pp, &tpp, new_statement, &proof, rng).is_ok());
+        }
     }
 }

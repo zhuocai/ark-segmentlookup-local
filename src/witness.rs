@@ -8,8 +8,8 @@ use crate::public_parameters::PublicParameters;
 use crate::table::Table;
 
 pub struct Witness<E: PairingEngine> {
-    num_witness_segments: usize,
-    segment_size: usize,
+    pub(crate) num_witness_segments: usize,
+    pub(crate) segment_size: usize,
     pub(crate) poly_f: DensePolynomial<E::Fr>,
     pub(crate) poly_eval_list_f: Vec<E::Fr>,
     pub(crate) queried_segment_indices: Vec<usize>,
