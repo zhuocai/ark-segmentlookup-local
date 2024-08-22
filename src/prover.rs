@@ -58,12 +58,12 @@ pub fn prove<E: PairingEngine>(
     // and send [M(tau)]_1 and [M(tau / w)]_1 to the verifier.
     // Round 1-2: Compute and send [Q_M(tau)]_1 using the SRS and Lemma 4.
     let segment_multiplicities =
-        segment_multiplicities(&witness.queried_segment_indices, pp.num_table_segments)?;
+        compute_segment_multiplicities(&witness.segment_indices, pp.num_table_segments)?;
     let MultiplicityPolynomialsAndQuotient {
         g1_m,
         g1_m_div_w,
         g1_qm,
-    } = multiplicity_polynomials_and_quotient_g1::<E>(
+    } = compute_multiplicity_polynomials_and_quotient::<E>(
         &segment_multiplicities,
         &pp.g1_l_w_list,
         &pp.g1_q3_list,
@@ -100,13 +100,13 @@ pub fn prove<E: PairingEngine>(
         poly_coset_eval_list_l,
         poly_d,
         poly_qd,
-    } = index_polynomials_and_quotients_g1::<E>(
+    } = compute_index_polynomials_and_quotients::<E>(
         &pp.domain_w,
         &pp.domain_k,
         &pp.domain_v,
         &pp.g1_l_v_list,
         &pp.g1_srs,
-        &witness.queried_segment_indices,
+        &witness.segment_indices,
         pp.witness_element_size,
         pp.segment_size,
         pp.num_witness_segments,
@@ -135,94 +135,59 @@ pub fn prove<E: PairingEngine>(
     // Round 10-1: The prover computes A(X) of degree ns-1 in sparse form,
     // and sends [A(tau)]_1 to the verifier.
     // Round 10-2: The prover computes [Q_A(tau)]_1 using the SRS and Lemma 4.
-    let mut sparse_poly_eval_list_a = BTreeMap::<usize, E::Fr>::default();
-    let mut g1_proj_a = E::G1Projective::zero();
-    let mut g1_proj_qa = E::G1Projective::zero();
-    let roots_of_unity_w = roots_of_unity::<E>(&pp.domain_w);
-
-    for (&segment_index, &multiplicity) in segment_multiplicities.iter() {
-        let segment_element_indices =
-            segment_index * pp.segment_size..(segment_index + 1) * pp.segment_size;
-        for elem_index in segment_element_indices {
-            let fr_a_i = (beta + table.values[elem_index] + delta * roots_of_unity_w[elem_index])
-                .inverse()
-                .ok_or(Error::FailedToInverseFieldElement)?
-                * E::Fr::from(multiplicity as u64);
-
-            sparse_poly_eval_list_a.insert(elem_index, fr_a_i);
-            g1_proj_a.add_assign(pp.g1_l_w_list[elem_index].mul(fr_a_i));
-            g1_proj_qa.add_assign(tpp.g1_q1_list[elem_index].mul(fr_a_i));
-            g1_proj_qa.add_assign(pp.g1_q2_list[elem_index].mul(delta.mul(fr_a_i)));
-        }
-    }
-
-    let g1_a = g1_proj_a.into_affine();
-    let g1_qa = g1_proj_qa.into_affine();
+    // Round 10-5: The prover computes A_0(X) = (A(X) - A(0)) / X,
+    // and sends [A_0(tau)]_1 to the verifier.
+    let PolyAAndQuotient {
+        g1_a,
+        g1_qa,
+        g1_a0,
+        sparse_poly_eval_list_a,
+    } = compute_poly_a_and_quotient(
+        beta,
+        delta,
+        table,
+        &segment_multiplicities,
+        &pp.domain_w,
+        pp.segment_size,
+        &pp.g1_l_w_list,
+        &tpp.g1_q1_list,
+        &pp.g1_q2_list,
+        &pp.g1_l_w_opening_proofs_at_zero,
+    )?;
 
     // Round 10-3: The prover computes B(X) of degree ks-1.
-    let poly_eval_list_b: Result<Vec<E::Fr>, Error> = (0..pp.witness_element_size)
-        .map(|i| {
-            (beta + witness.poly_eval_list_f[i] + delta * poly_eval_list_l[i])
-                .inverse()
-                .ok_or(Error::FailedToInverseFieldElement)
-        })
-        .collect();
-    let poly_eval_list_b = poly_eval_list_b?;
-    let poly_coeff_list_b = pp.domain_v.ifft(&poly_eval_list_b);
-    let poly_b = DensePolynomial::from_coefficients_vec(poly_coeff_list_b);
-
     // Round 10-4: The prover computes [Q_B(tau)]_1 using the SRS and Lemma 4.
-    let poly_coset_eval_list_b = pp.domain_v.coset_fft(&poly_b);
-    let poly_coset_eval_list_f = pp.domain_v.coset_fft(&witness.poly_f);
-    let fr_one = E::Fr::one();
-    let mut poly_coset_eval_list_qb: Vec<E::Fr> = poly_coset_eval_list_b
-        .iter()
-        .zip(poly_coset_eval_list_f.iter())
-        .zip(poly_coset_eval_list_l.iter())
-        .map(|((&b_i, &f_i), &l_i)| (b_i * (beta + f_i + delta * l_i)) - fr_one)
-        .collect();
-    pp.domain_v
-        .divide_by_vanishing_poly_on_coset_in_place(&mut poly_coset_eval_list_qb);
-    let poly_coeff_list_qb = pp.domain_v.coset_ifft(&poly_coset_eval_list_qb);
-    let poly_qb = DensePolynomial::from_coefficients_vec(poly_coeff_list_qb);
-    let g1_qb = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_qb).into_affine();
-
-    // Round 10-5: The prover computes A_0(X) = (A(X) - A(0)) / X, B_0(X) = (B(X) - B(0)) / X,
-    // and sends [A_0(tau)]_1 and [B_0(tau)]_1 to the verifier.
-    let mut g1_proj_a0 = E::G1Projective::zero();
-    for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
-        g1_proj_a0.add_assign(pp.g1_l_w_opening_proofs_at_zero[i].mul(a_i));
-    }
-    let g1_a0 = g1_proj_a0.into_affine();
-    let poly_b0 = DensePolynomial::from_coefficients_slice(&poly_b.coeffs[1..]);
-    let g1_b0 = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_b0).into_affine();
+    // Round 10-5: The prover computes B_0(X) = (B(X) - B(0)) / X,
+    // and sends [B_0(tau)]_1 to the verifier.
+    let PolyBAndQuotient {
+        poly_b,
+        poly_qb,
+        poly_b0,
+        g1_qb,
+        g1_b0,
+    } = compute_poly_b_and_quotient(
+        beta,
+        delta,
+        &witness,
+        pp.witness_element_size,
+        &pp.domain_v,
+        &poly_eval_list_l,
+        &poly_coset_eval_list_l,
+        &pp.g1_srs,
+    )?;
 
     // Round 10-6: Degree check.
     // This step is only necessary when k != n.
-    let mut g1_px = E::G1Affine::zero();
-    if pp.num_table_segments > pp.num_witness_segments {
-        // If n > k, the prover computes P_B(X) and sends [P_B(tau)]_1 to the verifier.
-        let coeff_shift = (pp.num_table_segments - pp.num_witness_segments) * pp.segment_size - 1;
-        let mut poly_coeff_list_pb = vec![E::Fr::zero(); coeff_shift];
-        poly_coeff_list_pb.extend_from_slice(&poly_b0.coeffs);
-        let poly_pb = DensePolynomial::from_coefficients_vec(poly_coeff_list_pb);
-        g1_px = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_pb).into_affine();
-    } else if pp.num_table_segments < pp.num_witness_segments {
-        // If n < k, the prover computes P_A(X) and sends [P_A(tau)]_1 to the verifier.
-        // We can use Inverse FFT to compute the polynomial A(X),
-        // since the runtime does not exceed O(ks log ks) as n < k.
-        let mut poly_eval_list_a = vec![E::Fr::zero(); pp.table_element_size];
-        for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
-            poly_eval_list_a[i] = a_i;
-        }
-        let poly_coeff_list_a = pp.domain_w.ifft(&poly_eval_list_a);
-        let poly_coeff_list_a0 = poly_coeff_list_a[1..].to_vec();
-        let coeff_shift = (pp.num_witness_segments - pp.num_table_segments) * pp.segment_size - 1;
-        let mut poly_coeff_list_pa = vec![E::Fr::zero(); coeff_shift];
-        poly_coeff_list_pa.extend_from_slice(&poly_coeff_list_a0);
-        let poly_pa = DensePolynomial::from_coefficients_vec(poly_coeff_list_pa);
-        g1_px = Kzg::<E>::commit_g1(&pp.g1_srs, &poly_pa).into_affine();
-    }
+    let g1_px = compute_degree_check_g1::<E>(
+        pp.num_table_segments,
+        pp.num_witness_segments,
+        pp.segment_size,
+        pp.table_element_size,
+        &poly_b0,
+        &pp.g1_srs,
+        &sparse_poly_eval_list_a,
+        &pp.domain_w,
+    );
 
     transcript.append_elements(&[
         (Label::G1A, g1_a),
@@ -324,7 +289,7 @@ pub fn prove<E: PairingEngine>(
     })
 }
 
-fn segment_multiplicities(
+fn compute_segment_multiplicities(
     queried_segment_indices: &[usize],
     num_segments: usize,
 ) -> Result<BTreeMap<usize, usize>, Error> {
@@ -350,7 +315,7 @@ struct MultiplicityPolynomialsAndQuotient<E: PairingEngine> {
 }
 
 // Compute [M(tau)]_1, [M(tau / w)]_1, and [Q_M(tau)]_1.
-fn multiplicity_polynomials_and_quotient_g1<E: PairingEngine>(
+fn compute_multiplicity_polynomials_and_quotient<E: PairingEngine>(
     segment_multiplicities: &BTreeMap<usize, usize>,
     g1_l_w_list: &[E::G1Affine],
     g1_q3_list: &[E::G1Affine],
@@ -405,7 +370,7 @@ struct IndexPolynomialsAndQuotients<E: PairingEngine> {
 }
 
 // Compute the commitments of [L(tau)]_1, [L(tau*v)]_1, [D(tau)]_1, [Q_L(tau)]_1, and [Q_D(tau)]_1.
-fn index_polynomials_and_quotients_g1<E: PairingEngine>(
+fn compute_index_polynomials_and_quotients<E: PairingEngine>(
     domain_w: &Radix2EvaluationDomain<E::Fr>,
     domain_k: &Radix2EvaluationDomain<E::Fr>,
     domain_v: &Radix2EvaluationDomain<E::Fr>,
@@ -498,6 +463,154 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
     })
 }
 
+struct PolyAAndQuotient<E: PairingEngine> {
+    g1_a: E::G1Affine,
+    g1_qa: E::G1Affine,
+    g1_a0: E::G1Affine,
+    sparse_poly_eval_list_a: BTreeMap<usize, E::Fr>,
+}
+
+fn compute_poly_a_and_quotient<E: PairingEngine>(
+    beta: E::Fr,
+    delta: E::Fr,
+    table: &Table<E>,
+    segment_multiplicities: &BTreeMap<usize, usize>,
+    domain_w: &Radix2EvaluationDomain<E::Fr>,
+    segment_size: usize,
+    g1_l_w_list: &[E::G1Affine],
+    g1_q1_list: &[E::G1Affine],
+    g1_q2_list: &[E::G1Affine],
+    g1_l_w_opening_proofs_at_zero: &[E::G1Affine],
+) -> Result<PolyAAndQuotient<E>, Error> {
+    let mut sparse_poly_eval_list_a = BTreeMap::<usize, E::Fr>::default();
+    let mut g1_proj_a = E::G1Projective::zero();
+    let mut g1_proj_qa = E::G1Projective::zero();
+    let roots_of_unity_w = roots_of_unity::<E>(domain_w);
+
+    for (&segment_index, &multiplicity) in segment_multiplicities.iter() {
+        let segment_element_indices =
+            segment_index * segment_size..(segment_index + 1) * segment_size;
+        for elem_index in segment_element_indices {
+            let fr_a_i = (beta + table.values[elem_index] + delta * roots_of_unity_w[elem_index])
+                .inverse()
+                .ok_or(Error::FailedToInverseFieldElement)?
+                * E::Fr::from(multiplicity as u64);
+
+            sparse_poly_eval_list_a.insert(elem_index, fr_a_i);
+            g1_proj_a.add_assign(g1_l_w_list[elem_index].mul(fr_a_i));
+            g1_proj_qa.add_assign(g1_q1_list[elem_index].mul(fr_a_i));
+            g1_proj_qa.add_assign(g1_q2_list[elem_index].mul(delta.mul(fr_a_i)));
+        }
+    }
+
+    let mut g1_proj_a0 = E::G1Projective::zero();
+    for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
+        g1_proj_a0.add_assign(g1_l_w_opening_proofs_at_zero[i].mul(a_i));
+    }
+
+    Ok(PolyAAndQuotient {
+        g1_a: g1_proj_a.into_affine(),
+        g1_qa: g1_proj_qa.into_affine(),
+        g1_a0: g1_proj_a0.into_affine(),
+        sparse_poly_eval_list_a,
+    })
+}
+
+struct PolyBAndQuotient<E: PairingEngine> {
+    poly_b: DensePolynomial<E::Fr>,
+    poly_qb: DensePolynomial<E::Fr>,
+    poly_b0: DensePolynomial<E::Fr>,
+    g1_qb: E::G1Affine,
+    g1_b0: E::G1Affine,
+}
+
+fn compute_poly_b_and_quotient<E: PairingEngine>(
+    beta: E::Fr,
+    delta: E::Fr,
+    witness: &Witness<E>,
+    witness_element_size: usize,
+    domain_v: &Radix2EvaluationDomain<E::Fr>,
+    poly_eval_list_l: &[E::Fr],
+    poly_coset_eval_list_l: &[E::Fr],
+    g1_srs: &[E::G1Affine],
+) -> Result<PolyBAndQuotient<E>, Error> {
+    let poly_eval_list_b: Result<Vec<E::Fr>, Error> = (0..witness_element_size)
+        .map(|i| {
+            (beta + witness.poly_eval_list_f[i] + delta * poly_eval_list_l[i])
+                .inverse()
+                .ok_or(Error::FailedToInverseFieldElement)
+        })
+        .collect();
+    let poly_eval_list_b = poly_eval_list_b?;
+    let poly_coeff_list_b = domain_v.ifft(&poly_eval_list_b);
+    let poly_b = DensePolynomial::from_coefficients_vec(poly_coeff_list_b);
+
+    // Round 10-4: The prover computes [Q_B(tau)]_1 using the SRS and Lemma 4.
+    let poly_coset_eval_list_b = domain_v.coset_fft(&poly_b);
+    let poly_coset_eval_list_f = domain_v.coset_fft(&witness.poly_f);
+    let fr_one = E::Fr::one();
+    let mut poly_coset_eval_list_qb: Vec<E::Fr> = poly_coset_eval_list_b
+        .iter()
+        .zip(poly_coset_eval_list_f.iter())
+        .zip(poly_coset_eval_list_l.iter())
+        .map(|((&b_i, &f_i), &l_i)| (b_i * (beta + f_i + delta * l_i)) - fr_one)
+        .collect();
+    domain_v.divide_by_vanishing_poly_on_coset_in_place(&mut poly_coset_eval_list_qb);
+    let poly_coeff_list_qb = domain_v.coset_ifft(&poly_coset_eval_list_qb);
+    let poly_qb = DensePolynomial::from_coefficients_vec(poly_coeff_list_qb);
+    let g1_qb = Kzg::<E>::commit_g1(g1_srs, &poly_qb).into_affine();
+
+    let poly_b0 = DensePolynomial::from_coefficients_slice(&poly_b.coeffs[1..]);
+    let g1_b0 = Kzg::<E>::commit_g1(g1_srs, &poly_b0).into_affine();
+
+    Ok(PolyBAndQuotient {
+        poly_b,
+        poly_qb,
+        poly_b0,
+        g1_qb,
+        g1_b0,
+    })
+}
+
+fn compute_degree_check_g1<E: PairingEngine>(
+    num_table_segments: usize,
+    num_witness_segments: usize,
+    segment_size: usize,
+    table_element_size: usize,
+    poly_b0: &DensePolynomial<E::Fr>,
+    g1_srs: &[E::G1Affine],
+    sparse_poly_eval_list_a: &BTreeMap<usize, E::Fr>,
+    domain_w: &Radix2EvaluationDomain<E::Fr>,
+) -> E::G1Affine {
+    if num_table_segments > num_witness_segments {
+        // If n > k, the prover computes P_B(X) and sends [P_B(tau)]_1 to the verifier.
+        let coeff_shift = (num_table_segments - num_witness_segments) * segment_size - 1;
+        let mut poly_coeff_list_pb = vec![E::Fr::zero(); coeff_shift];
+        poly_coeff_list_pb.extend_from_slice(&poly_b0.coeffs);
+        let poly_pb = DensePolynomial::from_coefficients_vec(poly_coeff_list_pb);
+
+        Kzg::<E>::commit_g1(&g1_srs, &poly_pb).into_affine()
+    } else if num_table_segments < num_witness_segments {
+        // If n < k, the prover computes P_A(X) and sends [P_A(tau)]_1 to the verifier.
+        // We can use Inverse FFT to compute the polynomial A(X),
+        // since the runtime does not exceed O(ks log ks) as n < k.
+        let mut poly_eval_list_a = vec![E::Fr::zero(); table_element_size];
+        for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
+            poly_eval_list_a[i] = a_i;
+        }
+        let poly_coeff_list_a = domain_w.ifft(&poly_eval_list_a);
+        let poly_coeff_list_a0 = poly_coeff_list_a[1..].to_vec();
+        let coeff_shift = (num_witness_segments - num_table_segments) * segment_size - 1;
+        let mut poly_coeff_list_pa = vec![E::Fr::zero(); coeff_shift];
+        poly_coeff_list_pa.extend_from_slice(&poly_coeff_list_a0);
+        let poly_pa = DensePolynomial::from_coefficients_vec(poly_coeff_list_pa);
+
+        Kzg::<E>::commit_g1(&g1_srs, &poly_pa).into_affine()
+    } else {
+        E::G1Affine::zero()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::ops::Neg;
@@ -530,11 +643,11 @@ mod tests {
     }
 
     #[test]
-    fn test_segment_multiplicities() {
+    fn test_compute_segment_multiplicities() {
         let queried_segment_indices = vec![0, 1, 2, 3, 0, 1, 2, 3];
         let num_segments = 4;
         let multiplicities =
-            segment_multiplicities(&queried_segment_indices, num_segments).unwrap();
+            compute_segment_multiplicities(&queried_segment_indices, num_segments).unwrap();
         assert_eq!(multiplicities.len(), 4);
         assert_eq!(multiplicities[&0], 2);
         assert_eq!(multiplicities[&1], 2);
@@ -543,7 +656,7 @@ mod tests {
     }
 
     #[test]
-    fn test_multiplicity_polynomials_and_quotient_g1() {
+    fn test_compute_multiplicity_polynomials_and_quotient() {
         let mut rng = test_rng();
         let num_segments = 16;
         let num_queries = 8;
@@ -553,7 +666,7 @@ mod tests {
                 .unwrap();
         let queried_segment_indices = vec![0, 1, 2, 3, 0, 1, 2, 3];
         let multiplicities =
-            segment_multiplicities(&queried_segment_indices, num_segments).unwrap();
+            compute_segment_multiplicities(&queried_segment_indices, num_segments).unwrap();
 
         // Construct polynomial M(X) using Inverse FFT.
         let mut poly_eval_m_list = vec![Fr::zero(); pp.table_element_size];
@@ -591,7 +704,7 @@ mod tests {
             g1_m: g1_m_got,
             g1_m_div_w: g1_m_div_w_got,
             g1_qm: g1_qm_got,
-        } = multiplicity_polynomials_and_quotient_g1::<Bn254>(
+        } = compute_multiplicity_polynomials_and_quotient::<Bn254>(
             &multiplicities,
             &pp.g1_l_w_list,
             &pp.g1_q3_list,

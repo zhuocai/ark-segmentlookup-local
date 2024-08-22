@@ -375,7 +375,7 @@ mod tests {
                 segment_size: pp.segment_size,
                 poly_f: witness.poly_f.clone(),
                 poly_eval_list_f: witness.poly_eval_list_f.clone(),
-                queried_segment_indices: new_queried_segment_indices,
+                segment_indices: new_queried_segment_indices,
             };
 
             let proof = prove::<Bn254>(&pp, &t, &tpp, &new_witness, rng).expect("Failed to prove");
