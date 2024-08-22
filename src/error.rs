@@ -20,8 +20,8 @@ pub enum Error {
     Pairing2Failed,
     Pairing3Failed,
     Pairing4Failed,
-    EquationCheck1Failed,
-    EquationCheck2Failed,
+    PointCheck1Failed,
+    PointCheck2Failed,
     DegreeCheckFailed,
 
     // Caulk Sub-protocol

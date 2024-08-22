@@ -102,7 +102,7 @@ pub fn unsafe_setup_from_rng<E: PairingEngine, R: RngCore>(
 /// Create srs from specific tau
 pub fn unsafe_setup_from_tau<E: PairingEngine, R: RngCore>(
     max_power_g1: usize,
-    max_power_caulk_g1: usize,
+    caulk_max_power_g1: usize,
     tau: E::Fr,
 ) -> (
     Vec<E::G1Affine>,
@@ -111,12 +111,12 @@ pub fn unsafe_setup_from_tau<E: PairingEngine, R: RngCore>(
     Vec<E::G2Affine>,
 ) {
     let max_power_g2 = max_power_g1 + 1;
-    let max_power_caulk_g2 = max_power_caulk_g1 + 1;
+    let max_power_caulk_g2 = caulk_max_power_g1 + 1;
     let powers_of_tau_size = max(max_power_g2 + 1, max_power_caulk_g2 + 1);
     let powers_of_tau = powers_of_tau::<E>(tau, powers_of_tau_size);
     let g1_srs = srs::<E::G1Affine>(&powers_of_tau, max_power_g1);
     let g2_srs = srs::<E::G2Affine>(&powers_of_tau, max_power_g2);
-    let g1_srs_caulk = srs::<E::G1Affine>(&powers_of_tau, max_power_caulk_g1);
+    let g1_srs_caulk = srs::<E::G1Affine>(&powers_of_tau, caulk_max_power_g1);
     let g2_srs_caulk = srs::<E::G2Affine>(&powers_of_tau, max_power_caulk_g2);
 
     (g1_srs, g2_srs, g1_srs_caulk, g2_srs_caulk)

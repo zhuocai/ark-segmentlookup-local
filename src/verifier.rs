@@ -29,9 +29,7 @@ pub fn verify<E: PairingEngine>(
     let g1_qm = proof.g1_qm;
     let g2_zw = pp.g2_zw;
 
-    let left_pairing_lhs = g1_m + g1_neg_m_div_w;
-    let left_pairing_rhs = g2_tau_pow_ns + g2_neg_one;
-    let left_pairing = E::pairing(left_pairing_lhs, left_pairing_rhs);
+    let left_pairing = E::pairing(g1_m + g1_neg_m_div_w, g2_tau_pow_ns + g2_neg_one);
     let right_pairing = E::pairing(g1_qm, g2_zw);
 
     if left_pairing != right_pairing {
@@ -42,9 +40,6 @@ pub fn verify<E: PairingEngine>(
         (Label::G1M, g1_m),
         (Label::G1MDivW, proof.g1_m_div_w),
         (Label::G1Qm, g1_qm),
-    ])?;
-
-    transcript.append_elements(&[
         (Label::G1L, proof.g1_l),
         (Label::G1LDivV, proof.g1_l_div_v),
         (Label::G1Ql, proof.g1_ql),
@@ -66,6 +61,7 @@ pub fn verify<E: PairingEngine>(
     // Round 11: The second pairing check.
     let beta = transcript.get_and_append_challenge(Label::ChallengeBeta)?;
     let delta = transcript.get_and_append_challenge(Label::ChallengeDelta)?;
+
     let g1_a = proof.g1_a;
     let g2_t = tpp.g2_t;
     let g2_tau = pp.g2_srs[1];
@@ -74,26 +70,29 @@ pub fn verify<E: PairingEngine>(
     let g1_qa = proof.g1_qa;
     let g1_neg_beta_mul_a = g1_a.mul(-beta).into_affine();
     let g2_one = pp.g2_srs[0];
-    let right_pairing =
-        E::pairing(g1_qa, g2_zw).mul(E::pairing(g1_m.add(g1_neg_beta_mul_a), g2_one));
+    let mut right_pairing = E::pairing(g1_qa, g2_zw);
+    right_pairing.mul_assign(E::pairing(g1_m.add(g1_neg_beta_mul_a), g2_one));
 
     if left_pairing != right_pairing {
         return Err(Error::Pairing2Failed);
     }
 
     // Round 11: Degree pairing check.
+    let g1_px = proof.g1_px;
     if pp.num_table_segments > pp.num_witness_segments {
         let deg_tau = (pp.num_table_segments - pp.num_witness_segments) * pp.segment_size - 1;
-        let left_pairing = E::pairing(proof.g1_b0, pp.g2_srs[deg_tau]);
-        let right_pairing = E::pairing(proof.g1_px, g2_one);
+        let g1_b0 = proof.g1_b0;
+        let left_pairing = E::pairing(g1_b0, pp.g2_srs[deg_tau]);
+        let right_pairing = E::pairing(g1_px, g2_one);
 
         if left_pairing != right_pairing {
             return Err(Error::DegreeCheckFailed);
         }
     } else if pp.num_table_segments < pp.num_witness_segments {
         let deg_tau = (pp.num_witness_segments - pp.num_table_segments) * pp.segment_size - 1;
-        let left_pairing = E::pairing(proof.g1_a0, pp.g2_srs[deg_tau]);
-        let right_pairing = E::pairing(proof.g1_px, g2_one);
+        let g1_a0 = proof.g1_a0;
+        let left_pairing = E::pairing(g1_a0, pp.g2_srs[deg_tau]);
+        let right_pairing = E::pairing(g1_px, g2_one);
 
         if left_pairing != right_pairing {
             return Err(Error::DegreeCheckFailed);
@@ -232,7 +231,7 @@ pub fn verify<E: PairingEngine>(
     g1_proj_check1.add_assign(g1_proj_ql_at_gamma);
 
     if g1_proj_check1 != E::G1Projective::zero() {
-        return Err(Error::EquationCheck1Failed);
+        return Err(Error::PointCheck1Failed);
     }
 
     // Round 15-4: The second point check.
@@ -247,14 +246,17 @@ pub fn verify<E: PairingEngine>(
     g1_proj_check2.add_assign(g1_proj_qd_at_gamma);
 
     if g1_proj_check2 != E::G1Projective::zero() {
-        return Err(Error::EquationCheck2Failed);
+        return Err(Error::PointCheck2Failed);
     }
 
     Ok(())
 }
 
 fn fr_to_g1_proj<E: PairingEngine>(fr: E::Fr) -> E::G1Projective {
-    E::G1Affine::prime_subgroup_generator().mul(fr)
+    let mut g1_proj_gen = E::G1Projective::prime_subgroup_generator();
+    g1_proj_gen.mul_assign(fr);
+
+    g1_proj_gen
 }
 
 #[cfg(test)]

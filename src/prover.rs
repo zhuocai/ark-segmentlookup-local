@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::ops::{Add, Mul, Sub};
+use std::ops::{AddAssign, Mul, Sub};
 
 use crate::domain::{divide_by_vanishing_poly_checked, roots_of_unity};
 use crate::error::Error;
@@ -150,9 +150,9 @@ pub fn prove<E: PairingEngine>(
                 * E::Fr::from(multiplicity as u64);
 
             sparse_poly_eval_list_a.insert(elem_index, fr_a_i);
-            g1_proj_a = g1_proj_a + pp.g1_l_w_list[elem_index].mul(fr_a_i);
-            g1_proj_qa = g1_proj_qa + tpp.g1_q1_list[elem_index].mul(fr_a_i);
-            g1_proj_qa = g1_proj_qa + pp.g1_q2_list[elem_index].mul(delta.mul(fr_a_i));
+            g1_proj_a.add_assign(pp.g1_l_w_list[elem_index].mul(fr_a_i));
+            g1_proj_qa.add_assign(tpp.g1_q1_list[elem_index].mul(fr_a_i));
+            g1_proj_qa.add_assign(pp.g1_q2_list[elem_index].mul(delta.mul(fr_a_i)));
         }
     }
 
@@ -191,7 +191,7 @@ pub fn prove<E: PairingEngine>(
     // and sends [A_0(tau)]_1 and [B_0(tau)]_1 to the verifier.
     let mut g1_proj_a0 = E::G1Projective::zero();
     for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
-        g1_proj_a0 = g1_proj_a0 + pp.g1_l_w_opening_proofs_at_zero[i].mul(a_i);
+        g1_proj_a0.add_assign(pp.g1_l_w_opening_proofs_at_zero[i].mul(a_i));
     }
     let g1_a0 = g1_proj_a0.into_affine();
     let poly_b0 = DensePolynomial::from_coefficients_slice(&poly_b.coeffs[1..]);
@@ -354,7 +354,6 @@ fn multiplicity_polynomials_and_quotient_g1<E: PairingEngine>(
     segment_multiplicities: &BTreeMap<usize, usize>,
     g1_l_w_list: &[E::G1Affine],
     g1_q3_list: &[E::G1Affine],
-    // g1_q4_list: &[E::G1Affine],
     segment_size: usize,
     table_element_size: usize,
 ) -> MultiplicityPolynomialsAndQuotient<E> {
@@ -366,22 +365,18 @@ fn multiplicity_polynomials_and_quotient_g1<E: PairingEngine>(
         let fr_mul = E::Fr::from(m as u64);
         for elem_index in segment_element_indices {
             // Linear combination of [L^W_i(tau)]_1.
-            g1_proj_m = g1_l_w_list[elem_index].mul(fr_mul).add(g1_proj_m);
+            g1_proj_m.add_assign(g1_l_w_list[elem_index].mul(fr_mul));
             // Linear combination of [L^W_i(tau / w)]_1.
             // L^W_i(tau / w) = L^W_{i+1}(tau).
             // We can shift [L^W_i(tau)]_1 to the left by 1 to get [L^W_i(tau / w)]_1.
             let shifted_elem_index = (elem_index + 1) % table_element_size;
-            g1_proj_m_div_w = g1_l_w_list[shifted_elem_index]
-                .mul(fr_mul)
-                .add(g1_proj_m_div_w);
+            g1_proj_m_div_w.add_assign(g1_l_w_list[shifted_elem_index].mul(fr_mul));
             // Linear combination of q_{i, 3}.
-            g1_proj_qm = g1_q3_list[elem_index].mul(fr_mul).add(g1_proj_qm);
+            g1_proj_qm.add_assign(g1_q3_list[elem_index].mul(fr_mul));
             // Linear combination of q_{i, 4}.
             // q_{i, 4} is equivalent to shift q_{i, 3} to the left by 1.
             let shifted_elem_index = (elem_index + 1) % table_element_size;
-            g1_proj_qm = g1_q3_list[shifted_elem_index]
-                .mul(-fr_mul) // negate the coefficient
-                .add(g1_proj_qm);
+            g1_proj_qm.add_assign(g1_q3_list[shifted_elem_index].mul(-fr_mul)); // negate the coefficient
         }
     }
 
@@ -433,17 +428,14 @@ fn index_polynomials_and_quotients_g1<E: PairingEngine>(
             let root_of_unity_w = roots_of_unity_w[elem_index];
             poly_eval_list_l.push(root_of_unity_w);
             // Linear combination of [L^V_i(tau)]_1.
-            g1_proj_l = g1_l_v_list[witness_element_index]
-                .mul(root_of_unity_w)
-                .add(g1_proj_l);
+            g1_proj_l.add_assign(g1_l_v_list[witness_element_index].mul(root_of_unity_w));
             // Linear combination of [L^V_i(tau / v)]_1.
             // L^V_i(tau / v) = L^V_{i+1}(tau).
             // We can shift [L^V_i(tau)]_1 to the left by 1
             // to get [L^V_i(tau / v)]_1.
             let shifted_witness_elem_index = (witness_element_index + 1) % witness_size;
-            g1_proj_l_div_v = g1_l_v_list[shifted_witness_elem_index]
-                .mul(root_of_unity_w)
-                .add(g1_proj_l_div_v);
+            g1_proj_l_div_v
+                .add_assign(g1_l_v_list[shifted_witness_elem_index].mul(root_of_unity_w));
             witness_element_index += 1;
         }
 

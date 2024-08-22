@@ -1,11 +1,11 @@
-use std::cmp::max;
-
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
-use ark_ff::{Field, PrimeField};
+use ark_ff::Field;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_std::rand::rngs::StdRng;
 use ark_std::{UniformRand, Zero};
+use std::cmp::max;
+use std::ops::MulAssign;
 
 use crate::domain::{create_sub_domain, identity_poly, roots_of_unity, vanishing_poly_g2};
 use crate::error::Error;
@@ -71,9 +71,9 @@ impl<E: PairingEngine> PublicParameters<E> {
         // Step 1: Choose a random tau. Let max = max(k, n). Compute SRS from tau.
         let tau = E::Fr::rand(rng);
         let max_pow_of_tau_g1 = max(num_table_segments, num_witness_segments) * segment_size - 1;
-        let max_pow_of_tau_caulk_g1 = (num_witness_segments + 1) * num_table_segments;
+        let caulk_max_pow_of_tau_g1 = (num_witness_segments + 1) * num_table_segments;
         let (g1_srs, g2_srs, g1_srs_caulk, g2_srs_caulk) =
-            unsafe_setup_from_tau::<E, StdRng>(max_pow_of_tau_g1, max_pow_of_tau_caulk_g1, tau);
+            unsafe_setup_from_tau::<E, StdRng>(max_pow_of_tau_g1, caulk_max_pow_of_tau_g1, tau);
 
         // Step 2: Compute [Z_W(tau)]_2.
         let order_w = num_table_segments * segment_size;
@@ -100,7 +100,7 @@ impl<E: PairingEngine> PublicParameters<E> {
             .collect();
         let g1_q2_list = quotient_values
             .iter()
-            .map(|&x| g1_srs[0].clone().mul(x).into())
+            .map(|&x| g1_srs[0].mul(x).into())
             .collect();
 
         // Step 4-b: Compute [L^W_i(tau)]_1 for i in 1..n*s.
@@ -109,10 +109,7 @@ impl<E: PairingEngine> PublicParameters<E> {
         // Step 4-c: Compute [(L^W_i(tau) - L^W_i(0)) / tau]_1 for i in 1..n*s.
         // a.k.a. zero openings of the Lagrange basis.
         let g1_l_w_opening_proofs_at_zero =
-            match zero_opening_proofs::<E>(&g1_srs, &domain_w, &g1_l_w_list) {
-                Ok(proofs) => proofs,
-                Err(e) => return Err(e),
-            };
+            zero_opening_proofs::<E>(&g1_srs, &domain_w, &g1_l_w_list)?;
 
         // Step 5: Compute [L^V_i(tau)]_1 for i in 1..k*s.
         let g1_l_v_list = lagrange_basis_g1(&g1_srs, &domain_v);
@@ -133,10 +130,10 @@ impl<E: PairingEngine> PublicParameters<E> {
             .collect();
         let g1_q3_list: Vec<E::G1Affine> = (0..order_w)
             .map(|i| {
-                let mut q3 = g1_srs[0].clone().mul(roots_of_unity_w[i]);
-                q3 = q3.mul(fr_inv_ns.into_repr());
-                q3 = q3.mul(tau_pow_n_sub_w_pow_in_list[i].into_repr());
-                q3 = q3.mul(inv_tau_sub_w_pow_i_list[i].into_repr());
+                let mut q3 = g1_srs[0].mul(roots_of_unity_w[i]);
+                q3.mul_assign(fr_inv_ns);
+                q3.mul_assign(tau_pow_n_sub_w_pow_in_list[i]);
+                q3.mul_assign(inv_tau_sub_w_pow_i_list[i]);
 
                 q3.into_affine()
             })
