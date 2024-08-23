@@ -6,6 +6,7 @@ pub mod multi_unity;
 pub mod prover;
 pub mod public_parameters;
 pub mod table;
+mod toeplitz;
 mod transcript;
 pub mod verifier;
 pub mod witness;

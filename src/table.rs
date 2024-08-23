@@ -2,11 +2,11 @@ use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::{Field, PrimeField};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain, UVPolynomial};
-use fk::UpperToeplitz;
 
 use crate::error::Error;
 use crate::kzg::Kzg;
 use crate::public_parameters::PublicParameters;
+use crate::toeplitz::UpperToeplitz;
 
 pub struct Table<E: PairingEngine> {
     num_segments: usize,
@@ -109,9 +109,7 @@ fn compute_quotients<E: PairingEngine>(
         .map(|(ki, normalizer_i)| ki.mul(normalizer_i.into_repr()))
         .collect();
 
-    E::G1Projective::batch_normalization(&mut qs);
-
-    Ok(qs.iter().map(|qi| qi.into_affine()).collect())
+    Ok(E::G1Projective::batch_normalization_into_affine(&mut qs))
 }
 
 #[cfg(test)]
