@@ -8,7 +8,7 @@ use crate::table::TablePreprocessedParameters;
 use crate::transcript::{Label, Transcript};
 use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
 use ark_ff::Field;
-use ark_poly::EvaluationDomain;
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_std::rand::rngs::StdRng;
 use ark_std::{One, Zero};
 
@@ -22,24 +22,13 @@ pub fn verify<E: PairingEngine>(
     let mut transcript = Transcript::<E::Fr>::new();
 
     // Round 2: The first pairing check.
-    let g1_m = proof.g1_m;
-    let g1_neg_m_div_w = -proof.g1_m_div_w;
-    let g2_tau_pow_ns = pp.g2_srs[pp.num_table_segments];
-    let g2_neg_one = -pp.g2_srs[0];
-    let g1_qm = proof.g1_qm;
-    let g2_zw = pp.g2_zw;
-
-    let left_pairing = E::pairing(g1_m + g1_neg_m_div_w, g2_tau_pow_ns + g2_neg_one);
-    let right_pairing = E::pairing(g1_qm, g2_zw);
-
-    if left_pairing != right_pairing {
-        return Err(Error::Pairing1Failed);
-    }
+    // This is intended to check the correctness of multiplicity polynomials.
+    first_pairing_check(&proof, &pp.g2_srs, pp.g2_zw, pp.num_table_segments)?;
 
     transcript.append_elements(&[
-        (Label::G1M, g1_m),
+        (Label::G1M, proof.g1_m),
         (Label::G1MDivW, proof.g1_m_div_w),
-        (Label::G1Qm, g1_qm),
+        (Label::G1Qm, proof.g1_qm),
         (Label::G1L, proof.g1_l),
         (Label::G1LDivV, proof.g1_l_div_v),
         (Label::G1Ql, proof.g1_ql),
@@ -58,50 +47,27 @@ pub fn verify<E: PairingEngine>(
         return Err(Error::FailedToCheckMultiUnity);
     }
 
-    // Round 11: The second pairing check.
     let beta = transcript.get_and_append_challenge(Label::ChallengeBeta)?;
     let delta = transcript.get_and_append_challenge(Label::ChallengeDelta)?;
 
-    let g1_a = proof.g1_a;
-    let g2_t = tpp.g2_t;
-    let g2_tau = pp.g2_srs[1];
-    let left_pairing = E::pairing(g1_a, g2_t + g2_tau.mul(delta).into_affine());
-
-    let g1_qa = proof.g1_qa;
-    let g1_neg_beta_mul_a = g1_a.mul(-beta).into_affine();
-    let g2_one = pp.g2_srs[0];
-    let mut right_pairing = E::pairing(g1_qa, g2_zw);
-    right_pairing.mul_assign(E::pairing(g1_m.add(g1_neg_beta_mul_a), g2_one));
-
-    if left_pairing != right_pairing {
-        return Err(Error::Pairing2Failed);
-    }
+    // Round 11: The second pairing check.
+    // This is intended to check the correctness of polynomial A.
+    second_pairing_check::<E>(
+        &proof, beta, delta, proof.g1_m, tpp.g2_t, pp.g2_zw, &pp.g2_srs,
+    )?;
 
     // Round 11: Degree pairing check.
-    let g1_px = proof.g1_px;
-    if pp.num_table_segments > pp.num_witness_segments {
-        let deg_tau = (pp.num_table_segments - pp.num_witness_segments) * pp.segment_size - 1;
-        let g1_b0 = proof.g1_b0;
-        let left_pairing = E::pairing(g1_b0, pp.g2_srs[deg_tau]);
-        let right_pairing = E::pairing(g1_px, g2_one);
-
-        if left_pairing != right_pairing {
-            return Err(Error::DegreeCheckFailed);
-        }
-    } else if pp.num_table_segments < pp.num_witness_segments {
-        let deg_tau = (pp.num_witness_segments - pp.num_table_segments) * pp.segment_size - 1;
-        let g1_a0 = proof.g1_a0;
-        let left_pairing = E::pairing(g1_a0, pp.g2_srs[deg_tau]);
-        let right_pairing = E::pairing(g1_px, g2_one);
-
-        if left_pairing != right_pairing {
-            return Err(Error::DegreeCheckFailed);
-        }
-    }
+    degree_check(
+        &proof,
+        pp.num_table_segments,
+        pp.num_witness_segments,
+        pp.segment_size,
+        &pp.g2_srs,
+    )?;
 
     transcript.append_elements(&[
-        (Label::G1A, g1_a),
-        (Label::G1Qa, g1_qa),
+        (Label::G1A, proof.g1_a),
+        (Label::G1Qa, proof.g1_qa),
         (Label::G1Qb, proof.g1_qb),
         (Label::G1A0, proof.g1_a0),
         (Label::G1B0, proof.g1_b0),
@@ -123,10 +89,142 @@ pub fn verify<E: PairingEngine>(
 
     let eta = transcript.get_and_append_challenge(Label::ChallengeEta)?;
 
+    // Round 15-4: The third pairing check.
+    let g2_one = pp.g2_srs[0];
+    let g2_tau = pp.g2_srs[1];
+    third_pairing_check(
+        &proof,
+        statement,
+        beta,
+        delta,
+        gamma,
+        eta,
+        pp.num_table_segments,
+        pp.num_witness_segments,
+        pp.segment_size,
+        &pp.domain_v,
+        g2_tau,
+        g2_one,
+    )?;
+
+    // Round 15-4: The fourth pairing check.
+    fourth_pairing_check(&proof, g2_tau, g2_one)?;
+
+    // Round 15-4: The first point check.
+    first_point_check(
+        &proof,
+        gamma,
+        pp.num_witness_segments,
+        &pp.domain_v,
+        &pp.domain_w,
+    )?;
+
+    // Round 15-4: The second point check.
+    second_point_check(&proof, gamma, &pp.domain_k)?;
+
+    Ok(())
+}
+
+fn first_pairing_check<E: PairingEngine>(
+    proof: &Proof<E>,
+    g2_srs: &[E::G2Affine],
+    g2_zw: E::G2Affine,
+    num_table_segments: usize,
+) -> Result<(), Error> {
+    let g1_m = proof.g1_m;
+    let g1_neg_m_div_w = -proof.g1_m_div_w;
+    let g2_tau_pow_ns = g2_srs[num_table_segments];
+    let g2_neg_one = -g2_srs[0];
+    let g1_qm = proof.g1_qm;
+    let g2_zw = g2_zw;
+
+    let left_pairing = E::pairing(g1_m + g1_neg_m_div_w, g2_tau_pow_ns + g2_neg_one);
+    let right_pairing = E::pairing(g1_qm, g2_zw);
+
+    if left_pairing != right_pairing {
+        return Err(Error::Pairing1Failed);
+    }
+
+    Ok(())
+}
+
+fn second_pairing_check<E: PairingEngine>(
+    proof: &Proof<E>,
+    beta: E::Fr,
+    delta: E::Fr,
+    g1_m: E::G1Affine,
+    g2_t: E::G2Affine,
+    g2_zw: E::G2Affine,
+    g2_srs: &[E::G2Affine],
+) -> Result<(), Error> {
+    let g1_a = proof.g1_a;
+    let g2_t = g2_t;
+    let g2_tau = g2_srs[1];
+    let left_pairing = E::pairing(g1_a, g2_t + g2_tau.mul(delta).into_affine());
+
+    let g1_qa = proof.g1_qa;
+    let g1_neg_beta_mul_a = g1_a.mul(-beta).into_affine();
+    let g2_one = g2_srs[0];
+    let mut right_pairing = E::pairing(g1_qa, g2_zw);
+    right_pairing.mul_assign(E::pairing(g1_m.add(g1_neg_beta_mul_a), g2_one));
+
+    if left_pairing != right_pairing {
+        return Err(Error::Pairing2Failed);
+    }
+
+    Ok(())
+}
+
+fn degree_check<E: PairingEngine>(
+    proof: &Proof<E>,
+    num_table_segments: usize,
+    num_witness_segments: usize,
+    segment_size: usize,
+    g2_srs: &[E::G2Affine],
+) -> Result<(), Error> {
+    let g1_px = proof.g1_px;
+    let g2_one = g2_srs[0];
+    if num_table_segments > num_witness_segments {
+        let deg_tau = (num_table_segments - num_witness_segments) * segment_size - 1;
+        let g1_b0 = proof.g1_b0;
+        let left_pairing = E::pairing(g1_b0, g2_srs[deg_tau]);
+        let right_pairing = E::pairing(g1_px, g2_one);
+
+        if left_pairing != right_pairing {
+            return Err(Error::DegreeCheckFailed);
+        }
+    } else if num_table_segments < num_witness_segments {
+        let deg_tau = (num_witness_segments - num_table_segments) * segment_size - 1;
+        let g1_a0 = proof.g1_a0;
+        let left_pairing = E::pairing(g1_a0, g2_srs[deg_tau]);
+        let right_pairing = E::pairing(g1_px, g2_one);
+
+        if left_pairing != right_pairing {
+            return Err(Error::DegreeCheckFailed);
+        }
+    }
+
+    Ok(())
+}
+
+fn third_pairing_check<E: PairingEngine>(
+    proof: &Proof<E>,
+    statement: E::G1Affine,
+    beta: E::Fr,
+    delta: E::Fr,
+    gamma: E::Fr,
+    eta: E::Fr,
+    num_table_segments: usize,
+    num_witness_segments: usize,
+    segment_size: usize,
+    domain_v: &Radix2EvaluationDomain<E::Fr>,
+    g2_tau: E::G2Affine,
+    g2_one: E::G2Affine,
+) -> Result<(), Error> {
     // Round 15-1: Compute b_0 = ns * a_0 / (ks)
-    let table_elem_size = pp.num_table_segments * pp.segment_size;
+    let table_elem_size = num_table_segments * segment_size;
     let fr_table_elem_size = E::Fr::from(table_elem_size as u64);
-    let witness_elem_size = pp.num_witness_segments * pp.segment_size;
+    let witness_elem_size = num_witness_segments * segment_size;
     let fr_inv_witness_elem_size = E::Fr::from(witness_elem_size as u64)
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
@@ -134,7 +232,7 @@ pub fn verify<E: PairingEngine>(
 
     // Round 15-2: Compute q_{B, gamma}
     // Compute the inverse of zv_{gamma}
-    let fr_zv_at_gamma = pp.domain_v.evaluate_vanishing_polynomial(gamma);
+    let fr_zv_at_gamma = domain_v.evaluate_vanishing_polynomial(gamma);
     let fr_inv_zv_at_gamma = fr_zv_at_gamma
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
@@ -196,7 +294,6 @@ pub fn verify<E: PairingEngine>(
     }
     let g1_p = g1_proj_p.into_affine();
 
-    // Round 15-4: The third pairing check.
     let left_pairing = E::pairing(proof.g1_hp, g2_tau);
     let g1_gamma_mul_hp = proof.g1_hp.mul(gamma).into_affine();
     let g1_neg_p_at_gamma = fr_to_g1_proj::<E>(-fr_p_at_gamma).into_affine();
@@ -206,24 +303,41 @@ pub fn verify<E: PairingEngine>(
         return Err(Error::Pairing3Failed);
     }
 
-    // Round 15-4: The fourth pairing check.
+    Ok(())
+}
+
+fn fourth_pairing_check<E: PairingEngine>(
+    proof: &Proof<E>,
+    g2_tau: E::G2Affine,
+    g2_one: E::G2Affine,
+) -> Result<(), Error> {
     let g1_neg_a0 = fr_to_g1_proj::<E>(-proof.fr_a_at_zero).into_affine();
     let left_pairing = E::pairing(proof.g1_a + g1_neg_a0, g2_one);
     let right_pairing = E::pairing(proof.g1_a0, g2_tau);
+
     if left_pairing != right_pairing {
         return Err(Error::Pairing4Failed);
     }
 
-    // Round 15-4: The first point check.
-    let fr_gamma_pow_k_sub_one = gamma.pow([pp.num_witness_segments as u64]) - E::Fr::one();
+    Ok(())
+}
+
+fn first_point_check<E: PairingEngine>(
+    proof: &Proof<E>,
+    gamma: E::Fr,
+    num_witness_segments: usize,
+    domain_v: &Radix2EvaluationDomain<E::Fr>,
+    domain_w: &Radix2EvaluationDomain<E::Fr>,
+) -> Result<(), Error> {
+    let fr_gamma_pow_k_sub_one = gamma.pow([num_witness_segments as u64]) - E::Fr::one();
     let fr_neg_gamma_pow_k_sub_one = -fr_gamma_pow_k_sub_one;
-    let fr_neg_zv_at_gamma = -fr_zv_at_gamma;
+    let fr_neg_zv_at_gamma = -domain_v.evaluate_vanishing_polynomial(gamma);
 
     let mut g1_proj_l_at_gamma_div_v = fr_to_g1_proj::<E>(proof.fr_l_at_gamma_div_v);
     let mut g1_proj_l_at_gamma = fr_to_g1_proj::<E>(proof.fr_l_at_gamma);
     let mut g1_proj_ql_at_gamma = fr_to_g1_proj::<E>(proof.fr_ql_at_gamma);
 
-    g1_proj_l_at_gamma_div_v.mul_assign(fr_neg_gamma_pow_k_sub_one * pp.domain_w.group_gen);
+    g1_proj_l_at_gamma_div_v.mul_assign(fr_neg_gamma_pow_k_sub_one * domain_w.group_gen);
     g1_proj_l_at_gamma.mul_assign(fr_gamma_pow_k_sub_one);
     g1_proj_ql_at_gamma.mul_assign(fr_neg_zv_at_gamma);
     let mut g1_proj_check1 = g1_proj_l_at_gamma_div_v.clone();
@@ -234,9 +348,16 @@ pub fn verify<E: PairingEngine>(
         return Err(Error::PointCheck1Failed);
     }
 
-    // Round 15-4: The second point check.
+    Ok(())
+}
+
+fn second_point_check<E: PairingEngine>(
+    proof: &Proof<E>,
+    gamma: E::Fr,
+    domain_k: &Radix2EvaluationDomain<E::Fr>,
+) -> Result<(), Error> {
     let mut g1_proj_l_at_gamma = fr_to_g1_proj::<E>(proof.fr_l_at_gamma);
-    let fr_zk_at_gamma = pp.domain_k.evaluate_vanishing_polynomial(gamma);
+    let fr_zk_at_gamma = domain_k.evaluate_vanishing_polynomial(gamma);
     let g1_d_at_gamma = fr_to_g1_proj::<E>(proof.fr_d_at_gamma);
 
     g1_proj_l_at_gamma.add_assign(g1_d_at_gamma.neg());
