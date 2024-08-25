@@ -1,24 +1,25 @@
-use ark_ec::{PairingEngine, ProjectiveCurve};
+use ark_ec::pairing::Pairing;
+use ark_ec::CurveGroup;
 use ark_poly::univariate::DensePolynomial;
-use ark_poly::{EvaluationDomain, UVPolynomial};
+use ark_poly::{DenseUVPolynomial, EvaluationDomain};
 
 use crate::error::Error;
 use crate::kzg::Kzg;
 use crate::public_parameters::PublicParameters;
 use crate::table::Table;
 
-pub struct Witness<E: PairingEngine> {
-    num_witness_segments: usize,
-    segment_size: usize,
-    pub(crate) poly_f: DensePolynomial<E::Fr>,
-    pub(crate) poly_eval_list_f: Vec<E::Fr>,
-    pub(crate) queried_segment_indices: Vec<usize>,
+pub struct Witness<P: Pairing> {
+    pub(crate) num_witness_segments: usize,
+    pub(crate) segment_size: usize,
+    pub(crate) poly_f: DensePolynomial<P::ScalarField>,
+    pub(crate) poly_eval_list_f: Vec<P::ScalarField>,
+    pub(crate) segment_indices: Vec<usize>,
 }
 
-impl<E: PairingEngine> Witness<E> {
+impl<P: Pairing> Witness<P> {
     pub fn new(
-        pp: &PublicParameters<E>,
-        table: &Table<E>,
+        pp: &PublicParameters<P>,
+        table: &Table<P>,
         queried_segment_indices: &[usize],
     ) -> Result<Self, Error> {
         if queried_segment_indices.len() != pp.num_witness_segments {
@@ -38,7 +39,7 @@ impl<E: PairingEngine> Witness<E> {
             }
         }
 
-        let poly_eval_list_f: Vec<E::Fr> = table_element_indices
+        let poly_eval_list_f: Vec<P::ScalarField> = table_element_indices
             .iter()
             .map(|&i| table.values[i])
             .collect();
@@ -50,12 +51,12 @@ impl<E: PairingEngine> Witness<E> {
             segment_size: pp.segment_size,
             poly_f,
             poly_eval_list_f,
-            queried_segment_indices: queried_segment_indices.to_vec(),
+            segment_indices: queried_segment_indices.to_vec(),
         })
     }
 
-    pub fn generate_statement(&self, g1_srs: &[E::G1Affine]) -> E::G1Affine {
-        Kzg::<E>::commit_g1(g1_srs, &self.poly_f).into_affine()
+    pub fn generate_statement(&self, g1_srs: &[P::G1Affine]) -> P::G1Affine {
+        Kzg::<P::G1>::commit(g1_srs, &self.poly_f).into_affine()
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::parameters::{K_MID, K_VEC, N_MID, N_VEC, S_MID, S_VEC};
 use ark_bn254::Bn254;
-use ark_ec::PairingEngine;
+use ark_ec::pairing::Pairing;
 use ark_segmentlookup::prover::prove;
 use ark_segmentlookup::public_parameters::PublicParameters;
 use ark_segmentlookup::table::Table;
@@ -11,11 +11,11 @@ use ark_std::{test_rng, UniformRand};
 
 mod parameters;
 
-fn rand_inputs<E: PairingEngine>(
+fn rand_inputs<P: Pairing>(
     num_table_segments: usize,
     num_witness_segments: usize,
     segment_size: usize,
-) -> (Vec<Vec<E::Fr>>, Vec<usize>) {
+) -> (Vec<Vec<P::ScalarField>>, Vec<usize>) {
     let mut rng = test_rng();
 
     let segments = {
@@ -23,7 +23,7 @@ fn rand_inputs<E: PairingEngine>(
         for _ in 0..num_table_segments {
             let mut segment = Vec::with_capacity(segment_size);
             for _ in 0..segment_size {
-                segment.push(E::Fr::rand(&mut rng));
+                segment.push(P::ScalarField::rand(&mut rng));
             }
             segments.push(segment);
         }
@@ -51,13 +51,13 @@ fn end_to_end(n: usize, k: usize, s: usize) {
     let witness = Witness::new(&pp, &table, &queried_segment_indices).unwrap();
 
     let curr_time = std::time::Instant::now();
-    let proof = prove::<Bn254>(&pp, &table, &tpp, &witness, rng).expect("Failed to prove");
+    let proof = prove(&pp, &table, &tpp, &witness, rng).expect("Failed to prove");
     println!("prove time: {:?} ms", curr_time.elapsed().as_millis());
 
-    let statement = witness.generate_statement(&pp.g1_srs);
+    let statement = witness.generate_statement(&pp.g1_affine_srs);
 
     let curr_time = std::time::Instant::now();
-    let res = verify::<Bn254>(&pp, &tpp, statement, &proof, rng);
+    let res = verify(&pp, &tpp, statement, &proof, rng);
     println!("verify time: {:?} ms", curr_time.elapsed().as_millis());
     assert!(res.is_ok());
 }

@@ -2,6 +2,7 @@
 pub enum Error {
     FailedToCreateEvaluationDomain,
     FailedToInverseFieldElement,
+    FailedToCreateCosetOfEvaluationDomain,
 
     InvalidCommitmentLength(String),
     InvalidLagrangeBasisCommitments(String),
@@ -20,8 +21,8 @@ pub enum Error {
     Pairing2Failed,
     Pairing3Failed,
     Pairing4Failed,
-    EquationCheck1Failed,
-    EquationCheck2Failed,
+    PointCheck1Failed,
+    PointCheck2Failed,
     DegreeCheckFailed,
 
     // Caulk Sub-protocol

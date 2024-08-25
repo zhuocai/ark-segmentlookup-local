@@ -122,7 +122,7 @@ impl<F: PrimeField> Transcript<F> {
     ) -> Result<(), Error> {
         let mut buf = vec![];
         element
-            .serialize(&mut buf)
+            .serialize_uncompressed(&mut buf)
             .map_err(|_| Error::FailedToSerializeElement)?;
         self.transcript
             .append_message(label.as_bytes(), buf.as_ref());
