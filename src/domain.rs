@@ -1,25 +1,26 @@
 use crate::error::Error;
 use crate::kzg::Kzg;
-use ark_ec::{PairingEngine, ProjectiveCurve};
-use ark_ff::{FftField, FftParameters, Field};
+use ark_ec::pairing::Pairing;
+use ark_ec::CurveGroup;
+use ark_ff::{FftField, Field};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use ark_std::{One, Zero};
 
-pub(crate) fn vanishing_poly_g2<E: PairingEngine>(
-    g2_srs: &[E::G2Affine],
-    domain: &Radix2EvaluationDomain<E::Fr>,
-) -> E::G2Affine {
-    let vanishing_poly: DensePolynomial<E::Fr> = domain.vanishing_polynomial().into();
+pub(crate) fn vanishing_poly_g2<P: Pairing>(
+    g2_srs: &[P::G2Affine],
+    domain: &Radix2EvaluationDomain<P::ScalarField>,
+) -> P::G2Affine {
+    let vanishing_poly: DensePolynomial<P::ScalarField> = domain.vanishing_polynomial().into();
 
-    Kzg::<E>::commit_g2(&g2_srs, &vanishing_poly).into_affine()
+    Kzg::<P::G2>::commit_g2(&g2_srs, &vanishing_poly).into_affine()
 }
 
-pub(crate) fn create_sub_domain<E: PairingEngine>(
-    original_domain: &Radix2EvaluationDomain<E::Fr>,
+pub(crate) fn create_sub_domain<P: Pairing>(
+    original_domain: &Radix2EvaluationDomain<P::ScalarField>,
     order: usize,
     segment_size: usize,
-) -> Result<Radix2EvaluationDomain<E::Fr>, Error> {
+) -> Result<Radix2EvaluationDomain<P::ScalarField>, Error> {
     if segment_size == 0 {
         return Err(Error::InvalidSegmentSize(segment_size));
     }
@@ -34,29 +35,25 @@ pub(crate) fn create_sub_domain<E: PairingEngine>(
         return Err(Error::InvalidSegmentSize(segment_size));
     }
     if segment_size == original_order {
-        let domain_1 = Radix2EvaluationDomain::<<E as PairingEngine>::Fr>::new(1)
+        let domain_1 = Radix2EvaluationDomain::<P::ScalarField>::new(1)
             .ok_or(Error::FailedToCreateEvaluationDomain)?;
         return Ok(domain_1);
     }
 
     let size: u64 = order as u64;
     let log_size_of_group = order.trailing_zeros();
-    if log_size_of_group > <E::Fr as FftField>::FftParams::TWO_ADICITY {
+    if log_size_of_group > <P::ScalarField as FftField>::TWO_ADICITY {
         return Err(Error::InvalidEvaluationDomainSize(order));
     }
 
-    let roots_of_unity_larger_domain = roots_of_unity::<E>(&original_domain);
+    let roots_of_unity_larger_domain = roots_of_unity::<P>(&original_domain);
     let group_gen = roots_of_unity_larger_domain[segment_size];
-    let size_as_field_element = E::Fr::from(size);
+    let size_as_field_element = P::ScalarField::from(size);
     let size_inv = size_as_field_element
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
 
     let group_gen_inv = group_gen
-        .inverse()
-        .ok_or(Error::FailedToInverseFieldElement)?;
-
-    let generator_inv = E::Fr::multiplicative_generator()
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
 
@@ -67,28 +64,30 @@ pub(crate) fn create_sub_domain<E: PairingEngine>(
         size_inv,
         group_gen,
         group_gen_inv,
-        generator_inv,
+        offset: P::ScalarField::one(),
+        offset_inv: P::ScalarField::one(),
+        offset_pow_size: P::ScalarField::one(),
     })
 }
 
-pub(crate) fn roots_of_unity<E: PairingEngine>(
-    domain: &Radix2EvaluationDomain<E::Fr>,
-) -> Vec<E::Fr> {
+pub(crate) fn roots_of_unity<P: Pairing>(
+    domain: &Radix2EvaluationDomain<P::ScalarField>,
+) -> Vec<P::ScalarField> {
     domain.elements().collect()
 }
 
-pub(crate) fn identity_poly<E: PairingEngine>(
-    domain: &Radix2EvaluationDomain<E::Fr>,
-) -> DensePolynomial<E::Fr> {
-    let id_list = vec![E::Fr::one(); domain.size()];
+pub(crate) fn identity_poly<P: Pairing>(
+    domain: &Radix2EvaluationDomain<P::ScalarField>,
+) -> DensePolynomial<P::ScalarField> {
+    let id_list = vec![P::ScalarField::one(); domain.size()];
 
     Evaluations::from_vec_and_domain(id_list, *domain).interpolate()
 }
 
-pub(crate) fn divide_by_vanishing_poly_checked<E: PairingEngine>(
-    domain: &Radix2EvaluationDomain<E::Fr>,
-    poly: &DensePolynomial<E::Fr>,
-) -> Result<DensePolynomial<E::Fr>, Error> {
+pub(crate) fn divide_by_vanishing_poly_checked<P: Pairing>(
+    domain: &Radix2EvaluationDomain<P::ScalarField>,
+    poly: &DensePolynomial<P::ScalarField>,
+) -> Result<DensePolynomial<P::ScalarField>, Error> {
     let (quotient, remainder) = poly
         .divide_by_vanishing_poly(*domain)
         .ok_or(Error::FailedToDivideByVanishingPolynomial)?;
@@ -113,13 +112,13 @@ mod tests {
 
         let order_v = num_queries * segment_size;
         let domain_v =
-            Radix2EvaluationDomain::<<Bn254 as PairingEngine>::Fr>::new(order_v).unwrap();
+            Radix2EvaluationDomain::<<Bn254 as Pairing>::ScalarField>::new(order_v).unwrap();
         let order_k = num_queries;
         let domain_k = create_sub_domain::<Bn254>(&domain_v, order_k, segment_size).unwrap();
         let group_gen_k = domain_k.group_gen;
         assert_eq!(
             group_gen_k.pow([domain_k.size]),
-            <Bn254 as PairingEngine>::Fr::one()
+            <Bn254 as Pairing>::ScalarField::one()
         );
     }
 }

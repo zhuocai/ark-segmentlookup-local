@@ -1,7 +1,7 @@
 use ark_ff::{FftField, Zero};
 use ark_poly::{
-    domain::DomainCoeff, univariate::DensePolynomial, EvaluationDomain, GeneralEvaluationDomain,
-    Polynomial, UVPolynomial,
+    domain::DomainCoeff, univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain,
+    GeneralEvaluationDomain, Polynomial,
 };
 use std::fmt::Debug;
 use std::marker::PhantomData;

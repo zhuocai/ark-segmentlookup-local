@@ -1,43 +1,45 @@
 use std::iter;
-use std::ops::MulAssign;
+use std::ops::{Mul, MulAssign};
 
 use crate::domain::divide_by_vanishing_poly_checked;
 use crate::error::Error;
-use crate::kzg::{convert_to_big_ints, CaulkKzg};
+use crate::kzg::CaulkKzg;
 use crate::public_parameters::PublicParameters;
 use crate::transcript::{Label, Transcript};
-use ark_ec::msm::VariableBaseMSM;
-use ark_ec::{AffineCurve, PairingEngine, ProjectiveCurve};
+use ark_ec::pairing::Pairing;
+use ark_ec::{CurveGroup, VariableBaseMSM};
 use ark_ff::Field;
 use ark_poly::univariate::DensePolynomial;
-use ark_poly::{EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain, UVPolynomial};
-use ark_std::rand::prelude::StdRng;
+use ark_poly::{
+    DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain,
+};
+use ark_std::rand::Rng;
 use ark_std::{One, UniformRand, Zero};
 
 /// Modified from https://github.com/caulk-crypto/caulk/blob/main/src/multi/unity.rs
 #[derive(Copy, Clone)]
-pub(crate) struct MultiUnityProof<E: PairingEngine> {
-    g1_u_bar: E::G1Affine,
-    g1_h_1: E::G1Affine,
-    g1_h_2: E::G1Affine,
-    g1_u_bar_alpha: E::G1Affine,
-    g1_h_2_alpha: E::G1Affine,
-    fr_v1: E::Fr,
-    fr_v2: E::Fr,
-    fr_v3: E::Fr,
-    g1_pi1: E::G1Affine,
-    g1_pi2: E::G1Affine,
-    g1_pi3: E::G1Affine,
-    g1_pi4: E::G1Affine,
-    g1_pi5: E::G1Affine,
+pub(crate) struct MultiUnityProof<P: Pairing> {
+    g1_u_bar: P::G1Affine,
+    g1_h_1: P::G1Affine,
+    g1_h_2: P::G1Affine,
+    g1_u_bar_alpha: P::G1Affine,
+    g1_h_2_alpha: P::G1Affine,
+    fr_v1: P::ScalarField,
+    fr_v2: P::ScalarField,
+    fr_v3: P::ScalarField,
+    g1_pi1: P::G1Affine,
+    g1_pi2: P::G1Affine,
+    g1_pi3: P::G1Affine,
+    g1_pi4: P::G1Affine,
+    g1_pi5: P::G1Affine,
 }
-pub(crate) fn multi_unity_prove<E: PairingEngine>(
-    pp: &PublicParameters<E>,
-    transcript: &mut Transcript<E::Fr>,
-    poly_d: &DensePolynomial<E::Fr>,
-    g1_d: &E::G1Affine,
-    rng: &mut StdRng,
-) -> Result<MultiUnityProof<E>, Error> {
+pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
+    pp: &PublicParameters<P>,
+    transcript: &mut Transcript<P::ScalarField>,
+    poly_d: &DensePolynomial<P::ScalarField>,
+    g1_d: &P::G1Affine,
+    rng: &mut R,
+) -> Result<MultiUnityProof<P>, Error> {
     // Round 1: The prover takes the input srs and U_0(X) amd samples log(n) randomnesses
     // to compute U_l(X) for l = 1, ..., log(n), U(X, Y), U_bar(X, Y), and Q_2(X, Y).
     // And send [U_bar(\tau^{log(n)}, \tau)]_1, [Q_2(\tau^{log(n)}, \tau)]_1 to the verifier.
@@ -51,12 +53,13 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     let mut poly_eval_list_d = pp.domain_k.fft(&poly_coeff_list_d);
 
     let log_num_table_segments = pp.log_num_table_segments;
-    let mut poly_u_list: Vec<DensePolynomial<E::Fr>> =
+    let mut poly_u_list: Vec<DensePolynomial<P::ScalarField>> =
         Vec::with_capacity(log_num_table_segments - 1);
 
     // Compute U_l(X) for l = 1, ..., log(n)-1
     // u_poly_list contains U_1(X), U_2(X), ..., U_{log(n)-1}(X)
-    let vanishing_poly_k: DensePolynomial<E::Fr> = pp.domain_k.vanishing_polynomial().into();
+    let vanishing_poly_k: DensePolynomial<P::ScalarField> =
+        pp.domain_k.vanishing_polynomial().into();
     for _ in 1..log_num_table_segments {
         // In-place squaring of the evaluations of D(X)
         for eval in &mut poly_eval_list_d {
@@ -64,7 +67,7 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
         }
         let poly_u = Evaluations::from_vec_and_domain(poly_eval_list_d.clone(), pp.domain_k)
             .interpolate()
-            + blinded_vanishing_poly::<E>(&vanishing_poly_k, rng);
+            + blinded_vanishing_poly::<P, _>(&vanishing_poly_k, rng);
 
         poly_u_list.push(poly_u);
     }
@@ -73,14 +76,14 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     // Store each term U_l(X) * \rho_l(Y) in a vector
     let lagrange_basis = &pp.lagrange_basis_log_n;
 
-    let partial_y_poly_list_u_bar: Vec<DensePolynomial<E::Fr>> = {
+    let partial_y_poly_list_u_bar: Vec<DensePolynomial<P::ScalarField>> = {
         let num_coefficients = poly_u_list[0].len();
         let mut partial_y_poly_list_u_bar = Vec::with_capacity(num_coefficients);
         for coeff_index in 0..num_coefficients {
             let mut partial_y_poly = DensePolynomial::zero();
             for (base_index, poly_u) in poly_u_list.iter().enumerate() {
                 let coeff_u = poly_u[coeff_index];
-                let scaled_coeffs: Vec<E::Fr> = lagrange_basis[base_index + 1]
+                let scaled_coeffs: Vec<P::ScalarField> = lagrange_basis[base_index + 1]
                     .coeffs
                     .iter()
                     .map(|&basis_coeff| basis_coeff * &coeff_u)
@@ -102,9 +105,9 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
         .chain(iter::once(identity_poly.clone()))
         .collect();
 
-    let mut poly_h_s_list: Vec<DensePolynomial<E::Fr>> = Vec::new();
+    let mut poly_h_s_list: Vec<DensePolynomial<P::ScalarField>> = Vec::new();
     for s in 1..=log_num_table_segments {
-        let poly_h_s = divide_by_vanishing_poly_checked::<E>(
+        let poly_h_s = divide_by_vanishing_poly_checked::<P>(
             &pp.domain_k,
             &(&(&poly_u_list[s - 1] * &poly_u_list[s - 1]) - &poly_u_list[s]),
         )?;
@@ -114,7 +117,7 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     // TODO: Optimize the code segment.
     let partial_y_poly_list_h_2 = {
         let num_coefficients = poly_h_s_list[1].len();
-        let mut partial_y_poly_list_h_2: Vec<DensePolynomial<E::Fr>> =
+        let mut partial_y_poly_list_h_2: Vec<DensePolynomial<P::ScalarField>> =
             Vec::with_capacity(num_coefficients);
 
         // Add H_1(X) * \rho_1(Y) and pad with zero polynomials if needed.
@@ -122,7 +125,7 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
             let h_0_j = if j < poly_h_s_list[0].len() {
                 DensePolynomial::from_coefficients_slice(&[poly_h_s_list[0][j]])
             } else {
-                DensePolynomial::from_coefficients_slice(&[E::Fr::zero()])
+                DensePolynomial::from_coefficients_slice(&[P::ScalarField::zero()])
             };
             partial_y_poly_list_h_2.push(&h_0_j * &lagrange_basis[0]);
         }
@@ -147,13 +150,13 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
         partial_y_poly_list_h_2
     };
 
-    let g1_u_bar = CaulkKzg::<E>::bi_poly_commit_g1(
+    let g1_u_bar = CaulkKzg::<P>::bi_poly_commit_g1(
         &pp.g1_srs_caulk,
         &partial_y_poly_list_u_bar,
         log_num_table_segments,
     );
 
-    let g1_h_2 = CaulkKzg::<E>::bi_poly_commit_g1(
+    let g1_h_2 = CaulkKzg::<P>::bi_poly_commit_g1(
         &pp.g1_srs_caulk,
         &partial_y_poly_list_h_2,
         log_num_table_segments,
@@ -181,18 +184,14 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
         u_sqr_alpha_list += &(&temp * &lagrange_basis[s]);
     }
     let domain_log_n = &pp.domain_log_n;
-    let poly_h_1 = divide_by_vanishing_poly_checked::<E>(
+    let poly_h_1 = divide_by_vanishing_poly_checked::<P>(
         domain_log_n,
         &(&(&poly_u_alpha * &poly_u_alpha) - &u_sqr_alpha_list),
     )?;
 
     assert!(pp.g1_srs_caulk.len() >= poly_h_1.len());
 
-    let g1_h_1 = VariableBaseMSM::multi_scalar_mul(
-        &pp.g1_srs_caulk,
-        convert_to_big_ints(&poly_h_1.coeffs).as_slice(),
-    )
-    .into_affine();
+    let g1_h_1 = P::G1::msm_unchecked(&pp.g1_srs_caulk, &poly_h_1.coeffs).into_affine();
 
     transcript.append_element(Label::CaulkG1H1, &g1_h_1)?;
     let beta = transcript.get_and_append_challenge(Label::ChallengeCaulkBeta)?;
@@ -200,7 +199,7 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     let u_alpha_beta = poly_u_alpha.evaluate(&beta);
     let mut poly_p = DensePolynomial::from_coefficients_slice(&[u_alpha_beta.square()]);
 
-    let mut u_bar_alpha_shift_beta = E::Fr::zero();
+    let mut u_bar_alpha_shift_beta = P::ScalarField::zero();
     let beta_shift = beta * domain_log_n.element(1);
     for (s, ploy_u) in poly_u_list
         .iter()
@@ -219,12 +218,13 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
 
     poly_p = &poly_p - &temp;
 
-    let vanishing_poly_log_n: DensePolynomial<E::Fr> = domain_log_n.vanishing_polynomial().into();
+    let vanishing_poly_log_n: DensePolynomial<P::ScalarField> =
+        domain_log_n.vanishing_polynomial().into();
     let temp = &DensePolynomial::from_coefficients_slice(&[vanishing_poly_log_n.evaluate(&beta)])
         * &poly_h_1;
     poly_p = &poly_p - &temp;
 
-    let mut poly_h_2_alpha = DensePolynomial::from_coefficients_slice(&[E::Fr::zero()]);
+    let mut poly_h_2_alpha = DensePolynomial::from_coefficients_slice(&[P::ScalarField::zero()]);
     for (s, poly_h_s) in poly_h_s_list.iter().enumerate() {
         let h_s_j = DensePolynomial::from_coefficients_slice(&[poly_h_s.evaluate(&alpha)]);
         poly_h_2_alpha = &poly_h_2_alpha + &(&h_s_j * &lagrange_basis[s]);
@@ -234,39 +234,39 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
         * &poly_h_2_alpha;
     poly_p = &poly_p - &temp;
 
-    assert!(poly_p.evaluate(&beta) == E::Fr::zero());
+    assert!(poly_p.evaluate(&beta) == P::ScalarField::zero());
 
     let (eval_list1, g1_pi1) =
-        CaulkKzg::<E>::batch_open_g1(&pp.g1_srs_caulk, &poly_u_list[0], None, &[alpha]);
-    let (g1_u_bar_alpha, g1_pi2, poly_u_bar_alpha) = CaulkKzg::<E>::partial_open_g1(
+        CaulkKzg::<P>::batch_open_g1(&pp.g1_srs_caulk, &poly_u_list[0], None, &[alpha]);
+    let (g1_u_bar_alpha, g1_pi2, poly_u_bar_alpha) = CaulkKzg::<P>::partial_open_g1(
         &pp.g1_srs_caulk,
         &partial_y_poly_list_u_bar,
         domain_log_n.size(),
         &alpha,
     );
 
-    let (g1_h_2_alpha, g1_pi3, _) = CaulkKzg::<E>::partial_open_g1(
+    let (g1_h_2_alpha, g1_pi3, _) = CaulkKzg::<P>::partial_open_g1(
         &pp.g1_srs_caulk,
         &partial_y_poly_list_h_2,
         domain_log_n.size(),
         &alpha,
     );
 
-    let (eval_list2, g1_pi4) = CaulkKzg::<E>::batch_open_g1(
+    let (eval_list2, g1_pi4) = CaulkKzg::<P>::batch_open_g1(
         &pp.g1_srs_caulk,
         &poly_u_bar_alpha,
         Some(&(domain_log_n.size() - 1)),
-        &[E::Fr::one(), beta, beta * domain_log_n.element(1)],
+        &[P::ScalarField::one(), beta, beta * domain_log_n.element(1)],
     );
-    assert!(eval_list2[0] == E::Fr::zero());
+    assert!(eval_list2[0] == P::ScalarField::zero());
 
-    let (eval_list3, g1_pi5) = CaulkKzg::<E>::batch_open_g1(
+    let (eval_list3, g1_pi5) = CaulkKzg::<P>::batch_open_g1(
         &pp.g1_srs_caulk,
         &poly_p,
         Some(&(domain_log_n.size() - 1)),
         &[beta],
     );
-    assert!(eval_list3[0] == E::Fr::zero());
+    assert!(eval_list3[0] == P::ScalarField::zero());
 
     Ok(MultiUnityProof {
         g1_u_bar,
@@ -285,12 +285,12 @@ pub(crate) fn multi_unity_prove<E: PairingEngine>(
     })
 }
 
-fn blinded_vanishing_poly<E: PairingEngine>(
-    vanishing_poly: &DensePolynomial<E::Fr>,
-    rng: &mut StdRng,
-) -> DensePolynomial<E::Fr> {
-    let fr_rand = E::Fr::rand(rng);
-    let vanishing_poly_coefficients: Vec<E::Fr> = vanishing_poly.coeffs.clone();
+fn blinded_vanishing_poly<P: Pairing, R: Rng + ?Sized>(
+    vanishing_poly: &DensePolynomial<P::ScalarField>,
+    rng: &mut R,
+) -> DensePolynomial<P::ScalarField> {
+    let fr_rand = P::ScalarField::rand(rng);
+    let vanishing_poly_coefficients: Vec<P::ScalarField> = vanishing_poly.coeffs.clone();
     let rand_poly_coefficients = vanishing_poly_coefficients
         .iter()
         .map(|&s| s * fr_rand)
@@ -299,12 +299,12 @@ fn blinded_vanishing_poly<E: PairingEngine>(
     DensePolynomial::from_coefficients_vec(rand_poly_coefficients)
 }
 
-pub(crate) fn multi_unity_verify<E: PairingEngine>(
-    pp: &PublicParameters<E>,
-    transcript: &mut Transcript<E::Fr>,
-    g1_d: &E::G1Affine,
-    proof: &MultiUnityProof<E>,
-    rng: &mut StdRng,
+pub(crate) fn multi_unity_verify<P: Pairing, R: Rng + ?Sized>(
+    pp: &PublicParameters<P>,
+    transcript: &mut Transcript<P::ScalarField>,
+    g1_d: &P::G1Affine,
+    proof: &MultiUnityProof<P>,
+    rng: &mut R,
 ) -> Result<bool, Error> {
     let mut pairing_inputs = multi_unity_verify_defer_pairing(
         transcript,
@@ -322,7 +322,7 @@ pub(crate) fn multi_unity_verify<E: PairingEngine>(
     // TODO: Optimize the code segment.
     assert_eq!(pairing_inputs.len(), 10);
 
-    let mut zeta = E::Fr::rand(rng);
+    let mut zeta = P::ScalarField::rand(rng);
     pairing_inputs[2].0.mul_assign(zeta);
     pairing_inputs[3].0.mul_assign(zeta);
     zeta.square_in_place();
@@ -335,32 +335,37 @@ pub(crate) fn multi_unity_verify<E: PairingEngine>(
     pairing_inputs[8].0.mul_assign(zeta);
     pairing_inputs[9].0.mul_assign(zeta);
 
-    let prepared_pairing_inputs: Vec<(E::G1Prepared, E::G2Prepared)> = pairing_inputs
-        .iter()
-        .map(|(g1, g2)| {
-            (
-                E::G1Prepared::from(g1.into_affine()),
-                E::G2Prepared::from(g2.into_affine()),
-            )
-        })
-        .collect();
-    let res = E::product_of_pairings(prepared_pairing_inputs.iter()).is_one();
+    // let prepared_pairing_inputs: Vec<(P::G1Prepared, P::G2Prepared)> = pairing_inputs
+    //     .iter()
+    //     .map(|(g1, g2)| {
+    //         (
+    //             P::G1Prepared::from(g1.into_affine()),
+    //             P::G2Prepared::from(g2.into_affine()),
+    //         )
+    //     })
+    //     .collect();
+    let pairing_inputs_g1: Vec<P::G1> = pairing_inputs.iter().map(|(g1, _)| *g1).collect();
+    let pairing_inputs_g2: Vec<P::G2> = pairing_inputs.iter().map(|(_, g2)| *g2).collect();
+    // let res = P::product_of_pairings(prepared_pairing_inputs.iter()).is_one();
+    let res = P::multi_pairing(pairing_inputs_g1, pairing_inputs_g2)
+        .0
+        .is_one();
 
     Ok(res)
 }
 
-fn multi_unity_verify_defer_pairing<E: PairingEngine>(
-    transcript: &mut Transcript<E::Fr>,
-    g1_srs: &[E::G1Affine],
-    g2_srs: &[E::G2Affine],
-    identity_poly_k: DensePolynomial<E::Fr>,
-    domain_k: &Radix2EvaluationDomain<E::Fr>,
-    domain_log_n: &Radix2EvaluationDomain<E::Fr>,
+fn multi_unity_verify_defer_pairing<P: Pairing>(
+    transcript: &mut Transcript<P::ScalarField>,
+    g1_srs: &[P::G1Affine],
+    g2_srs: &[P::G2Affine],
+    identity_poly_k: DensePolynomial<P::ScalarField>,
+    domain_k: &Radix2EvaluationDomain<P::ScalarField>,
+    domain_log_n: &Radix2EvaluationDomain<P::ScalarField>,
     log_num_segments: usize,
-    lagrange_basis_log_n: &[DensePolynomial<E::Fr>],
-    g1_d: &E::G1Affine,
-    proof: &MultiUnityProof<E>,
-) -> Result<Vec<(E::G1Projective, E::G2Projective)>, Error> {
+    lagrange_basis_log_n: &[DensePolynomial<P::ScalarField>],
+    g1_d: &P::G1Affine,
+    proof: &MultiUnityProof<P>,
+) -> Result<Vec<(P::G1, P::G2)>, Error> {
     transcript.append_elements(&[
         (Label::CaulkG1D, *g1_d),
         (Label::CaulkG1UBar, proof.g1_u_bar),
@@ -389,7 +394,7 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
     let vanishing_poly_k = domain_k.vanishing_polynomial();
     g1_p -= proof.g1_h_2_alpha.mul(vanishing_poly_k.evaluate(&alpha));
 
-    let check1 = CaulkKzg::<E>::verify_defer_pairing_g1(
+    let check1 = CaulkKzg::<P>::verify_defer_pairing_g1(
         g1_srs,
         g2_srs,
         g1_d,
@@ -399,7 +404,7 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
         &proof.g1_pi1,
     );
 
-    let check2 = CaulkKzg::<E>::partial_verify_defer_pairing_g1(
+    let check2 = CaulkKzg::<P>::partial_verify_defer_pairing_g1(
         g2_srs,
         &proof.g1_u_bar,
         domain_log_n.size(),
@@ -408,7 +413,7 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
         &proof.g1_pi2,
     );
 
-    let check3 = CaulkKzg::<E>::partial_verify_defer_pairing_g1(
+    let check3 = CaulkKzg::<P>::partial_verify_defer_pairing_g1(
         g2_srs,
         &proof.g1_h_2,
         domain_log_n.size(),
@@ -417,23 +422,23 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
         &proof.g1_pi3,
     );
 
-    let check4 = CaulkKzg::<E>::verify_defer_pairing_g1(
+    let check4 = CaulkKzg::<P>::verify_defer_pairing_g1(
         g1_srs,
         g2_srs,
         &proof.g1_u_bar_alpha,
         Some(&(domain_log_n.size() - 1)),
-        &[E::Fr::one(), beta, beta * domain_log_n.element(1)],
-        &[E::Fr::zero(), proof.fr_v2, proof.fr_v3],
+        &[P::ScalarField::one(), beta, beta * domain_log_n.element(1)],
+        &[P::ScalarField::zero(), proof.fr_v2, proof.fr_v3],
         &proof.g1_pi4,
     );
 
-    let check5 = CaulkKzg::<E>::verify_defer_pairing_g1(
+    let check5 = CaulkKzg::<P>::verify_defer_pairing_g1(
         g1_srs,
         g2_srs,
         &g1_p.into_affine(),
         Some(&(domain_log_n.size() - 1)),
         &[beta],
-        &[E::Fr::zero()],
+        &[P::ScalarField::zero()],
         &proof.g1_pi5,
     );
 
@@ -451,12 +456,13 @@ fn multi_unity_verify_defer_pairing<E: PairingEngine>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::domain::roots_of_unity;
     use crate::kzg::Kzg;
     use ark_bn254::Bn254;
     use ark_std::rand::RngCore;
     use ark_std::test_rng;
+
+    use super::*;
 
     #[test]
     fn test_trailing_zero() {
@@ -467,16 +473,16 @@ mod tests {
     #[test]
     fn test_multi_unity_prove() {
         let mut rng = test_rng();
-        let pp =
-            PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
+        let pp = PublicParameters::<Bn254>::setup(&mut rng, 8, 4, 4)
+            .expect("Failed to setup public parameters");
 
         let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)
             .collect();
 
-        let roots_of_unity_w: Vec<<Bn254 as PairingEngine>::Fr> =
+        let roots_of_unity_w: Vec<<Bn254 as Pairing>::ScalarField> =
             roots_of_unity::<Bn254>(&pp.domain_w);
-        let mut poly_eval_list_d: Vec<<Bn254 as PairingEngine>::Fr> =
+        let mut poly_eval_list_d: Vec<<Bn254 as Pairing>::ScalarField> =
             Vec::with_capacity(pp.num_witness_segments);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
@@ -485,24 +491,25 @@ mod tests {
 
         let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
         let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
-        let g1_d = Kzg::<Bn254>::commit_g1(&pp.g1_srs_caulk, &poly_d).into_affine();
+        let g1_d =
+            Kzg::<<Bn254 as Pairing>::G1>::commit_g1(&pp.g1_srs_caulk, &poly_d).into_affine();
 
         let mut transcript = Transcript::new();
 
-        multi_unity_prove::<Bn254>(&pp, &mut transcript, &poly_d, &g1_d, &mut rng).unwrap();
+        multi_unity_prove(&pp, &mut transcript, &poly_d, &g1_d, &mut rng).unwrap();
     }
 
     #[test]
     fn test_multi_unity_verify() {
         let mut rng = test_rng();
-        let pp =
-            PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
+        let pp = PublicParameters::<Bn254>::setup(&mut rng, 8, 4, 4)
+            .expect("Failed to setup public parameters");
         let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)
             .collect();
-        let roots_of_unity_w: Vec<<Bn254 as PairingEngine>::Fr> =
+        let roots_of_unity_w: Vec<<Bn254 as Pairing>::ScalarField> =
             roots_of_unity::<Bn254>(&pp.domain_w);
-        let mut poly_eval_list_d: Vec<<Bn254 as PairingEngine>::Fr> =
+        let mut poly_eval_list_d: Vec<<Bn254 as Pairing>::ScalarField> =
             Vec::with_capacity(pp.num_witness_segments);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
@@ -510,11 +517,12 @@ mod tests {
         }
         let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
         let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
-        let g1_d = Kzg::<Bn254>::commit_g1(&pp.g1_srs_caulk, &poly_d).into_affine();
+        let g1_d =
+            Kzg::<<Bn254 as Pairing>::G1>::commit_g1(&pp.g1_srs_caulk, &poly_d).into_affine();
 
         let mut transcript = Transcript::new();
         let multi_unity_proof =
-            multi_unity_prove::<Bn254>(&pp, &mut transcript, &poly_d, &g1_d, &mut rng).unwrap();
+            multi_unity_prove(&pp, &mut transcript, &poly_d, &g1_d, &mut rng).unwrap();
 
         let mut transcript = Transcript::new();
         assert!(
@@ -522,16 +530,17 @@ mod tests {
         );
 
         let mut incorrect_poly_eval_list_d = poly_eval_list_d.clone();
-        incorrect_poly_eval_list_d[0] = <Bn254 as PairingEngine>::Fr::from(456);
+        incorrect_poly_eval_list_d[0] = <Bn254 as Pairing>::ScalarField::from(456);
         let incorrect_poly_coeff_list_d = pp.domain_k.ifft(&incorrect_poly_eval_list_d);
         let incorrect_poly_d = DensePolynomial::from_coefficients_vec(incorrect_poly_coeff_list_d);
         let incorrect_g1_d =
-            Kzg::<Bn254>::commit_g1(&pp.g1_srs_caulk, &incorrect_poly_d).into_affine();
+            Kzg::<<Bn254 as Pairing>::G1>::commit_g1(&pp.g1_srs_caulk, &incorrect_poly_d)
+                .into_affine();
 
         let mut transcript = Transcript::new();
 
         let multi_unity_proof =
-            multi_unity_prove::<Bn254>(&pp, &mut transcript, &poly_d, &g1_d, &mut rng).unwrap();
+            multi_unity_prove(&pp, &mut transcript, &poly_d, &g1_d, &mut rng).unwrap();
 
         let mut transcript = Transcript::new();
         assert!(!multi_unity_verify(
@@ -544,13 +553,8 @@ mod tests {
         .unwrap());
 
         let mut transcript = Transcript::new();
-        assert!(!multi_unity_prove::<Bn254>(
-            &pp,
-            &mut transcript,
-            &incorrect_poly_d,
-            &g1_d,
-            &mut rng,
-        )
-        .is_ok());
+        assert!(
+            !multi_unity_prove(&pp, &mut transcript, &incorrect_poly_d, &g1_d, &mut rng,).is_ok()
+        );
     }
 }

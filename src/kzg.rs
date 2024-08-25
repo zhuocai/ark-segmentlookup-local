@@ -1,21 +1,23 @@
-use std::cmp::max;
-use std::{iter, marker::PhantomData};
-
-use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine, ProjectiveCurve};
-use ark_ff::{Field, One, PrimeField};
-use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
-use ark_std::rand::RngCore;
+use ark_ec::pairing::Pairing;
+use ark_ec::VariableBaseMSM;
+use ark_ec::{AffineRepr, CurveGroup};
+use ark_ff::{Field, One};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Polynomial};
+use ark_std::rand::Rng;
 use ark_std::{UniformRand, Zero};
+use std::cmp::max;
+use std::ops::Mul;
+use std::{iter, marker::PhantomData};
 
 /// Minimal KZG functionalities needed for the lookup argument.
 /// Modified from https://github.com/geometryxyz/cq/blob/main/src/kzg.rs
 /// and https://github.com/caulk-crypto/caulk/blob/main/src/kzg.rs
-pub struct Kzg<E: PairingEngine> {
-    _e: PhantomData<E>,
+pub struct Kzg<C: CurveGroup> {
+    _marker: PhantomData<C>,
 }
 
-impl<E: PairingEngine> Kzg<E> {
-    pub fn commit_g1(srs: &[E::G1Affine], poly: &DensePolynomial<E::Fr>) -> E::G1Projective {
+impl<C: CurveGroup> Kzg<C> {
+    pub fn commit_g1(srs: &[C::Affine], poly: &DensePolynomial<C::ScalarField>) -> C {
         if srs.len() - 1 < poly.degree() {
             panic!(
                 "SRS size to small! Can't commit to polynomial of degree {} with srs of size {}",
@@ -23,11 +25,11 @@ impl<E: PairingEngine> Kzg<E> {
                 srs.len()
             );
         }
-        let coefficient_scalars: Vec<_> = poly.coeffs.iter().map(|c| c.into_repr()).collect();
-        VariableBaseMSM::multi_scalar_mul(srs, &coefficient_scalars)
+
+        VariableBaseMSM::msm_unchecked(srs, &poly.coeffs)
     }
 
-    pub fn commit_g2(srs: &[E::G2Affine], poly: &DensePolynomial<E::Fr>) -> E::G2Projective {
+    pub fn commit_g2(srs: &[C::Affine], poly: &DensePolynomial<C::ScalarField>) -> C {
         if srs.len() - 1 < poly.degree() {
             panic!(
                 "SRS size to small! Can't commit to polynomial of degree {} with srs of size {}",
@@ -35,16 +37,18 @@ impl<E: PairingEngine> Kzg<E> {
                 srs.len()
             );
         }
-        let coefficient_scalars: Vec<_> = poly.coeffs.iter().map(|c| c.into_repr()).collect();
-        VariableBaseMSM::multi_scalar_mul(srs, &coefficient_scalars)
+        // let coefficient_scalars: Vec<_> = poly.coeffs.iter().map(|c| c.into_repr()).collect();
+
+        VariableBaseMSM::msm_unchecked(srs, &poly.coeffs)
     }
 
     pub fn open_g1(
-        srs: &[E::G1Affine],
-        poly: &DensePolynomial<E::Fr>,
-        challenge: E::Fr,
-    ) -> (E::Fr, E::G1Affine) {
-        let q = poly / &DensePolynomial::from_coefficients_slice(&[-challenge, E::Fr::one()]);
+        srs: &[C::Affine],
+        poly: &DensePolynomial<C::ScalarField>,
+        challenge: C::ScalarField,
+    ) -> (C::ScalarField, C::Affine) {
+        let q =
+            poly / &DensePolynomial::from_coefficients_slice(&[-challenge, C::ScalarField::one()]);
         if srs.len() - 1 < q.degree() {
             panic!(
                 "Open g1: SRS size to small! Can't commit to polynomial of degree {} with srs of size {}",
@@ -57,11 +61,11 @@ impl<E: PairingEngine> Kzg<E> {
     }
 
     pub fn batch_open_g1(
-        g1_srs: &[E::G1Affine],
-        poly_list: &[DensePolynomial<E::Fr>],
-        fr_opening: E::Fr,
-        fr_separation: E::Fr,
-    ) -> E::G1Affine {
+        g1_srs: &[C::Affine],
+        poly_list: &[DensePolynomial<C::ScalarField>],
+        fr_opening: C::ScalarField,
+        fr_separation: C::ScalarField,
+    ) -> C::Affine {
         let powers_of_sep = iter::successors(Some(fr_separation), |p| Some(*p * fr_separation));
 
         let mut batched = poly_list[0].clone();
@@ -69,7 +73,8 @@ impl<E: PairingEngine> Kzg<E> {
             batched += (fr_sep_pow_i, p_i);
         }
 
-        let q = &batched / &DensePolynomial::from_coefficients_slice(&[-fr_opening, E::Fr::one()]);
+        let q = &batched
+            / &DensePolynomial::from_coefficients_slice(&[-fr_opening, C::ScalarField::one()]);
 
         if g1_srs.len() - 1 < q.degree() {
             panic!(
@@ -84,73 +89,73 @@ impl<E: PairingEngine> Kzg<E> {
 }
 
 /// Create srs from rng
-pub fn unsafe_setup_from_rng<E: PairingEngine, R: RngCore>(
+pub fn unsafe_setup_from_rng<P: Pairing, R: Rng + ?Sized>(
     max_power_g1: usize,
     max_power_caulk_g1: usize,
     rng: &mut R,
 ) -> (
-    Vec<E::G1Affine>,
-    Vec<E::G2Affine>,
-    Vec<E::G1Affine>,
-    Vec<E::G2Affine>,
+    Vec<P::G1Affine>,
+    Vec<P::G2Affine>,
+    Vec<P::G1Affine>,
+    Vec<P::G2Affine>,
 ) {
-    let tau = E::Fr::rand(rng);
+    let tau = P::ScalarField::rand(rng);
 
-    unsafe_setup_from_tau::<E, R>(max_power_g1, max_power_caulk_g1, tau)
+    unsafe_setup_from_tau::<P, R>(max_power_g1, max_power_caulk_g1, tau)
 }
 
 /// Create srs from specific tau
-pub fn unsafe_setup_from_tau<E: PairingEngine, R: RngCore>(
+pub fn unsafe_setup_from_tau<P: Pairing, R: Rng + ?Sized>(
     max_power_g1: usize,
     caulk_max_power_g1: usize,
-    tau: E::Fr,
+    tau: P::ScalarField,
 ) -> (
-    Vec<E::G1Affine>,
-    Vec<E::G2Affine>,
-    Vec<E::G1Affine>,
-    Vec<E::G2Affine>,
+    Vec<P::G1Affine>,
+    Vec<P::G2Affine>,
+    Vec<P::G1Affine>,
+    Vec<P::G2Affine>,
 ) {
     let max_power_g2 = max_power_g1 + 1;
     let max_power_caulk_g2 = caulk_max_power_g1 + 1;
     let powers_of_tau_size = max(max_power_g2 + 1, max_power_caulk_g2 + 1);
-    let powers_of_tau = powers_of_tau::<E>(tau, powers_of_tau_size);
-    let g1_srs = srs::<E::G1Affine>(&powers_of_tau, max_power_g1);
-    let g2_srs = srs::<E::G2Affine>(&powers_of_tau, max_power_g2);
-    let g1_srs_caulk = srs::<E::G1Affine>(&powers_of_tau, caulk_max_power_g1);
-    let g2_srs_caulk = srs::<E::G2Affine>(&powers_of_tau, max_power_caulk_g2);
+    let powers_of_tau = powers_of_tau::<P>(tau, powers_of_tau_size);
+    let g1_srs = srs::<P::G1>(&powers_of_tau, max_power_g1);
+    let g2_srs = srs::<P::G2>(&powers_of_tau, max_power_g2);
+    let g1_srs_caulk = srs::<P::G1>(&powers_of_tau, caulk_max_power_g1);
+    let g2_srs_caulk = srs::<P::G2>(&powers_of_tau, max_power_caulk_g2);
 
     (g1_srs, g2_srs, g1_srs_caulk, g2_srs_caulk)
 }
 
-fn powers_of_tau<E: PairingEngine>(tau: E::Fr, size: usize) -> Vec<E::Fr> {
-    iter::successors(Some(E::Fr::one()), |p| Some(*p * tau))
+fn powers_of_tau<P: Pairing>(tau: P::ScalarField, size: usize) -> Vec<P::ScalarField> {
+    iter::successors(Some(P::ScalarField::one()), |p| Some(*p * tau))
         .take(size)
         .collect()
 }
 
-fn srs<AC: AffineCurve>(powers_of_tau: &[AC::ScalarField], max_power: usize) -> Vec<AC> {
-    let generator = AC::prime_subgroup_generator();
+fn srs<C: CurveGroup>(powers_of_tau: &[C::ScalarField], max_power: usize) -> Vec<C::Affine> {
+    let generator = C::Affine::generator();
 
     powers_of_tau
         .iter()
         .take(max_power + 1)
-        .map(|tp| generator.mul(tp.into_repr()).into())
+        .map(|tp| generator.mul(tp).into())
         .collect()
 }
 
-pub struct CaulkKzg<E: PairingEngine> {
-    _e: PhantomData<E>,
+pub struct CaulkKzg<P: Pairing> {
+    _marker: PhantomData<P>,
 }
 
-impl<E: PairingEngine> CaulkKzg<E> {
+impl<P: Pairing> CaulkKzg<P> {
     pub fn open_g1(
-        srs: &[E::G1Affine],
-        poly: &DensePolynomial<E::Fr>,
+        srs: &[P::G1Affine],
+        poly: &DensePolynomial<P::ScalarField>,
         max_deg: Option<&usize>,
-        challenge: &E::Fr,
-    ) -> (E::Fr, E::G1Affine) {
+        challenge: &P::ScalarField,
+    ) -> (P::ScalarField, P::G1Affine) {
         if poly.is_zero() {
-            return (E::Fr::zero(), E::G1Projective::zero().into_affine());
+            return (P::ScalarField::zero(), P::G1Affine::zero());
         }
         let eval = poly.evaluate(challenge);
 
@@ -162,55 +167,52 @@ impl<E: PairingEngine> CaulkKzg<E> {
         } else {
             d += max_deg.unwrap();
         }
-        let divisor = DensePolynomial::from_coefficients_vec(vec![-*challenge, E::Fr::one()]);
+        let divisor =
+            DensePolynomial::from_coefficients_vec(vec![-*challenge, P::ScalarField::one()]);
         let witness_polynomial = poly / &divisor;
 
         assert!(srs[(global_max_deg - d)..].len() >= witness_polynomial.len());
-        let proof = VariableBaseMSM::multi_scalar_mul(
-            &srs[(global_max_deg - d)..],
-            convert_to_big_ints(&witness_polynomial.coeffs).as_slice(),
-        )
-        .into_affine();
+        let proof = P::G1::msm_unchecked(&srs[(global_max_deg - d)..], &witness_polynomial.coeffs)
+            .into_affine();
 
         (eval, proof)
     }
 
     pub fn bi_poly_commit_g1(
-        g1_srs: &[E::G1Affine],
-        polynomials: &[DensePolynomial<E::Fr>],
+        g1_srs: &[P::G1Affine],
+        polynomials: &[DensePolynomial<P::ScalarField>],
         deg_x: usize,
-    ) -> E::G1Affine {
+    ) -> P::G1Affine {
         if polynomials.len() == 0 {
-            return E::G1Affine::zero();
+            return P::G1Affine::zero();
         }
 
-        let mut poly_formatted = Vec::new();
+        let mut poly_formatted: Vec<P::ScalarField> = Vec::new();
 
         for poly in polynomials {
-            let temp = convert_to_big_ints(&poly.coeffs);
-            poly_formatted.extend_from_slice(&temp);
+            // let temp = convert_to_big_ints(&poly.coeffs);
+            poly_formatted.extend_from_slice(&poly.coeffs);
             for _ in poly.len()..deg_x {
-                poly_formatted.push(E::Fr::zero().into_repr());
+                poly_formatted.push(P::ScalarField::zero());
             }
         }
 
         assert!(g1_srs.len() >= poly_formatted.len());
-        let g1_poly =
-            VariableBaseMSM::multi_scalar_mul(g1_srs, poly_formatted.as_slice()).into_affine();
+        let g1_poly = P::G1::msm_unchecked(g1_srs, poly_formatted.as_slice()).into_affine();
 
         g1_poly
     }
 
     pub fn batch_open_g1(
-        g1_srs: &[E::G1Affine],
-        poly: &DensePolynomial<E::Fr>,
+        g1_srs: &[P::G1Affine],
+        poly: &DensePolynomial<P::ScalarField>,
         max_deg: Option<&usize>,
-        points: &[E::Fr],
-    ) -> (Vec<E::Fr>, E::G1Affine) {
+        points: &[P::ScalarField],
+    ) -> (Vec<P::ScalarField>, P::G1Affine) {
         if poly.is_zero() {
             return (
-                vec![E::Fr::zero(); points.len()],
-                E::G1Projective::zero().into_affine(),
+                vec![P::ScalarField::zero(); points.len()],
+                P::G1Affine::zero(),
             );
         }
         let mut evals = Vec::new();
@@ -221,12 +223,12 @@ impl<E: PairingEngine> CaulkKzg<E> {
             proofs.push(pi);
         }
 
-        let mut res = E::G1Projective::zero(); // default value
+        let mut res = P::G1::zero(); // default value
 
         for j in 0..points.len() {
             let w_j = points[j];
             // 1. Computing coefficient [1/prod]
-            let mut prod = E::Fr::one();
+            let mut prod = P::ScalarField::one();
             for (k, p) in points.iter().enumerate() {
                 if k != j {
                     prod *= w_j - p;
@@ -241,32 +243,29 @@ impl<E: PairingEngine> CaulkKzg<E> {
     }
 
     pub fn partial_open_g1(
-        g1_srs: &[E::G1Affine],
-        polynomials: &[DensePolynomial<E::Fr>],
+        g1_srs: &[P::G1Affine],
+        polynomials: &[DensePolynomial<P::ScalarField>],
         deg_x: usize,
-        point: &E::Fr,
-    ) -> (E::G1Affine, E::G1Affine, DensePolynomial<E::Fr>) {
+        point: &P::ScalarField,
+    ) -> (P::G1Affine, P::G1Affine, DensePolynomial<P::ScalarField>) {
         if polynomials.len() == 0 {
             let proof = Self::bi_poly_commit_g1(g1_srs, &polynomials, deg_x);
             return (
-                E::G1Affine::zero(),
+                P::G1Affine::zero(),
                 proof,
-                DensePolynomial::from_coefficients_slice(&[E::Fr::zero()]),
+                DensePolynomial::from_coefficients_slice(&[P::ScalarField::zero()]),
             );
         }
-        let mut poly_partial_eval = DensePolynomial::from_coefficients_vec(vec![E::Fr::zero()]);
-        let mut alpha = E::Fr::one();
+        let mut poly_partial_eval =
+            DensePolynomial::from_coefficients_vec(vec![P::ScalarField::zero()]);
+        let mut alpha = P::ScalarField::one();
         for coeff in polynomials {
             let pow_alpha = DensePolynomial::from_coefficients_vec(vec![alpha]);
             poly_partial_eval += &(&pow_alpha * coeff);
             alpha *= point;
         }
 
-        let eval = VariableBaseMSM::multi_scalar_mul(
-            g1_srs,
-            convert_to_big_ints(&poly_partial_eval.coeffs).as_slice(),
-        )
-        .into_affine();
+        let eval = P::G1::msm_unchecked(g1_srs, &poly_partial_eval.coeffs).into_affine();
 
         let mut witness_bipolynomial = Vec::new();
         let poly_reverse: Vec<_> = polynomials.iter().rev().collect();
@@ -286,23 +285,23 @@ impl<E: PairingEngine> CaulkKzg<E> {
 
     pub fn verify_defer_pairing_g1(
         // Verify that @c_com is a commitment to C(X) such that C(x)=z
-        g1_srs: &[E::G1Affine],  // generator of G1
-        g2_srs: &[E::G2Affine],  // [1]_2, [x]_2, [x^2]_2, ...
-        g1_com: &E::G1Affine,    // commitment
-        deg_max: Option<&usize>, // max degree
-        points: &[E::Fr],        // x such that eval = C(x)
-        evaluations: &[E::Fr],   // evaluation
-        pi: &E::G1Affine,        // proof
-    ) -> Vec<(E::G1Projective, E::G2Projective)> {
+        g1_srs: &[P::G1Affine],         // generator of G1
+        g2_srs: &[P::G2Affine],         // [1]_2, [x]_2, [x^2]_2, ...
+        g1_com: &P::G1Affine,           // commitment
+        deg_max: Option<&usize>,        // max degree
+        points: &[P::ScalarField],      // x such that eval = C(x)
+        evaluations: &[P::ScalarField], // evaluation
+        pi: &P::G1Affine,               // proof
+    ) -> Vec<(P::G1, P::G2)> {
         // Interpolation set
         // tau_i(X) = lagrange_tau[i] = polynomial equal to 0 at point[j] for j!= i and
         // 1  at points[i]
 
-        let mut lagrange_tau = DensePolynomial::from_coefficients_slice(&[E::Fr::zero()]);
-        let mut prod = DensePolynomial::from_coefficients_slice(&[E::Fr::one()]);
+        let mut lagrange_tau = DensePolynomial::from_coefficients_slice(&[P::ScalarField::zero()]);
+        let mut prod = DensePolynomial::from_coefficients_slice(&[P::ScalarField::one()]);
         let mut components = vec![];
         for &p in points.iter() {
-            let poly = DensePolynomial::from_coefficients_slice(&[-p, E::Fr::one()]);
+            let poly = DensePolynomial::from_coefficients_slice(&[-p, P::ScalarField::one()]);
             prod = &prod * (&poly);
             components.push(poly);
         }
@@ -319,10 +318,7 @@ impl<E: PairingEngine> CaulkKzg<E> {
             g1_srs.len() >= lagrange_tau.len(),
             "KZG verifier doesn't have enough g1 powers"
         );
-        let g1_tau = VariableBaseMSM::multi_scalar_mul(
-            &g1_srs[..lagrange_tau.len()],
-            convert_to_big_ints(&lagrange_tau.coeffs).as_slice(),
-        );
+        let g1_tau = P::G1::msm_unchecked(&g1_srs[..lagrange_tau.len()], &lagrange_tau.coeffs);
 
         // vanishing polynomial
         let z_tau = prod;
@@ -332,10 +328,7 @@ impl<E: PairingEngine> CaulkKzg<E> {
             g2_srs.len() >= z_tau.len(),
             "KZG verifier doesn't have enough g2 powers"
         );
-        let g2_z_tau = VariableBaseMSM::multi_scalar_mul(
-            &g2_srs[..z_tau.len()],
-            convert_to_big_ints(&z_tau.coeffs).as_slice(),
-        );
+        let g2_z_tau = P::G2::msm_unchecked(&g2_srs[..z_tau.len()], &z_tau.coeffs);
 
         let global_max_deg = g1_srs.len();
 
@@ -347,40 +340,28 @@ impl<E: PairingEngine> CaulkKzg<E> {
         }
 
         let res = vec![
-            (
-                g1_tau - g1_com.into_projective(),
-                g2_srs[global_max_deg - d].into_projective(),
-            ),
-            (pi.into_projective(), g2_z_tau),
+            (g1_tau - g1_com, g2_srs[global_max_deg - d].into_group()),
+            (pi.into_group(), g2_z_tau),
         ];
 
         res
     }
 
     pub fn partial_verify_defer_pairing_g1(
-        g2_srs: &[E::G2Affine],
-        g1_com: &E::G1Affine, // commitment
+        g2_srs: &[P::G2Affine],
+        g1_com: &P::G1Affine, // commitment
         deg_x: usize,
-        point: &E::Fr,
-        partial_eval: &E::G1Affine,
-        pi: &E::G1Affine, // proof
-    ) -> Vec<(E::G1Projective, E::G2Projective)> {
+        point: &P::ScalarField,
+        partial_eval: &P::G1Affine,
+        pi: &P::G1Affine, // proof
+    ) -> Vec<(P::G1, P::G2)> {
         let res = vec![
+            (partial_eval.into_group() - g1_com, g2_srs[0].into_group()),
             (
-                partial_eval.into_projective() - g1_com.into_projective(),
-                g2_srs[0].into_projective(),
-            ),
-            (
-                pi.into_projective(),
-                g2_srs[deg_x].into_projective() - g2_srs[0].mul(*point),
+                pi.into_group(),
+                g2_srs[deg_x].into_group() - g2_srs[0].mul(*point),
             ),
         ];
         res
     }
-}
-
-pub(crate) fn convert_to_big_ints<F: PrimeField>(p: &[F]) -> Vec<F::BigInt> {
-    ark_std::cfg_iter!(p)
-        .map(|s| s.into_repr())
-        .collect::<Vec<_>>()
 }
