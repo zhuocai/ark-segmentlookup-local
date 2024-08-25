@@ -548,8 +548,8 @@ fn compute_polynomial_b_and_quotient<P: Pairing>(
     let domain_coset_v = domain_v
         .get_coset(P::ScalarField::GENERATOR)
         .ok_or(Error::FailedToCreateCosetOfEvaluationDomain)?;
-    let poly_coset_eval_list_l = domain_coset_v.fft(&poly_l);
 
+    let poly_coset_eval_list_l = domain_coset_v.fft(&poly_l);
     let poly_coset_eval_list_b = domain_coset_v.fft(&poly_b);
     let poly_coset_eval_list_f = domain_coset_v.fft(&witness.poly_f);
     let fr_one = P::ScalarField::one();
@@ -559,11 +559,9 @@ fn compute_polynomial_b_and_quotient<P: Pairing>(
         .zip(poly_coset_eval_list_l.iter())
         .map(|((&b_i, &f_i), &l_i)| (b_i * (beta + f_i + delta * l_i)) - fr_one)
         .collect();
-    // domain_v.divide_by_vanishing_poly_on_coset_in_place(&mut poly_coset_eval_list_qb);
     let poly_coeff_list_qb = domain_coset_v.ifft(&poly_coset_eval_list_qb);
+
     let mut poly_qb = DensePolynomial::from_coefficients_vec(poly_coeff_list_qb);
-    // divide_by_vanishing_poly_checked::<P>(&domain_coset_v, &mut poly_qb)?;
-    // (poly_qb, _) = poly_qb.divide_by_vanishing_poly(*domain_v).ok_or(Error::FailedToDivideByVanishingPolynomial)?;
     divide_by_vanishing_poly_on_coset_in_place::<P::G1>(&domain_v, &mut poly_qb.coeffs)?;
     let g1_affine_qb = Kzg::<P::G1>::commit(g1_affine_srs, &poly_qb).into_affine();
 
@@ -579,7 +577,6 @@ fn compute_polynomial_b_and_quotient<P: Pairing>(
     })
 }
 
-// TODO: check and fix this
 fn divide_by_vanishing_poly_on_coset_in_place<C: CurveGroup>(
     domain: &Radix2EvaluationDomain<C::ScalarField>,
     evaluations: &mut [C::ScalarField],
