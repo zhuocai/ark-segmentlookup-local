@@ -54,7 +54,7 @@ fn end_to_end(n: usize, k: usize, s: usize) {
     let proof = prove(&pp, &table, &tpp, &witness, rng).expect("Failed to prove");
     println!("prove time: {:?} ms", curr_time.elapsed().as_millis());
 
-    let statement = witness.generate_statement(&pp.g1_srs);
+    let statement = witness.generate_statement(&pp.g1_affine_srs);
 
     let curr_time = std::time::Instant::now();
     let res = verify(&pp, &tpp, statement, &proof, rng);

@@ -17,8 +17,8 @@ pub struct Table<P: Pairing> {
 }
 
 pub struct TablePreprocessedParameters<P: Pairing> {
-    pub(crate) g2_t: P::G2Affine,
-    pub(crate) g1_q1_list: Vec<P::G1Affine>,
+    pub(crate) g2_affine_t: P::G2Affine,
+    pub(crate) g1_affine_list_q1: Vec<P::G1Affine>,
 }
 
 impl<P: Pairing> Table<P> {
@@ -61,46 +61,46 @@ impl<P: Pairing> Table<P> {
         }
 
         let domain = pp.domain_w;
-        let srs_g1 = &pp.g1_srs;
-        let srs_g2 = &pp.g2_srs;
+        let g1_affine_srs = &pp.g1_affine_srs;
+        let g2_affine_srs = &pp.g2_affine_srs;
 
         let table_poly = DensePolynomial::from_coefficients_slice(&domain.ifft(&self.values));
-        let t_2: P::G2Affine = Kzg::<P::G2>::commit_g2(srs_g2, &table_poly).into();
-        let qs1 = compute_quotients::<P>(&table_poly, &domain, srs_g1)?;
+        let g2_affine_t: P::G2Affine = Kzg::<P::G2>::commit(g2_affine_srs, &table_poly).into();
+        let g1_affine_list_q1 = compute_quotients::<P>(&table_poly, &domain, g1_affine_srs)?;
 
         Ok(TablePreprocessedParameters {
-            g2_t: t_2,
-            g1_q1_list: qs1,
+            g2_affine_t,
+            g1_affine_list_q1,
         })
     }
 }
 
 fn compute_quotients<P: Pairing>(
-    t: &DensePolynomial<P::ScalarField>,
+    poly_t: &DensePolynomial<P::ScalarField>,
     domain: &Radix2EvaluationDomain<P::ScalarField>,
-    srs_g1: &[P::G1Affine],
+    g1_affine_srs: &[P::G1Affine],
 ) -> Result<Vec<P::G1Affine>, Error> {
     /*
         - N (table size) is always pow2
         - Toeplitz multiplication will happen in 2 * N, so appending zero commitments on hs is not needed
     */
-    let toeplitz = UpperToeplitz::from_poly(t);
+    let toeplitz = UpperToeplitz::from_poly(poly_t);
 
     let domain_size = domain.size();
-    let srs_g1 = srs_g1.iter().take(domain_size).collect::<Vec<_>>();
-    let mut srs_proj: Vec<P::G1> = srs_g1.iter().map(|t| t.into_group()).collect();
-    srs_proj.reverse();
+    let g1_affine_srs = g1_affine_srs.iter().take(domain_size).collect::<Vec<_>>();
+    let mut g1_srs: Vec<P::G1> = g1_affine_srs.iter().map(|t| t.into_group()).collect();
+    g1_srs.reverse();
 
-    let h_commitments: Vec<P::G1> = toeplitz.mul_by_vec(&srs_proj);
-    if h_commitments.len() != 2 * domain_size {
+    let g1_list_h: Vec<P::G1> = toeplitz.mul_by_vec(&g1_srs);
+    if g1_list_h.len() != 2 * domain_size {
         return Err(Error::InvalidCommitmentLength(format!(
             "Expected h_commitments length to be {}, but was {}",
             2 * domain.size(),
-            h_commitments.len()
+            g1_list_h.len()
         )));
     }
 
-    let ks: Vec<_> = domain.fft(&h_commitments[..domain.size()]);
+    let ks: Vec<_> = domain.fft(&g1_list_h[..domain.size()]);
 
     let fr_inv_n = domain
         .size_as_field_element()
@@ -115,7 +115,6 @@ fn compute_quotients<P: Pairing>(
         .map(|(ki, normalizer_i)| ki.mul(normalizer_i))
         .collect();
 
-    // Ok(P::G1::batch_normalization_into_affine(&mut qs))
     Ok(P::G1::normalize_batch(&qs))
 }
 

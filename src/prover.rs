@@ -17,21 +17,21 @@ use std::collections::BTreeMap;
 use std::ops::{AddAssign, Mul, Sub};
 
 pub struct Proof<P: Pairing> {
-    pub(crate) g1_m: P::G1Affine,       // [M(tau)]_1
-    pub(crate) g1_m_div_w: P::G1Affine, // [M(tau / w)]_1
-    pub(crate) g1_qm: P::G1Affine,      // [Q_M(tau)]_1
-    pub(crate) g1_l: P::G1Affine,       // [L(tau)]_1
-    pub(crate) g1_l_div_v: P::G1Affine, // [L(tau / v)]_1
-    pub(crate) g1_ql: P::G1Affine,      // [Q_L(tau)]_1
-    pub(crate) g1_d: P::G1Affine,       // [D(tau)]_1
-    pub(crate) g1_qd: P::G1Affine,      // [Q_D(tau)]_1
-    pub(crate) g1_a: P::G1Affine,       // [A(tau)]_1
-    pub(crate) g1_qa: P::G1Affine,      // [Q_A(tau)]_1
-    pub(crate) g1_qb: P::G1Affine,      // [Q_B(tau)]_1
-    pub(crate) g1_a0: P::G1Affine,      // [A_0(tau)]_1
-    pub(crate) g1_b0: P::G1Affine,      // [B_0(tau)]_1
-    pub(crate) g1_px: P::G1Affine,      // [P_A(tau)]_1 or [P_B(tau)]_1 or zero
-    pub(crate) g1_hp: P::G1Affine,      // [H_P(tau)]_1
+    pub(crate) g1_affine_m: P::G1Affine,       // [M(tau)]_1
+    pub(crate) g1_affine_m_div_w: P::G1Affine, // [M(tau / w)]_1
+    pub(crate) g1_affine_qm: P::G1Affine,      // [Q_M(tau)]_1
+    pub(crate) g1_affine_l: P::G1Affine,       // [L(tau)]_1
+    pub(crate) g1_affine_l_div_v: P::G1Affine, // [L(tau / v)]_1
+    pub(crate) g1_affine_ql: P::G1Affine,      // [Q_L(tau)]_1
+    pub(crate) g1_affine_d: P::G1Affine,       // [D(tau)]_1
+    pub(crate) g1_affine_qd: P::G1Affine,      // [Q_D(tau)]_1
+    pub(crate) g1_affine_a: P::G1Affine,       // [A(tau)]_1
+    pub(crate) g1_affine_qa: P::G1Affine,      // [Q_A(tau)]_1
+    pub(crate) g1_affine_qb: P::G1Affine,      // [Q_B(tau)]_1
+    pub(crate) g1_affine_a0: P::G1Affine,      // [A_0(tau)]_1
+    pub(crate) g1_affine_b0: P::G1Affine,      // [B_0(tau)]_1
+    pub(crate) g1_affine_px: P::G1Affine,      // [P_A(tau)]_1 or [P_B(tau)]_1 or zero
+    pub(crate) g1_affine_hp: P::G1Affine,      // [H_P(tau)]_1
 
     pub(crate) fr_b0_at_gamma: P::ScalarField, // b_{0,gamma} = B_0(gamma)
     pub(crate) fr_f_at_gamma: P::ScalarField,  // f_{gamma} = F(gamma)
@@ -60,21 +60,21 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     let segment_multiplicities =
         compute_segment_multiplicities(&witness.segment_indices, pp.num_table_segments)?;
     let MultiplicityPolynomialsAndQuotient {
-        g1_m,
-        g1_m_div_w,
-        g1_qm,
+        g1_affine_m,
+        g1_affine_m_div_w,
+        g1_affine_qm,
     } = compute_multiplicity_polynomials_and_quotient::<P>(
         &segment_multiplicities,
-        &pp.g1_l_w_list,
-        &pp.g1_q3_list,
+        &pp.g1_affine_list_lw,
+        &pp.g1_affine_list_q3,
         pp.segment_size,
         pp.table_element_size,
     );
 
     transcript.append_elements(&[
-        (Label::G1M, g1_m),
-        (Label::G1MDivW, g1_m_div_w),
-        (Label::G1Qm, g1_qm),
+        (Label::G1M, g1_affine_m),
+        (Label::G1MDivW, g1_affine_m_div_w),
+        (Label::G1Qm, g1_affine_qm),
     ])?;
 
     // Round 1-3: Compute the indexing polynomial L(X) of degree (ks - 1),
@@ -88,24 +88,23 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     // Round 1-6: Compute Q_D s.t. L(X) - D(X) = Z_K(X)*Q_D(X),
     // and send [Q_D(tau)]_1 to the verifier.
     let IndexPolynomialsAndQuotients {
-        g1_l,
-        g1_l_div_v,
-        g1_d,
-        g1_ql,
-        g1_qd,
+        g1_affine_l,
+        g1_affine_l_div_v,
+        g1_affine_d,
+        g1_affine_ql,
+        g1_affine_qd,
         poly_l,
         poly_ql,
         poly_l_div_v,
         poly_eval_list_l,
-        // poly_coset_eval_list_l,
         poly_d,
         poly_qd,
     } = compute_index_polynomials_and_quotients::<P>(
         &pp.domain_w,
         &pp.domain_k,
         &pp.domain_v,
-        &pp.g1_l_v_list,
-        &pp.g1_srs,
+        &pp.g1_affine_list_lv,
+        &pp.g1_affine_srs,
         &witness.segment_indices,
         pp.witness_element_size,
         pp.segment_size,
@@ -113,11 +112,11 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     )?;
 
     transcript.append_elements(&[
-        (Label::G1L, g1_l),
-        (Label::G1LDivV, g1_l_div_v),
-        (Label::G1Ql, g1_ql),
-        (Label::G1D, g1_d),
-        (Label::G1Qd, g1_qd),
+        (Label::G1L, g1_affine_l),
+        (Label::G1LDivV, g1_affine_l_div_v),
+        (Label::G1Ql, g1_affine_ql),
+        (Label::G1D, g1_affine_d),
+        (Label::G1Qd, g1_affine_qd),
     ])?;
 
     // Round 2 is performed by the verifier.
@@ -125,7 +124,7 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     // Round 3 - Round 8:
     // Using the instantiation of Lemma 5,
     // the prover and verifier engage in a protocol that polynomial L is well-formed.
-    let multi_unity_proof = multi_unity_prove(pp, &mut transcript, &poly_d, &g1_d, rng)?;
+    let multi_unity_proof = multi_unity_prove(pp, &mut transcript, &poly_d, &g1_affine_d, rng)?;
 
     // Round 9: The verifier sends random scalar fields beta, delta to the prover.
     // Use Fiat-Shamir heuristic to make the protocol non-interactive.
@@ -137,35 +136,35 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     // Round 10-2: The prover computes [Q_A(tau)]_1 using the SRS and Lemma 4.
     // Round 10-5: The prover computes A_0(X) = (A(X) - A(0)) / X,
     // and sends [A_0(tau)]_1 to the verifier.
-    let PolyAAndQuotient {
-        g1_a,
-        g1_qa,
-        g1_a0,
+    let PolynomialAAndQuotient {
+        g1_affine_a,
+        g1_affine_qa,
+        g1_affine_a0,
         sparse_poly_eval_list_a,
-    } = compute_poly_a_and_quotient(
+    } = compute_polynomial_a_and_quotient(
         beta,
         delta,
         table,
         &segment_multiplicities,
         &pp.domain_w,
         pp.segment_size,
-        &pp.g1_l_w_list,
-        &tpp.g1_q1_list,
-        &pp.g1_q2_list,
-        &pp.g1_l_w_opening_proofs_at_zero,
+        &pp.g1_affine_list_lw,
+        &tpp.g1_affine_list_q1,
+        &pp.g1_affine_list_q2,
+        &pp.g1_affine_lw_opening_proofs_at_zero,
     )?;
 
     // Round 10-3: The prover computes B(X) of degree ks-1.
     // Round 10-4: The prover computes [Q_B(tau)]_1 using the SRS and Lemma 4.
     // Round 10-5: The prover computes B_0(X) = (B(X) - B(0)) / X,
     // and sends [B_0(tau)]_1 to the verifier.
-    let PolyBAndQuotient {
+    let PolynomialBAndQuotient {
         poly_b,
         poly_qb,
         poly_b0,
-        g1_qb,
-        g1_b0,
-    } = compute_poly_b_and_quotient(
+        g1_affine_qb,
+        g1_affine_b0,
+    } = compute_polynomial_b_and_quotient(
         beta,
         delta,
         &witness,
@@ -174,29 +173,29 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
         &poly_eval_list_l,
         // &poly_coset_eval_list_l,
         &poly_l,
-        &pp.g1_srs,
+        &pp.g1_affine_srs,
     )?;
 
     // Round 10-6: Degree check.
     // This step is only necessary when k != n.
-    let g1_px = compute_degree_check_g1::<P>(
+    let g1_affine_px = compute_degree_check_g1_affine::<P>(
         pp.num_table_segments,
         pp.num_witness_segments,
         pp.segment_size,
         pp.table_element_size,
         &poly_b0,
-        &pp.g1_srs,
+        &pp.g1_affine_srs,
         &sparse_poly_eval_list_a,
         &pp.domain_w,
     );
 
     transcript.append_elements(&[
-        (Label::G1A, g1_a),
-        (Label::G1Qa, g1_qa),
-        (Label::G1Qb, g1_qb),
-        (Label::G1A0, g1_a0),
-        (Label::G1B0, g1_b0),
-        (Label::G1Px, g1_px),
+        (Label::G1A, g1_affine_a),
+        (Label::G1Qa, g1_affine_qa),
+        (Label::G1Qb, g1_affine_qb),
+        (Label::G1A0, g1_affine_a0),
+        (Label::G1B0, g1_affine_b0),
+        (Label::G1Px, g1_affine_px),
     ])?;
 
     // Round 11-3: The verifier sends random scalar gamma to the prover.
@@ -244,8 +243,8 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     // Round 14: Compute the commitment of H_P(X) = (P(X) - p_{gamma}) / (X - gamma),
     // which is a KZG batch opening proof of the polynomials to be checked,
     // and send [H_P(tau)]_1 to the verifier.
-    let g1_hp = Kzg::<P::G1>::batch_open_g1(
-        &pp.g1_srs,
+    let g1_affine_hp = Kzg::<P::G1>::batch_open(
+        &pp.g1_affine_srs,
         &[
             poly_l_div_v,
             poly_l,
@@ -261,21 +260,21 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     );
 
     Ok(Proof {
-        g1_m,
-        g1_m_div_w,
-        g1_qm,
-        g1_l,
-        g1_l_div_v,
-        g1_ql,
-        g1_d,
-        g1_qd,
-        g1_a,
-        g1_qa,
-        g1_qb,
-        g1_a0,
-        g1_b0,
-        g1_px,
-        g1_hp,
+        g1_affine_m,
+        g1_affine_m_div_w,
+        g1_affine_qm,
+        g1_affine_l,
+        g1_affine_l_div_v,
+        g1_affine_ql,
+        g1_affine_d,
+        g1_affine_qd,
+        g1_affine_a,
+        g1_affine_qa,
+        g1_affine_qb,
+        g1_affine_a0,
+        g1_affine_b0,
+        g1_affine_px,
+        g1_affine_hp,
 
         fr_b0_at_gamma,
         fr_f_at_gamma,
@@ -310,62 +309,62 @@ fn compute_segment_multiplicities(
 // Multiplicity polynomials and the quotient,
 // containing [M(tau)]_1, [M(tau / w)]_1, and [Q_M(tau)]_1.
 struct MultiplicityPolynomialsAndQuotient<P: Pairing> {
-    g1_m: P::G1Affine,
-    g1_m_div_w: P::G1Affine,
-    g1_qm: P::G1Affine,
+    g1_affine_m: P::G1Affine,
+    g1_affine_m_div_w: P::G1Affine,
+    g1_affine_qm: P::G1Affine,
 }
 
 // Compute [M(tau)]_1, [M(tau / w)]_1, and [Q_M(tau)]_1.
 fn compute_multiplicity_polynomials_and_quotient<P: Pairing>(
     segment_multiplicities: &BTreeMap<usize, usize>,
-    g1_l_w_list: &[P::G1Affine],
-    g1_q3_list: &[P::G1Affine],
+    g1_affine_list_lw: &[P::G1Affine],
+    g1_affine_list_q3: &[P::G1Affine],
     segment_size: usize,
     table_element_size: usize,
 ) -> MultiplicityPolynomialsAndQuotient<P> {
-    let mut g1_proj_m = P::G1::zero(); // [M(tau)]_1
-    let mut g1_proj_m_div_w = P::G1::zero(); // [M(tau / w)]_1
-    let mut g1_proj_qm = P::G1::zero(); // [Q_M(tau)]_1
+    let mut g1_m = P::G1::zero(); // [M(tau)]_1
+    let mut g1_m_div_w = P::G1::zero(); // [M(tau / w)]_1
+    let mut g1_qm = P::G1::zero(); // [Q_M(tau)]_1
     for (&i, &m) in segment_multiplicities.iter() {
         let segment_element_indices = i * segment_size..(i + 1) * segment_size;
         let fr_mul = P::ScalarField::from(m as u64);
         for elem_index in segment_element_indices {
             // Linear combination of [L^W_i(tau)]_1.
-            g1_proj_m.add_assign(g1_l_w_list[elem_index].mul(fr_mul));
+            g1_m.add_assign(g1_affine_list_lw[elem_index].mul(fr_mul));
             // Linear combination of [L^W_i(tau / w)]_1.
             // L^W_i(tau / w) = L^W_{i+1}(tau).
             // We can shift [L^W_i(tau)]_1 to the left by 1 to get [L^W_i(tau / w)]_1.
             let shifted_elem_index = (elem_index + 1) % table_element_size;
-            g1_proj_m_div_w.add_assign(g1_l_w_list[shifted_elem_index].mul(fr_mul));
+            g1_m_div_w.add_assign(g1_affine_list_lw[shifted_elem_index].mul(fr_mul));
             // Linear combination of q_{i, 3}.
-            g1_proj_qm.add_assign(g1_q3_list[elem_index].mul(fr_mul));
+            g1_qm.add_assign(g1_affine_list_q3[elem_index].mul(fr_mul));
             // Linear combination of q_{i, 4}.
             // q_{i, 4} is equivalent to shift q_{i, 3} to the left by 1.
             let shifted_elem_index = (elem_index + 1) % table_element_size;
-            g1_proj_qm.add_assign(g1_q3_list[shifted_elem_index].mul(-fr_mul)); // negate the coefficient
+            g1_qm.add_assign(g1_affine_list_q3[shifted_elem_index].mul(-fr_mul));
+            // negate the coefficient
         }
     }
 
     MultiplicityPolynomialsAndQuotient {
-        g1_m: g1_proj_m.into_affine(),
-        g1_m_div_w: g1_proj_m_div_w.into_affine(),
-        g1_qm: g1_proj_qm.into_affine(),
+        g1_affine_m: g1_m.into_affine(),
+        g1_affine_m_div_w: g1_m_div_w.into_affine(),
+        g1_affine_qm: g1_qm.into_affine(),
     }
 }
 
 // Index polynomials and the quotients,
 // containing [L(tau)]_1, [L(tau * v)]_1, [D(tau)]_1, [Q_L(tau)]_1, and [Q_D(tau)]_1.
 struct IndexPolynomialsAndQuotients<P: Pairing> {
-    g1_l: P::G1Affine,
-    g1_l_div_v: P::G1Affine,
-    g1_d: P::G1Affine,
-    g1_ql: P::G1Affine,
-    g1_qd: P::G1Affine,
+    g1_affine_l: P::G1Affine,
+    g1_affine_l_div_v: P::G1Affine,
+    g1_affine_d: P::G1Affine,
+    g1_affine_ql: P::G1Affine,
+    g1_affine_qd: P::G1Affine,
     poly_l: DensePolynomial<P::ScalarField>,
     poly_ql: DensePolynomial<P::ScalarField>,
     poly_l_div_v: DensePolynomial<P::ScalarField>,
     poly_eval_list_l: Vec<P::ScalarField>,
-    // poly_coset_eval_list_l: Vec<P::ScalarField>,
     poly_d: DensePolynomial<P::ScalarField>,
     poly_qd: DensePolynomial<P::ScalarField>,
 }
@@ -375,16 +374,16 @@ fn compute_index_polynomials_and_quotients<P: Pairing>(
     domain_w: &Radix2EvaluationDomain<P::ScalarField>,
     domain_k: &Radix2EvaluationDomain<P::ScalarField>,
     domain_v: &Radix2EvaluationDomain<P::ScalarField>,
-    g1_l_v_list: &[P::G1Affine],
-    g1_srs: &[P::G1Affine],
+    g1_affine_list_lv: &[P::G1Affine],
+    g1_affine_srs: &[P::G1Affine],
     queried_segment_indices: &[usize],
     witness_size: usize,
     segment_size: usize,
     num_queries: usize,
 ) -> Result<IndexPolynomialsAndQuotients<P>, Error> {
     let mut poly_eval_list_l: Vec<P::ScalarField> = Vec::with_capacity(witness_size);
-    let mut g1_proj_l = P::G1::zero(); // [L(tau)]_1
-    let mut g1_proj_l_div_v = P::G1::zero(); // [L(tau / v)]_1
+    let mut g1_l = P::G1::zero(); // [L(tau)]_1
+    let mut g1_l_div_v = P::G1::zero(); // [L(tau / v)]_1
     let roots_of_unity_w: Vec<P::ScalarField> = roots_of_unity::<P>(&domain_w);
     let mut witness_element_index: usize = 0;
     let mut poly_eval_list_d: Vec<P::ScalarField> = Vec::with_capacity(num_queries);
@@ -394,14 +393,14 @@ fn compute_index_polynomials_and_quotients<P: Pairing>(
             let root_of_unity_w = roots_of_unity_w[elem_index];
             poly_eval_list_l.push(root_of_unity_w);
             // Linear combination of [L^V_i(tau)]_1.
-            g1_proj_l.add_assign(g1_l_v_list[witness_element_index].mul(root_of_unity_w));
+            g1_l.add_assign(g1_affine_list_lv[witness_element_index].mul(root_of_unity_w));
             // Linear combination of [L^V_i(tau / v)]_1.
             // L^V_i(tau / v) = L^V_{i+1}(tau).
             // We can shift [L^V_i(tau)]_1 to the left by 1
             // to get [L^V_i(tau / v)]_1.
             let shifted_witness_elem_index = (witness_element_index + 1) % witness_size;
-            g1_proj_l_div_v
-                .add_assign(g1_l_v_list[shifted_witness_elem_index].mul(root_of_unity_w));
+            g1_l_div_v
+                .add_assign(g1_affine_list_lv[shifted_witness_elem_index].mul(root_of_unity_w));
             witness_element_index += 1;
         }
 
@@ -411,7 +410,7 @@ fn compute_index_polynomials_and_quotients<P: Pairing>(
 
     let poly_coeff_list_d = domain_k.ifft(&poly_eval_list_d);
     let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
-    let g1_d = Kzg::<P::G1>::commit_g1(g1_srs, &poly_d).into_affine();
+    let g1_affine_d = Kzg::<P::G1>::commit(g1_affine_srs, &poly_d).into_affine();
 
     // Compute the quotient polynomial Q_L(X) s.t. (X^k - 1) * (L(X) - w * L(X / v)) = Z_V(X) * Q_L(X),
     // Inverse FFT costs O(ks log(ks)) operations.
@@ -439,53 +438,52 @@ fn compute_index_polynomials_and_quotients<P: Pairing>(
     let mut poly_ql = poly_l.sub(&poly_w_mul_l_div_v);
     poly_ql = poly_ql.mul(&poly_x_pow_k_sub_one);
     let poly_ql = divide_by_vanishing_poly_checked::<P>(domain_v, &poly_ql)?;
-    let g1_ql = Kzg::<P::G1>::commit_g1(&g1_srs, &poly_ql).into_affine();
+    let g1_affine_ql = Kzg::<P::G1>::commit(&g1_affine_srs, &poly_ql).into_affine();
 
     // Compute Q_D s.t. L(X) - D(X) = Z_K(X) * Q_D(X).
     let mut poly_qd = poly_l.sub(&poly_d);
     poly_qd = divide_by_vanishing_poly_checked::<P>(domain_k, &poly_qd)?;
-    let g1_qd = Kzg::<P::G1>::commit_g1(&g1_srs, &poly_qd).into_affine();
+    let g1_affine_qd = Kzg::<P::G1>::commit(&g1_affine_srs, &poly_qd).into_affine();
 
     // let poly_coset_eval_list_l = domain_v.coset_fft(&poly_l);
 
     Ok(IndexPolynomialsAndQuotients {
-        g1_l: g1_proj_l.into_affine(),
-        g1_l_div_v: g1_proj_l_div_v.into_affine(),
-        g1_d,
-        g1_ql,
-        g1_qd,
+        g1_affine_l: g1_l.into_affine(),
+        g1_affine_l_div_v: g1_l_div_v.into_affine(),
+        g1_affine_d,
+        g1_affine_ql,
+        g1_affine_qd,
         poly_l,
         poly_ql,
         poly_l_div_v,
         poly_eval_list_l,
-        // poly_coset_eval_list_l,
         poly_d,
         poly_qd,
     })
 }
 
-struct PolyAAndQuotient<P: Pairing> {
-    g1_a: P::G1Affine,
-    g1_qa: P::G1Affine,
-    g1_a0: P::G1Affine,
+struct PolynomialAAndQuotient<P: Pairing> {
+    g1_affine_a: P::G1Affine,
+    g1_affine_qa: P::G1Affine,
+    g1_affine_a0: P::G1Affine,
     sparse_poly_eval_list_a: BTreeMap<usize, P::ScalarField>,
 }
 
-fn compute_poly_a_and_quotient<P: Pairing>(
+fn compute_polynomial_a_and_quotient<P: Pairing>(
     beta: P::ScalarField,
     delta: P::ScalarField,
     table: &Table<P>,
     segment_multiplicities: &BTreeMap<usize, usize>,
     domain_w: &Radix2EvaluationDomain<P::ScalarField>,
     segment_size: usize,
-    g1_l_w_list: &[P::G1Affine],
-    g1_q1_list: &[P::G1Affine],
-    g1_q2_list: &[P::G1Affine],
-    g1_l_w_opening_proofs_at_zero: &[P::G1Affine],
-) -> Result<PolyAAndQuotient<P>, Error> {
+    g1_affine_lw_list: &[P::G1Affine],
+    g1_affine_q1_list: &[P::G1Affine],
+    g1_affine_q2_list: &[P::G1Affine],
+    g1_affine_lw_opening_proofs_at_zero: &[P::G1Affine],
+) -> Result<PolynomialAAndQuotient<P>, Error> {
     let mut sparse_poly_eval_list_a = BTreeMap::<usize, P::ScalarField>::default();
-    let mut g1_proj_a = P::G1::zero();
-    let mut g1_proj_qa = P::G1::zero();
+    let mut g1_a = P::G1::zero();
+    let mut g1_qa = P::G1::zero();
     let roots_of_unity_w = roots_of_unity::<P>(domain_w);
 
     for (&segment_index, &multiplicity) in segment_multiplicities.iter() {
@@ -498,44 +496,43 @@ fn compute_poly_a_and_quotient<P: Pairing>(
                 * P::ScalarField::from(multiplicity as u64);
 
             sparse_poly_eval_list_a.insert(elem_index, fr_a_i);
-            g1_proj_a.add_assign(g1_l_w_list[elem_index].mul(fr_a_i));
-            g1_proj_qa.add_assign(g1_q1_list[elem_index].mul(fr_a_i));
-            g1_proj_qa.add_assign(g1_q2_list[elem_index].mul(delta.mul(fr_a_i)));
+            g1_a.add_assign(g1_affine_lw_list[elem_index].mul(fr_a_i));
+            g1_qa.add_assign(g1_affine_q1_list[elem_index].mul(fr_a_i));
+            g1_qa.add_assign(g1_affine_q2_list[elem_index].mul(delta.mul(fr_a_i)));
         }
     }
 
-    let mut g1_proj_a0 = P::G1::zero();
+    let mut g1_a0 = P::G1::zero();
     for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
-        g1_proj_a0.add_assign(g1_l_w_opening_proofs_at_zero[i].mul(a_i));
+        g1_a0.add_assign(g1_affine_lw_opening_proofs_at_zero[i].mul(a_i));
     }
 
-    Ok(PolyAAndQuotient {
-        g1_a: g1_proj_a.into_affine(),
-        g1_qa: g1_proj_qa.into_affine(),
-        g1_a0: g1_proj_a0.into_affine(),
+    Ok(PolynomialAAndQuotient {
+        g1_affine_a: g1_a.into_affine(),
+        g1_affine_qa: g1_qa.into_affine(),
+        g1_affine_a0: g1_a0.into_affine(),
         sparse_poly_eval_list_a,
     })
 }
 
-struct PolyBAndQuotient<P: Pairing> {
+struct PolynomialBAndQuotient<P: Pairing> {
     poly_b: DensePolynomial<P::ScalarField>,
     poly_qb: DensePolynomial<P::ScalarField>,
     poly_b0: DensePolynomial<P::ScalarField>,
-    g1_qb: P::G1Affine,
-    g1_b0: P::G1Affine,
+    g1_affine_qb: P::G1Affine,
+    g1_affine_b0: P::G1Affine,
 }
 
-fn compute_poly_b_and_quotient<P: Pairing>(
+fn compute_polynomial_b_and_quotient<P: Pairing>(
     beta: P::ScalarField,
     delta: P::ScalarField,
     witness: &Witness<P>,
     witness_element_size: usize,
     domain_v: &Radix2EvaluationDomain<P::ScalarField>,
     poly_eval_list_l: &[P::ScalarField],
-    // poly_coset_eval_list_l: &[P::ScalarField],
     poly_l: &DensePolynomial<P::ScalarField>,
-    g1_srs: &[P::G1Affine],
-) -> Result<PolyBAndQuotient<P>, Error> {
+    g1_affine_srs: &[P::G1Affine],
+) -> Result<PolynomialBAndQuotient<P>, Error> {
     let poly_eval_list_b: Result<Vec<P::ScalarField>, Error> = (0..witness_element_size)
         .map(|i| {
             (beta + witness.poly_eval_list_f[i] + delta * poly_eval_list_l[i])
@@ -568,17 +565,17 @@ fn compute_poly_b_and_quotient<P: Pairing>(
     // divide_by_vanishing_poly_checked::<P>(&domain_coset_v, &mut poly_qb)?;
     // (poly_qb, _) = poly_qb.divide_by_vanishing_poly(*domain_v).ok_or(Error::FailedToDivideByVanishingPolynomial)?;
     divide_by_vanishing_poly_on_coset_in_place::<P::G1>(&domain_v, &mut poly_qb.coeffs)?;
-    let g1_qb = Kzg::<P::G1>::commit_g1(g1_srs, &poly_qb).into_affine();
+    let g1_affine_qb = Kzg::<P::G1>::commit(g1_affine_srs, &poly_qb).into_affine();
 
     let poly_b0 = DensePolynomial::from_coefficients_slice(&poly_b.coeffs[1..]);
-    let g1_b0 = Kzg::<P::G1>::commit_g1(g1_srs, &poly_b0).into_affine();
+    let g1_affine_b0 = Kzg::<P::G1>::commit(g1_affine_srs, &poly_b0).into_affine();
 
-    Ok(PolyBAndQuotient {
+    Ok(PolynomialBAndQuotient {
         poly_b,
         poly_qb,
         poly_b0,
-        g1_qb,
-        g1_b0,
+        g1_affine_qb,
+        g1_affine_b0,
     })
 }
 
@@ -596,13 +593,13 @@ fn divide_by_vanishing_poly_on_coset_in_place<C: CurveGroup>(
     Ok(())
 }
 
-fn compute_degree_check_g1<P: Pairing>(
+fn compute_degree_check_g1_affine<P: Pairing>(
     num_table_segments: usize,
     num_witness_segments: usize,
     segment_size: usize,
     table_element_size: usize,
     poly_b0: &DensePolynomial<P::ScalarField>,
-    g1_srs: &[P::G1Affine],
+    g1_affine_srs: &[P::G1Affine],
     sparse_poly_eval_list_a: &BTreeMap<usize, P::ScalarField>,
     domain_w: &Radix2EvaluationDomain<P::ScalarField>,
 ) -> P::G1Affine {
@@ -613,7 +610,7 @@ fn compute_degree_check_g1<P: Pairing>(
         poly_coeff_list_pb.extend_from_slice(&poly_b0.coeffs);
         let poly_pb = DensePolynomial::from_coefficients_vec(poly_coeff_list_pb);
 
-        Kzg::<P::G1>::commit_g1(&g1_srs, &poly_pb).into_affine()
+        Kzg::<P::G1>::commit(&g1_affine_srs, &poly_pb).into_affine()
     } else if num_table_segments < num_witness_segments {
         // If n < k, the prover computes P_A(X) and sends [P_A(tau)]_1 to the verifier.
         // We can use Inverse FFT to compute the polynomial A(X),
@@ -629,7 +626,7 @@ fn compute_degree_check_g1<P: Pairing>(
         poly_coeff_list_pa.extend_from_slice(&poly_coeff_list_a0);
         let poly_pa = DensePolynomial::from_coefficients_vec(poly_coeff_list_pa);
 
-        Kzg::<P::G1>::commit_g1(&g1_srs, &poly_pa).into_affine()
+        Kzg::<P::G1>::commit(&g1_affine_srs, &poly_pa).into_affine()
     } else {
         P::G1Affine::zero()
     }
@@ -703,7 +700,7 @@ mod tests {
         }
         let poly_coeff_list_m = pp.domain_w.ifft(&poly_eval_m_list);
         let poly_m = DensePolynomial::from_coefficients_vec(poly_coeff_list_m.clone());
-        let g1_m_expected = Kzg::<G1>::commit_g1(&pp.g1_srs, &poly_m).into_affine();
+        let g1_affine_m_expected = Kzg::<G1>::commit(&pp.g1_affine_srs, &poly_m).into_affine();
         let inv_generator_w = pp.domain_w.group_gen_inv;
         let poly_coeff_list_m_div_w: Vec<Fr> = poly_coeff_list_m
             .iter()
@@ -711,7 +708,8 @@ mod tests {
             .map(|(i, &c)| c * inv_generator_w.pow(&[i as u64]))
             .collect();
         let poly_m_div_w = DensePolynomial::from_coefficients_vec(poly_coeff_list_m_div_w);
-        let g1_m_div_w_expected = Kzg::<G1>::commit_g1(&pp.g1_srs, &poly_m_div_w).into_affine();
+        let g1_affine_m_div_w_expected =
+            Kzg::<G1>::commit(&pp.g1_affine_srs, &poly_m_div_w).into_affine();
 
         let mut poly_coeff_list_x_pow_n_sub_one = vec![Fr::zero(); pp.table_element_size];
         poly_coeff_list_x_pow_n_sub_one[pp.num_table_segments] = Fr::one();
@@ -722,23 +720,23 @@ mod tests {
         poly_qm = poly_qm.sub(&poly_m_div_w);
         poly_qm = poly_qm.naive_mul(&poly_x_pow_n_sub_one);
         let poly_qm = divide_by_vanishing_poly_checked::<Bn254>(&pp.domain_w, &poly_qm).unwrap();
-        let g1_qm_expected = Kzg::<G1>::commit_g1(&pp.g1_srs, &poly_qm).into_affine();
+        let g1_affine_qm_expected = Kzg::<G1>::commit(&pp.g1_affine_srs, &poly_qm).into_affine();
 
         let MultiplicityPolynomialsAndQuotient {
-            g1_m: g1_m_got,
-            g1_m_div_w: g1_m_div_w_got,
-            g1_qm: g1_qm_got,
+            g1_affine_m: g1_affine_m_got,
+            g1_affine_m_div_w: g1_affine_m_div_w_got,
+            g1_affine_qm: g1_affine_qm_got,
         } = compute_multiplicity_polynomials_and_quotient::<Bn254>(
             &multiplicities,
-            &pp.g1_l_w_list,
-            &pp.g1_q3_list,
+            &pp.g1_affine_list_lw,
+            &pp.g1_affine_list_q3,
             segment_size,
             pp.table_element_size,
         );
 
-        assert_eq!(g1_m_expected, g1_m_got);
-        assert_eq!(g1_m_div_w_expected, g1_m_div_w_got);
-        assert_eq!(g1_qm_expected, g1_qm_got);
+        assert_eq!(g1_affine_m_expected, g1_affine_m_got);
+        assert_eq!(g1_affine_m_div_w_expected, g1_affine_m_div_w_got);
+        assert_eq!(g1_affine_qm_expected, g1_affine_qm_got);
     }
 
     #[test]

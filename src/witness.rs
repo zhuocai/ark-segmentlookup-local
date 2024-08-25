@@ -56,7 +56,7 @@ impl<P: Pairing> Witness<P> {
     }
 
     pub fn generate_statement(&self, g1_srs: &[P::G1Affine]) -> P::G1Affine {
-        Kzg::<P::G1>::commit_g1(g1_srs, &self.poly_f).into_affine()
+        Kzg::<P::G1>::commit(g1_srs, &self.poly_f).into_affine()
     }
 }
 

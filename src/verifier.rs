@@ -23,24 +23,29 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
 
     // Round 2: The first pairing check.
     // This is intended to check the correctness of multiplicity polynomials.
-    first_pairing_check(&proof, &pp.g2_srs, pp.g2_zw, pp.num_table_segments)?;
+    first_pairing_check(
+        &proof,
+        &pp.g2_affine_srs,
+        pp.g2_affine_zw,
+        pp.num_table_segments,
+    )?;
 
     transcript.append_elements(&[
-        (Label::G1M, proof.g1_m),
-        (Label::G1MDivW, proof.g1_m_div_w),
-        (Label::G1Qm, proof.g1_qm),
-        (Label::G1L, proof.g1_l),
-        (Label::G1LDivV, proof.g1_l_div_v),
-        (Label::G1Ql, proof.g1_ql),
-        (Label::G1D, proof.g1_d),
-        (Label::G1Qd, proof.g1_qd),
+        (Label::G1M, proof.g1_affine_m),
+        (Label::G1MDivW, proof.g1_affine_m_div_w),
+        (Label::G1Qm, proof.g1_affine_qm),
+        (Label::G1L, proof.g1_affine_l),
+        (Label::G1LDivV, proof.g1_affine_l_div_v),
+        (Label::G1Ql, proof.g1_affine_ql),
+        (Label::G1D, proof.g1_affine_d),
+        (Label::G1Qd, proof.g1_affine_qd),
     ])?;
 
     // Round 3-8: Multi-unity check.
     if !multi_unity_verify(
         pp,
         &mut transcript,
-        &proof.g1_d,
+        &proof.g1_affine_d,
         &proof.multi_unity_proof,
         rng,
     )? {
@@ -53,7 +58,13 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
     // Round 11: The second pairing check.
     // This is intended to check the correctness of polynomial A.
     second_pairing_check::<P>(
-        &proof, beta, delta, proof.g1_m, tpp.g2_t, pp.g2_zw, &pp.g2_srs,
+        &proof,
+        beta,
+        delta,
+        proof.g1_affine_m,
+        tpp.g2_affine_t,
+        pp.g2_affine_zw,
+        &pp.g2_affine_srs,
     )?;
 
     // Round 11: Degree pairing check.
@@ -62,16 +73,16 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
         pp.num_table_segments,
         pp.num_witness_segments,
         pp.segment_size,
-        &pp.g2_srs,
+        &pp.g2_affine_srs,
     )?;
 
     transcript.append_elements(&[
-        (Label::G1A, proof.g1_a),
-        (Label::G1Qa, proof.g1_qa),
-        (Label::G1Qb, proof.g1_qb),
-        (Label::G1A0, proof.g1_a0),
-        (Label::G1B0, proof.g1_b0),
-        (Label::G1Px, proof.g1_px),
+        (Label::G1A, proof.g1_affine_a),
+        (Label::G1Qa, proof.g1_affine_qa),
+        (Label::G1Qb, proof.g1_affine_qb),
+        (Label::G1A0, proof.g1_affine_a0),
+        (Label::G1B0, proof.g1_affine_b0),
+        (Label::G1Px, proof.g1_affine_px),
     ])?;
 
     let gamma = transcript.get_and_append_challenge(Label::ChallengeGamma)?;
@@ -90,8 +101,8 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
     let eta = transcript.get_and_append_challenge(Label::ChallengeEta)?;
 
     // Round 15-4: The third pairing check.
-    let g2_one = pp.g2_srs[0];
-    let g2_tau = pp.g2_srs[1];
+    let g2_affine_one = pp.g2_affine_srs[0];
+    let g2_affine_tau = pp.g2_affine_srs[1];
     third_pairing_check(
         &proof,
         statement,
@@ -103,12 +114,12 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
         pp.num_witness_segments,
         pp.segment_size,
         &pp.domain_v,
-        g2_tau,
-        g2_one,
+        g2_affine_tau,
+        g2_affine_one,
     )?;
 
     // Round 15-4: The fourth pairing check.
-    fourth_pairing_check(&proof, g2_tau, g2_one)?;
+    fourth_pairing_check(&proof, g2_affine_tau, g2_affine_one)?;
 
     // Round 15-4: The first point check.
     first_point_check(
@@ -127,19 +138,21 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
 
 fn first_pairing_check<P: Pairing>(
     proof: &Proof<P>,
-    g2_srs: &[P::G2Affine],
-    g2_zw: P::G2Affine,
+    g2_affine_srs: &[P::G2Affine],
+    g2_affine_zw: P::G2Affine,
     num_table_segments: usize,
 ) -> Result<(), Error> {
-    let g1_m = proof.g1_m;
-    let g1_neg_m_div_w = -proof.g1_m_div_w.into_group();
-    let g2_tau_pow_ns = g2_srs[num_table_segments];
-    let g2_neg_one = -g2_srs[0].into_group();
-    let g1_qm = proof.g1_qm;
-    let g2_zw = g2_zw;
+    let g1_affine_m = proof.g1_affine_m;
+    let g1_neg_m_div_w = -proof.g1_affine_m_div_w.into_group();
+    let g2_affine_tau_pow_ns = g2_affine_srs[num_table_segments];
+    let g2_neg_one = -g2_affine_srs[0].into_group();
+    let g1_affine_qm = proof.g1_affine_qm;
 
-    let left_pairing = P::pairing(g1_m + g1_neg_m_div_w, g2_tau_pow_ns + g2_neg_one);
-    let right_pairing = P::pairing(g1_qm, g2_zw);
+    let left_pairing = P::pairing(
+        g1_affine_m + g1_neg_m_div_w,
+        g2_affine_tau_pow_ns + g2_neg_one,
+    );
+    let right_pairing = P::pairing(g1_affine_qm, g2_affine_zw);
 
     if left_pairing != right_pairing {
         return Err(Error::Pairing1Failed);
@@ -152,22 +165,24 @@ fn second_pairing_check<P: Pairing>(
     proof: &Proof<P>,
     beta: P::ScalarField,
     delta: P::ScalarField,
-    g1_m: P::G1Affine,
-    g2_t: P::G2Affine,
-    g2_zw: P::G2Affine,
-    g2_srs: &[P::G2Affine],
+    g1_affine_m: P::G1Affine,
+    g2_affine_t: P::G2Affine,
+    g2_affine_zw: P::G2Affine,
+    g2_affine_srs: &[P::G2Affine],
 ) -> Result<(), Error> {
-    let g1_a = proof.g1_a;
-    let g2_t = g2_t;
-    let g2_tau = g2_srs[1];
-    let left_pairing = P::pairing(g1_a, g2_t + g2_tau.mul(delta).into_affine());
+    let g1_affine_a = proof.g1_affine_a;
+    let g2_affine_tau = g2_affine_srs[1];
+    let left_pairing = P::pairing(g1_affine_a, g2_affine_t + g2_affine_tau.mul(delta));
 
-    let g1_qa = proof.g1_qa;
-    let g1_neg_beta_mul_a = g1_a.mul(-beta).into_affine();
-    let g2_one = g2_srs[0];
+    let g1_affine_qa = proof.g1_affine_qa;
+    let g1_affine_neg_beta_mul_a = g1_affine_a.mul(-beta).into_affine();
+    let g2_one = g2_affine_srs[0];
     let right_pairing = P::multi_pairing(
-        &[g1_qa, g1_m.add(g1_neg_beta_mul_a).into_affine()],
-        &[g2_zw, g2_one],
+        &[
+            g1_affine_qa,
+            g1_affine_m.add(g1_affine_neg_beta_mul_a).into_affine(),
+        ],
+        &[g2_affine_zw, g2_one],
     );
 
     if left_pairing != right_pairing {
@@ -182,24 +197,24 @@ fn degree_check<P: Pairing>(
     num_table_segments: usize,
     num_witness_segments: usize,
     segment_size: usize,
-    g2_srs: &[P::G2Affine],
+    g2_affine_srs: &[P::G2Affine],
 ) -> Result<(), Error> {
-    let g1_px = proof.g1_px;
-    let g2_one = g2_srs[0];
+    let g1_affine_px = proof.g1_affine_px;
+    let g2_affine_one = g2_affine_srs[0];
     if num_table_segments > num_witness_segments {
         let deg_tau = (num_table_segments - num_witness_segments) * segment_size - 1;
-        let g1_b0 = proof.g1_b0;
-        let left_pairing = P::pairing(g1_b0, g2_srs[deg_tau]);
-        let right_pairing = P::pairing(g1_px, g2_one);
+        let g1_affine_b0 = proof.g1_affine_b0;
+        let left_pairing = P::pairing(g1_affine_b0, g2_affine_srs[deg_tau]);
+        let right_pairing = P::pairing(g1_affine_px, g2_affine_one);
 
         if left_pairing != right_pairing {
             return Err(Error::DegreeCheckFailed);
         }
     } else if num_table_segments < num_witness_segments {
         let deg_tau = (num_witness_segments - num_table_segments) * segment_size - 1;
-        let g1_a0 = proof.g1_a0;
-        let left_pairing = P::pairing(g1_a0, g2_srs[deg_tau]);
-        let right_pairing = P::pairing(g1_px, g2_one);
+        let g1_affine_a0 = proof.g1_affine_a0;
+        let left_pairing = P::pairing(g1_affine_a0, g2_affine_srs[deg_tau]);
+        let right_pairing = P::pairing(g1_affine_px, g2_affine_one);
 
         if left_pairing != right_pairing {
             return Err(Error::DegreeCheckFailed);
@@ -220,8 +235,8 @@ fn third_pairing_check<P: Pairing>(
     num_witness_segments: usize,
     segment_size: usize,
     domain_v: &Radix2EvaluationDomain<P::ScalarField>,
-    g2_tau: P::G2Affine,
-    g2_one: P::G2Affine,
+    g2_affine_tau: P::G2Affine,
+    g2_affine_one: P::G2Affine,
 ) -> Result<(), Error> {
     // Round 15-1: Compute b_0 = ns * a_0 / (ks)
     let table_elem_size = num_table_segments * segment_size;
@@ -272,15 +287,15 @@ fn third_pairing_check<P: Pairing>(
     }
 
     let mut eta_pow_x = P::ScalarField::one();
-    let g1_p_terms: Vec<P::G1> = [
-        &proof.g1_l_div_v,
-        &proof.g1_l,
-        &proof.g1_ql,
-        &proof.g1_d,
-        &proof.g1_qd,
-        &proof.g1_b0,
+    let g1_affine_p_terms: Vec<P::G1> = [
+        &proof.g1_affine_l_div_v,
+        &proof.g1_affine_l,
+        &proof.g1_affine_ql,
+        &proof.g1_affine_d,
+        &proof.g1_affine_qd,
+        &proof.g1_affine_b0,
         &statement,
-        &proof.g1_qb,
+        &proof.g1_affine_qb,
     ]
     .iter()
     .map(|g1| {
@@ -290,16 +305,19 @@ fn third_pairing_check<P: Pairing>(
         term
     })
     .collect();
-    let mut g1_proj_p = P::G1::zero();
-    for term in g1_p_terms {
-        g1_proj_p = g1_proj_p.add(&term);
+    let mut g1_p = P::G1::zero();
+    for term in g1_affine_p_terms {
+        g1_p = g1_p.add(&term);
     }
-    let g1_p = g1_proj_p.into_affine();
+    let g1_affine_p = g1_p.into_affine();
 
-    let left_pairing = P::pairing(proof.g1_hp, g2_tau);
-    let g1_gamma_mul_hp = proof.g1_hp.mul(gamma).into_affine();
+    let left_pairing = P::pairing(proof.g1_affine_hp, g2_affine_tau);
+    let g1_gamma_mul_hp = proof.g1_affine_hp.mul(gamma).into_affine();
     let g1_neg_p_at_gamma = fr_to_curve_element::<P::G1>(-fr_p_at_gamma).into_affine();
-    let right_pairing = P::pairing(g1_p + g1_neg_p_at_gamma + g1_gamma_mul_hp, g2_one);
+    let right_pairing = P::pairing(
+        g1_affine_p + g1_neg_p_at_gamma + g1_gamma_mul_hp,
+        g2_affine_one,
+    );
 
     if left_pairing != right_pairing {
         return Err(Error::Pairing3Failed);
@@ -310,12 +328,12 @@ fn third_pairing_check<P: Pairing>(
 
 fn fourth_pairing_check<P: Pairing>(
     proof: &Proof<P>,
-    g2_tau: P::G2Affine,
-    g2_one: P::G2Affine,
+    g2_affine_tau: P::G2Affine,
+    g2_affine_one: P::G2Affine,
 ) -> Result<(), Error> {
-    let g1_neg_a0 = fr_to_curve_element::<P::G1>(-proof.fr_a_at_zero).into_affine();
-    let left_pairing = P::pairing(proof.g1_a + g1_neg_a0, g2_one);
-    let right_pairing = P::pairing(proof.g1_a0, g2_tau);
+    let g1_affine_neg_a0 = fr_to_curve_element::<P::G1>(-proof.fr_a_at_zero).into_affine();
+    let left_pairing = P::pairing(proof.g1_affine_a + g1_affine_neg_a0, g2_affine_one);
+    let right_pairing = P::pairing(proof.g1_affine_a0, g2_affine_tau);
 
     if left_pairing != right_pairing {
         return Err(Error::Pairing4Failed);
@@ -335,18 +353,18 @@ fn first_point_check<P: Pairing>(
     let fr_neg_gamma_pow_k_sub_one = -fr_gamma_pow_k_sub_one;
     let fr_neg_zv_at_gamma = -domain_v.evaluate_vanishing_polynomial(gamma);
 
-    let mut g1_proj_l_at_gamma_div_v = fr_to_curve_element::<P::G1>(proof.fr_l_at_gamma_div_v);
-    let mut g1_proj_l_at_gamma = fr_to_curve_element::<P::G1>(proof.fr_l_at_gamma);
-    let mut g1_proj_ql_at_gamma = fr_to_curve_element::<P::G1>(proof.fr_ql_at_gamma);
+    let mut g1_l_at_gamma_div_v = fr_to_curve_element::<P::G1>(proof.fr_l_at_gamma_div_v);
+    let mut g1_l_at_gamma = fr_to_curve_element::<P::G1>(proof.fr_l_at_gamma);
+    let mut g1_ql_at_gamma = fr_to_curve_element::<P::G1>(proof.fr_ql_at_gamma);
 
-    g1_proj_l_at_gamma_div_v.mul_assign(fr_neg_gamma_pow_k_sub_one * domain_w.group_gen);
-    g1_proj_l_at_gamma.mul_assign(fr_gamma_pow_k_sub_one);
-    g1_proj_ql_at_gamma.mul_assign(fr_neg_zv_at_gamma);
-    let mut g1_proj_check1 = g1_proj_l_at_gamma_div_v.clone();
-    g1_proj_check1.add_assign(g1_proj_l_at_gamma);
-    g1_proj_check1.add_assign(g1_proj_ql_at_gamma);
+    g1_l_at_gamma_div_v.mul_assign(fr_neg_gamma_pow_k_sub_one * domain_w.group_gen);
+    g1_l_at_gamma.mul_assign(fr_gamma_pow_k_sub_one);
+    g1_ql_at_gamma.mul_assign(fr_neg_zv_at_gamma);
+    let mut g1_check1 = g1_l_at_gamma_div_v.clone();
+    g1_check1.add_assign(g1_l_at_gamma);
+    g1_check1.add_assign(g1_ql_at_gamma);
 
-    if g1_proj_check1 != P::G1::zero() {
+    if g1_check1 != P::G1::zero() {
         return Err(Error::PointCheck1Failed);
     }
 
@@ -358,17 +376,17 @@ fn second_point_check<P: Pairing>(
     gamma: P::ScalarField,
     domain_k: &Radix2EvaluationDomain<P::ScalarField>,
 ) -> Result<(), Error> {
-    let mut g1_proj_l_at_gamma = fr_to_curve_element::<P::G1>(proof.fr_l_at_gamma);
+    let mut g1_l_at_gamma = fr_to_curve_element::<P::G1>(proof.fr_l_at_gamma);
     let fr_zk_at_gamma = domain_k.evaluate_vanishing_polynomial(gamma);
     let g1_d_at_gamma = fr_to_curve_element::<P::G1>(proof.fr_d_at_gamma);
 
-    g1_proj_l_at_gamma.add_assign(g1_d_at_gamma.neg());
-    let mut g1_proj_check2 = g1_proj_l_at_gamma.clone();
-    let mut g1_proj_qd_at_gamma = fr_to_curve_element::<P::G1>(proof.fr_qd_at_gamma);
-    g1_proj_qd_at_gamma.mul_assign(-fr_zk_at_gamma);
-    g1_proj_check2.add_assign(g1_proj_qd_at_gamma);
+    g1_l_at_gamma.add_assign(g1_d_at_gamma.neg());
+    let mut g1_check2 = g1_l_at_gamma.clone();
+    let mut g1_qd_at_gamma = fr_to_curve_element::<P::G1>(proof.fr_qd_at_gamma);
+    g1_qd_at_gamma.mul_assign(-fr_zk_at_gamma);
+    g1_check2.add_assign(g1_qd_at_gamma);
 
-    if g1_proj_check2 != P::G1::zero() {
+    if g1_check2 != P::G1::zero() {
         return Err(Error::PointCheck2Failed);
     }
 
@@ -376,10 +394,10 @@ fn second_point_check<P: Pairing>(
 }
 
 fn fr_to_curve_element<C: CurveGroup>(fr: C::ScalarField) -> C {
-    let mut g1_proj_gen = C::generator();
-    g1_proj_gen.mul_assign(fr);
+    let mut g1_gen = C::generator();
+    g1_gen.mul_assign(fr);
 
-    g1_proj_gen
+    g1_gen
 }
 
 #[cfg(test)]
@@ -421,7 +439,7 @@ mod tests {
 
             let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
 
-            let statement = witness.generate_statement(&pp.g1_srs);
+            let statement = witness.generate_statement(&pp.g1_affine_srs);
 
             let tpp = t.preprocess(&pp).unwrap();
 
@@ -457,7 +475,7 @@ mod tests {
 
             let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
 
-            let statement = witness.generate_statement(&pp.g1_srs);
+            let statement = witness.generate_statement(&pp.g1_affine_srs);
 
             let tpp = t.preprocess(&pp).unwrap();
 

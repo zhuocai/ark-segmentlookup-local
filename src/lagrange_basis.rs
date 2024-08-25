@@ -37,11 +37,11 @@ pub(crate) fn lagrange_basis<P: Pairing>(
 // Efficiently compute the commitments to the Lagrange basis using SRS in O(n log n) time.
 // Section 3.3 from the paper BGG17: https://eprint.iacr.org/2017/602.
 pub(crate) fn lagrange_basis_g1<C: CurveGroup>(
-    srs: &[C::Affine],
+    affine_srs: &[C::Affine],
     domain: &Radix2EvaluationDomain<C::ScalarField>,
 ) -> Result<Vec<C::Affine>, Error> {
     let group_order = domain.size();
-    assert!(srs.len() >= group_order);
+    assert!(affine_srs.len() >= group_order);
     assert!(group_order.is_power_of_two());
 
     let n_inv = domain
@@ -49,7 +49,7 @@ pub(crate) fn lagrange_basis_g1<C: CurveGroup>(
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
 
-    let srs_subset: Vec<C::Affine> = srs.iter().take(group_order).cloned().collect();
+    let srs_subset: Vec<C::Affine> = affine_srs.iter().take(group_order).cloned().collect();
     let tau_projective: Vec<C> = srs_subset
         .iter()
         .map(|&tau_pow_i| tau_pow_i.into())
@@ -61,15 +61,13 @@ pub(crate) fn lagrange_basis_g1<C: CurveGroup>(
         .into_iter()
         .map(|pi| pi.mul(n_inv))
         .collect();
-    // C::batch_normalization(&mut ls);
-    Ok(C::normalize_batch(&ls))
 
-    // ls.iter().map(|li| li.into_affine()).collect()
+    Ok(C::normalize_batch(&ls))
 }
 
 // See Page 12 of CQ paper for efficient computation.
 pub(crate) fn zero_opening_proofs<P: Pairing>(
-    srs_g1: &[P::G1Affine],
+    srs_g1_affine: &[P::G1Affine],
     domain: &Radix2EvaluationDomain<P::ScalarField>,
     g1_lagrange_basis: &[P::G1Affine],
 ) -> Result<Vec<P::G1Affine>, Error> {
@@ -77,7 +75,7 @@ pub(crate) fn zero_opening_proofs<P: Pairing>(
         .size_as_field_element()
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
-    let rhs = srs_g1[domain.size() - 1].mul(-domain_size_inverse_fr);
+    let rhs = srs_g1_affine[domain.size() - 1].mul(-domain_size_inverse_fr);
 
     let domain_size = domain.size();
     let mut opening_proofs: Vec<P::G1Affine> = Vec::with_capacity(domain_size);
@@ -97,13 +95,13 @@ mod tests {
 
     use super::*;
 
-    type Fr = <Bn254 as Pairing>::ScalarField;
+    type ScalarField = <Bn254 as Pairing>::ScalarField;
     type G1Affine = <Bn254 as Pairing>::G1Affine;
 
     #[test]
     fn test_zero_opening_proofs() {
         let n = 32;
-        let domain = Radix2EvaluationDomain::<Fr>::new(n).unwrap();
+        let domain = Radix2EvaluationDomain::<ScalarField>::new(n).unwrap();
         let lagrange_basis = lagrange_basis::<Bn254>(&domain);
 
         let mut rng = test_rng();
@@ -111,13 +109,13 @@ mod tests {
         let (srs_g1, _, _, _) = unsafe_setup_from_rng::<Bn254, _>(n - 1, 0, &mut rng);
         let lagrange_basis_1: Vec<G1Affine> = lagrange_basis
             .iter()
-            .map(|li| Kzg::<<Bn254 as Pairing>::G1>::commit_g1(&srs_g1, li).into())
+            .map(|li| Kzg::<<Bn254 as Pairing>::G1>::commit(&srs_g1, li).into())
             .collect();
 
-        let zero = Fr::zero();
+        let zero = ScalarField::zero();
         let li_proofs_slow: Vec<G1Affine> = lagrange_basis
             .iter()
-            .map(|li| Kzg::<<Bn254 as Pairing>::G1>::open_g1(&srs_g1, li, zero).1)
+            .map(|li| Kzg::<<Bn254 as Pairing>::G1>::open(&srs_g1, li, zero).1)
             .collect();
 
         let li_proofs_fast =

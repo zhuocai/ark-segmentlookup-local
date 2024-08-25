@@ -7,13 +7,13 @@ use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use ark_std::{One, Zero};
 
-pub(crate) fn vanishing_poly_g2<P: Pairing>(
-    g2_srs: &[P::G2Affine],
-    domain: &Radix2EvaluationDomain<P::ScalarField>,
-) -> P::G2Affine {
-    let vanishing_poly: DensePolynomial<P::ScalarField> = domain.vanishing_polynomial().into();
+pub(crate) fn vanishing_poly_commitment_affine<C: CurveGroup>(
+    affine_srs: &[C::Affine],
+    domain: &Radix2EvaluationDomain<C::ScalarField>,
+) -> C::Affine {
+    let vanishing_poly: DensePolynomial<C::ScalarField> = domain.vanishing_polynomial().into();
 
-    Kzg::<P::G2>::commit_g2(&g2_srs, &vanishing_poly).into_affine()
+    Kzg::<C>::commit(&affine_srs, &vanishing_poly).into_affine()
 }
 
 pub(crate) fn create_sub_domain<P: Pairing>(

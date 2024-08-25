@@ -151,13 +151,13 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
     };
 
     let g1_u_bar = CaulkKzg::<P>::bi_poly_commit_g1(
-        &pp.g1_srs_caulk,
+        &pp.g1_affine_srs_caulk,
         &partial_y_poly_list_u_bar,
         log_num_table_segments,
     );
 
     let g1_h_2 = CaulkKzg::<P>::bi_poly_commit_g1(
-        &pp.g1_srs_caulk,
+        &pp.g1_affine_srs_caulk,
         &partial_y_poly_list_h_2,
         log_num_table_segments,
     );
@@ -189,9 +189,9 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
         &(&(&poly_u_alpha * &poly_u_alpha) - &u_sqr_alpha_list),
     )?;
 
-    assert!(pp.g1_srs_caulk.len() >= poly_h_1.len());
+    assert!(pp.g1_affine_srs_caulk.len() >= poly_h_1.len());
 
-    let g1_h_1 = P::G1::msm_unchecked(&pp.g1_srs_caulk, &poly_h_1.coeffs).into_affine();
+    let g1_h_1 = P::G1::msm_unchecked(&pp.g1_affine_srs_caulk, &poly_h_1.coeffs).into_affine();
 
     transcript.append_element(Label::CaulkG1H1, &g1_h_1)?;
     let beta = transcript.get_and_append_challenge(Label::ChallengeCaulkBeta)?;
@@ -237,23 +237,23 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
     assert!(poly_p.evaluate(&beta) == P::ScalarField::zero());
 
     let (eval_list1, g1_pi1) =
-        CaulkKzg::<P>::batch_open_g1(&pp.g1_srs_caulk, &poly_u_list[0], None, &[alpha]);
+        CaulkKzg::<P>::batch_open_g1(&pp.g1_affine_srs_caulk, &poly_u_list[0], None, &[alpha]);
     let (g1_u_bar_alpha, g1_pi2, poly_u_bar_alpha) = CaulkKzg::<P>::partial_open_g1(
-        &pp.g1_srs_caulk,
+        &pp.g1_affine_srs_caulk,
         &partial_y_poly_list_u_bar,
         domain_log_n.size(),
         &alpha,
     );
 
     let (g1_h_2_alpha, g1_pi3, _) = CaulkKzg::<P>::partial_open_g1(
-        &pp.g1_srs_caulk,
+        &pp.g1_affine_srs_caulk,
         &partial_y_poly_list_h_2,
         domain_log_n.size(),
         &alpha,
     );
 
     let (eval_list2, g1_pi4) = CaulkKzg::<P>::batch_open_g1(
-        &pp.g1_srs_caulk,
+        &pp.g1_affine_srs_caulk,
         &poly_u_bar_alpha,
         Some(&(domain_log_n.size() - 1)),
         &[P::ScalarField::one(), beta, beta * domain_log_n.element(1)],
@@ -261,7 +261,7 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
     assert!(eval_list2[0] == P::ScalarField::zero());
 
     let (eval_list3, g1_pi5) = CaulkKzg::<P>::batch_open_g1(
-        &pp.g1_srs_caulk,
+        &pp.g1_affine_srs_caulk,
         &poly_p,
         Some(&(domain_log_n.size() - 1)),
         &[beta],
@@ -308,8 +308,8 @@ pub(crate) fn multi_unity_verify<P: Pairing, R: Rng + ?Sized>(
 ) -> Result<bool, Error> {
     let mut pairing_inputs = multi_unity_verify_defer_pairing(
         transcript,
-        &pp.g1_srs_caulk,
-        &pp.g2_srs_caulk,
+        &pp.g1_affine_srs_caulk,
+        &pp.g2_affine_srs_caulk,
         pp.identity_poly_k.clone(),
         &pp.domain_k,
         &pp.domain_log_n,
@@ -492,7 +492,7 @@ mod tests {
         let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
         let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
         let g1_d =
-            Kzg::<<Bn254 as Pairing>::G1>::commit_g1(&pp.g1_srs_caulk, &poly_d).into_affine();
+            Kzg::<<Bn254 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &poly_d).into_affine();
 
         let mut transcript = Transcript::new();
 
@@ -518,7 +518,7 @@ mod tests {
         let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
         let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
         let g1_d =
-            Kzg::<<Bn254 as Pairing>::G1>::commit_g1(&pp.g1_srs_caulk, &poly_d).into_affine();
+            Kzg::<<Bn254 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &poly_d).into_affine();
 
         let mut transcript = Transcript::new();
         let multi_unity_proof =
@@ -534,7 +534,7 @@ mod tests {
         let incorrect_poly_coeff_list_d = pp.domain_k.ifft(&incorrect_poly_eval_list_d);
         let incorrect_poly_d = DensePolynomial::from_coefficients_vec(incorrect_poly_coeff_list_d);
         let incorrect_g1_d =
-            Kzg::<<Bn254 as Pairing>::G1>::commit_g1(&pp.g1_srs_caulk, &incorrect_poly_d)
+            Kzg::<<Bn254 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &incorrect_poly_d)
                 .into_affine();
 
         let mut transcript = Transcript::new();

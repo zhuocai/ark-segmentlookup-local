@@ -11,10 +11,6 @@ mod transcript;
 pub mod verifier;
 pub mod witness;
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
 #[cfg(test)]
 mod tests {
     use crate::prover::prove;
@@ -55,7 +51,7 @@ mod tests {
 
         let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
 
-        let statement = witness.generate_statement(&pp.g1_srs);
+        let statement = witness.generate_statement(&pp.g1_affine_srs);
 
         let tpp = t.preprocess(&pp).unwrap();
 
