@@ -294,7 +294,7 @@ fn compute_segment_multiplicities(
     num_segments: usize,
 ) -> Result<BTreeMap<usize, usize>, Error> {
     let mut multiplicities = BTreeMap::<usize, usize>::default();
-    for &i in queried_segment_indices.iter() {
+    for &i in queried_segment_indices {
         if i > num_segments {
             return Err(Error::InvalidSegmentIndex(i));
         }
