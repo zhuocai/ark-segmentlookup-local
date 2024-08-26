@@ -10,6 +10,7 @@ use ark_ff::Field;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_std::rand::Rng;
 use ark_std::{One, Zero};
+use rayon::prelude::*;
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg};
 
 pub fn verify<P: Pairing, R: Rng + ?Sized>(
@@ -20,15 +21,6 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
     rng: &mut R,
 ) -> Result<(), Error> {
     let mut transcript = Transcript::<P::ScalarField>::new();
-
-    // Round 2: The first pairing check.
-    // This is intended to check the correctness of multiplicity polynomials.
-    first_pairing_check(
-        &proof,
-        &pp.g2_affine_srs,
-        pp.g2_affine_zw,
-        pp.num_table_segments,
-    )?;
 
     transcript.append_elements(&[
         (Label::G1M, proof.g1_affine_m),
@@ -41,40 +33,20 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
         (Label::G1Qd, proof.g1_affine_qd),
     ])?;
 
-    // Round 3-8: Multi-unity check.
-    if !multi_unity_verify(
-        pp,
-        &mut transcript,
-        &proof.g1_affine_d,
-        &proof.multi_unity_proof,
-        rng,
-    )? {
-        return Err(Error::FailedToCheckMultiUnity);
-    }
+    transcript.append_elements(&[
+        (Label::CaulkG1D, proof.g1_affine_d),
+        (Label::CaulkG1UBar, proof.multi_unity_proof.g1_u_bar),
+        (Label::CaulkG1H2, proof.multi_unity_proof.g1_h_2),
+    ])?;
+
+    let caulk_alpha = transcript.get_and_append_challenge(Label::ChallengeCaulkAlpha)?;
+
+    transcript.append_element(Label::CaulkG1H1, &proof.multi_unity_proof.g1_h_1)?;
+
+    let caulk_beta = transcript.get_and_append_challenge(Label::ChallengeCaulkBeta)?;
 
     let beta = transcript.get_and_append_challenge(Label::ChallengeBeta)?;
     let delta = transcript.get_and_append_challenge(Label::ChallengeDelta)?;
-
-    // Round 11: The second pairing check.
-    // This is intended to check the correctness of polynomial A.
-    second_pairing_check::<P>(
-        &proof,
-        beta,
-        delta,
-        proof.g1_affine_m,
-        tpp.g2_affine_t,
-        pp.g2_affine_zw,
-        &pp.g2_affine_srs,
-    )?;
-
-    // Round 11: Degree pairing check.
-    degree_check(
-        &proof,
-        pp.num_table_segments,
-        pp.num_witness_segments,
-        pp.segment_size,
-        &pp.g2_affine_srs,
-    )?;
 
     transcript.append_elements(&[
         (Label::G1A, proof.g1_affine_a),
@@ -100,38 +72,77 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
 
     let eta = transcript.get_and_append_challenge(Label::ChallengeEta)?;
 
-    // Round 15-4: The third pairing check.
     let g2_affine_one = pp.g2_affine_srs[0];
     let g2_affine_tau = pp.g2_affine_srs[1];
-    third_pairing_check(
-        &proof,
-        statement,
-        beta,
-        delta,
-        gamma,
-        eta,
-        pp.num_table_segments,
-        pp.num_witness_segments,
-        pp.segment_size,
-        &pp.domain_v,
-        g2_affine_tau,
-        g2_affine_one,
-    )?;
 
-    // Round 15-4: The fourth pairing check.
-    fourth_pairing_check(&proof, g2_affine_tau, g2_affine_one)?;
+    let checks: Vec<Result<(), Error>> = vec![
+        // Round 2: The first pairing check.
+        // This is intended to check the correctness of multiplicity polynomials.
+        first_pairing_check(
+            &proof,
+            &pp.g2_affine_srs,
+            pp.g2_affine_zw,
+            pp.num_table_segments,
+        ),
+        // Round 3-8: Multi-unity check.
+        multi_unity_verify(
+            pp,
+            caulk_alpha,
+            caulk_beta,
+            &proof.g1_affine_d,
+            &proof.multi_unity_proof,
+            rng,
+        )
+        .map_err(|_| Error::FailedToCheckMultiUnity),
+        // Round 11: The second pairing check.
+        // This is intended to check the correctness of polynomial A.
+        second_pairing_check::<P>(
+            &proof,
+            beta,
+            delta,
+            proof.g1_affine_m,
+            tpp.g2_affine_t,
+            pp.g2_affine_zw,
+            &pp.g2_affine_srs,
+        ),
+        // Round 11: Degree pairing check.
+        degree_check(
+            &proof,
+            pp.num_table_segments,
+            pp.num_witness_segments,
+            pp.segment_size,
+            &pp.g2_affine_srs,
+        ),
+        // Round 15-4: The third pairing check.
+        third_pairing_check(
+            &proof,
+            statement,
+            beta,
+            delta,
+            gamma,
+            eta,
+            pp.num_table_segments,
+            pp.num_witness_segments,
+            pp.segment_size,
+            &pp.domain_v,
+            g2_affine_tau,
+            g2_affine_one,
+        ),
+        // Round 15-4: The fourth pairing check.
+        fourth_pairing_check(&proof, g2_affine_tau, g2_affine_one),
+        // Round 15-4: The first point check.
+        first_point_check(
+            &proof,
+            gamma,
+            pp.num_witness_segments,
+            &pp.domain_v,
+            &pp.domain_w,
+        ),
+        // Round 15-4: The second point check.
+        second_point_check(&proof, gamma, &pp.domain_k),
+    ];
 
-    // Round 15-4: The first point check.
-    first_point_check(
-        &proof,
-        gamma,
-        pp.num_witness_segments,
-        &pp.domain_v,
-        &pp.domain_w,
-    )?;
-
-    // Round 15-4: The second point check.
-    second_point_check(&proof, gamma, &pp.domain_k)?;
+    checks.into_par_iter().try_for_each(|check| check)?;
 
     Ok(())
 }

@@ -5,6 +5,7 @@ use ark_ff::{Field, One};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Polynomial};
 use ark_std::rand::Rng;
 use ark_std::{UniformRand, Zero};
+use rayon::prelude::*;
 use std::cmp::max;
 use std::ops::Mul;
 use std::{iter, marker::PhantomData};
@@ -125,7 +126,7 @@ fn srs<C: CurveGroup>(powers_of_tau: &[C::ScalarField], max_power: usize) -> Vec
     let generator = C::Affine::generator();
 
     powers_of_tau
-        .iter()
+        .par_iter()
         .take(max_power + 1)
         .map(|tp| generator.mul(tp).into())
         .collect()

@@ -19,9 +19,9 @@ use ark_std::{One, UniformRand, Zero};
 /// Modified from https://github.com/caulk-crypto/caulk/blob/main/src/multi/unity.rs
 #[derive(Copy, Clone)]
 pub(crate) struct MultiUnityProof<P: Pairing> {
-    g1_u_bar: P::G1Affine,
-    g1_h_1: P::G1Affine,
-    g1_h_2: P::G1Affine,
+    pub(crate) g1_u_bar: P::G1Affine,
+    pub(crate) g1_h_1: P::G1Affine,
+    pub(crate) g1_h_2: P::G1Affine,
     g1_u_bar_alpha: P::G1Affine,
     g1_h_2_alpha: P::G1Affine,
     fr_v1: P::ScalarField,
@@ -301,13 +301,16 @@ fn blinded_vanishing_poly<P: Pairing, R: Rng + ?Sized>(
 
 pub(crate) fn multi_unity_verify<P: Pairing, R: Rng + ?Sized>(
     pp: &PublicParameters<P>,
-    transcript: &mut Transcript<P::ScalarField>,
+    alpha: P::ScalarField,
+    beta: P::ScalarField,
     g1_d: &P::G1Affine,
     proof: &MultiUnityProof<P>,
     rng: &mut R,
-) -> Result<bool, Error> {
+) -> Result<(), Error> {
     let mut pairing_inputs = multi_unity_verify_defer_pairing(
-        transcript,
+        // transcript,
+        alpha,
+        beta,
         &pp.g1_affine_srs_caulk,
         &pp.g2_affine_srs_caulk,
         pp.identity_poly_k.clone(),
@@ -351,11 +354,16 @@ pub(crate) fn multi_unity_verify<P: Pairing, R: Rng + ?Sized>(
         .0
         .is_one();
 
-    Ok(res)
+    if !res {
+        return Err(Error::MultiUnityPairingFailed);
+    }
+
+    Ok(())
 }
 
 fn multi_unity_verify_defer_pairing<P: Pairing>(
-    transcript: &mut Transcript<P::ScalarField>,
+    alpha: P::ScalarField,
+    beta: P::ScalarField,
     g1_srs: &[P::G1Affine],
     g2_srs: &[P::G2Affine],
     identity_poly_k: DensePolynomial<P::ScalarField>,
@@ -366,16 +374,6 @@ fn multi_unity_verify_defer_pairing<P: Pairing>(
     g1_d: &P::G1Affine,
     proof: &MultiUnityProof<P>,
 ) -> Result<Vec<(P::G1, P::G2)>, Error> {
-    transcript.append_elements(&[
-        (Label::CaulkG1D, *g1_d),
-        (Label::CaulkG1UBar, proof.g1_u_bar),
-        (Label::CaulkG1H2, proof.g1_h_2),
-    ])?;
-    let alpha = transcript.get_and_append_challenge(Label::ChallengeCaulkAlpha)?;
-
-    transcript.append_element(Label::CaulkG1H1, &proof.g1_h_1)?;
-    let beta = transcript.get_and_append_challenge(Label::ChallengeCaulkBeta)?;
-
     let u_alpha_beta = proof.fr_v1 * lagrange_basis_log_n[0].evaluate(&beta) + proof.fr_v2;
 
     // g1_P = [ U^2 - (v3 + id(alpha)* pn(beta) )]_1
@@ -517,16 +515,33 @@ mod tests {
         }
         let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
         let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
-        let g1_d =
+        let g1_affine_d =
             Kzg::<<Bn254 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &poly_d).into_affine();
 
         let mut transcript = Transcript::new();
         let multi_unity_proof =
-            multi_unity_prove(&pp, &mut transcript, &poly_d, &g1_d, &mut rng).unwrap();
+            multi_unity_prove(&pp, &mut transcript, &poly_d, &g1_affine_d, &mut rng).unwrap();
 
         let mut transcript = Transcript::new();
+        transcript
+            .append_elements(&[
+                (Label::CaulkG1D, g1_affine_d),
+                (Label::CaulkG1UBar, multi_unity_proof.g1_u_bar),
+                (Label::CaulkG1H2, multi_unity_proof.g1_h_2),
+            ])
+            .unwrap();
+        let alpha = transcript
+            .get_and_append_challenge(Label::ChallengeCaulkAlpha)
+            .unwrap();
+        transcript
+            .append_element(Label::CaulkG1H1, &multi_unity_proof.g1_h_1)
+            .unwrap();
+        let beta = transcript
+            .get_and_append_challenge(Label::ChallengeCaulkBeta)
+            .unwrap();
         assert!(
-            multi_unity_verify(&pp, &mut transcript, &g1_d, &multi_unity_proof, &mut rng).unwrap()
+            multi_unity_verify(&pp, alpha, beta, &g1_affine_d, &multi_unity_proof, &mut rng)
+                .is_ok()
         );
 
         let mut incorrect_poly_eval_list_d = poly_eval_list_d.clone();
@@ -538,23 +553,44 @@ mod tests {
                 .into_affine();
 
         let mut transcript = Transcript::new();
-
         let multi_unity_proof =
-            multi_unity_prove(&pp, &mut transcript, &poly_d, &g1_d, &mut rng).unwrap();
+            multi_unity_prove(&pp, &mut transcript, &poly_d, &g1_affine_d, &mut rng).unwrap();
 
         let mut transcript = Transcript::new();
+        transcript
+            .append_elements(&[
+                (Label::CaulkG1D, g1_affine_d),
+                (Label::CaulkG1UBar, multi_unity_proof.g1_u_bar),
+                (Label::CaulkG1H2, multi_unity_proof.g1_h_2),
+            ])
+            .unwrap();
+        let alpha = transcript
+            .get_and_append_challenge(Label::ChallengeCaulkAlpha)
+            .unwrap();
+        transcript
+            .append_element(Label::CaulkG1H1, &multi_unity_proof.g1_h_1)
+            .unwrap();
+        let beta = transcript
+            .get_and_append_challenge(Label::ChallengeCaulkBeta)
+            .unwrap();
         assert!(!multi_unity_verify(
             &pp,
-            &mut transcript,
+            alpha,
+            beta,
             &incorrect_g1_d,
             &multi_unity_proof,
             &mut rng
         )
-        .unwrap());
+        .is_ok());
 
         let mut transcript = Transcript::new();
-        assert!(
-            !multi_unity_prove(&pp, &mut transcript, &incorrect_poly_d, &g1_d, &mut rng,).is_ok()
-        );
+        assert!(!multi_unity_prove(
+            &pp,
+            &mut transcript,
+            &incorrect_poly_d,
+            &g1_affine_d,
+            &mut rng,
+        )
+        .is_ok());
     }
 }

@@ -8,3 +8,4 @@ ark-std = "0.4.0"
 ark-ec = "0.4.2"
 ark-bn254 = "0.4.0"
 ark-segmentlookup = { path = "../.." }
+rayon = "1.10.0"

@@ -9,6 +9,7 @@ use crate::error::Error;
 use crate::kzg::Kzg;
 use crate::public_parameters::PublicParameters;
 use crate::toeplitz::UpperToeplitz;
+use rayon::prelude::*;
 
 pub struct Table<P: Pairing> {
     num_segments: usize,
@@ -64,9 +65,13 @@ impl<P: Pairing> Table<P> {
         let g1_affine_srs = &pp.g1_affine_srs;
         let g2_affine_srs = &pp.g2_affine_srs;
 
+        let curr_time = std::time::Instant::now();
+
         let table_poly = DensePolynomial::from_coefficients_slice(&domain.ifft(&self.values));
         let g2_affine_t: P::G2Affine = Kzg::<P::G2>::commit(g2_affine_srs, &table_poly).into();
         let g1_affine_list_q1 = compute_quotients::<P>(&table_poly, &domain, g1_affine_srs)?;
+
+        println!("preprocess time: {:?} ms", curr_time.elapsed().as_millis());
 
         Ok(TablePreprocessedParameters {
             g2_affine_t,
@@ -88,7 +93,7 @@ fn compute_quotients<P: Pairing>(
 
     let domain_size = domain.size();
     let g1_affine_srs = g1_affine_srs.iter().take(domain_size).collect::<Vec<_>>();
-    let mut g1_srs: Vec<P::G1> = g1_affine_srs.iter().map(|t| t.into_group()).collect();
+    let mut g1_srs: Vec<P::G1> = g1_affine_srs.par_iter().map(|t| t.into_group()).collect();
     g1_srs.reverse();
 
     let g1_list_h: Vec<P::G1> = toeplitz.mul_by_vec(&g1_srs);
@@ -110,7 +115,7 @@ fn compute_quotients<P: Pairing>(
         domain.elements().map(|g_i| g_i * fr_inv_n).collect();
 
     let qs: Vec<P::G1> = ks
-        .iter()
+        .par_iter()
         .zip(normalized_roots)
         .map(|(ki, normalizer_i)| ki.mul(normalizer_i))
         .collect();

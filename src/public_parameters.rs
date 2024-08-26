@@ -11,6 +11,7 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_std::rand::rngs::StdRng;
 use ark_std::rand::Rng;
 use ark_std::{UniformRand, Zero};
+use rayon::prelude::*;
 use std::cmp::max;
 use std::ops::{Mul, MulAssign};
 
@@ -99,11 +100,11 @@ impl<P: Pairing> PublicParameters<P> {
         // Q_{i,2}(X) = w^i / (ns).
         let roots_of_unity_w: Vec<P::ScalarField> = roots_of_unity::<P>(&domain_w);
         let quotient_values: Vec<P::ScalarField> = roots_of_unity_w
-            .iter()
+            .par_iter()
             .map(|&x| x / P::ScalarField::from(order_w as u64))
             .collect();
         let g1_affine_list_q2 = quotient_values
-            .iter()
+            .par_iter()
             .map(|&x| g1_affine_srs[0].mul(x).into())
             .collect();
 
@@ -125,7 +126,7 @@ impl<P: Pairing> PublicParameters<P> {
             .inverse()
             .ok_or(Error::FailedToInverseFieldElement)?;
         let inv_tau_sub_w_pow_i_list: Vec<P::ScalarField> = roots_of_unity_w
-            .iter()
+            .par_iter()
             .map(|x| {
                 (tau - x)
                     .inverse()
@@ -134,9 +135,11 @@ impl<P: Pairing> PublicParameters<P> {
             .collect();
         let fr_tau_pow_n = tau.pow([num_table_segments as u64]);
         let tau_pow_n_sub_w_pow_in_list: Vec<P::ScalarField> = (0..order_w)
+            .into_par_iter()
             .map(|i| fr_tau_pow_n - roots_of_unity_w[i].pow([num_table_segments as u64]))
             .collect();
         let g1_affine_list_q3: Vec<P::G1Affine> = (0..order_w)
+            .into_par_iter()
             .map(|i| {
                 let mut q3 = g1_affine_srs[0].mul(roots_of_unity_w[i]);
                 q3.mul_assign(fr_inv_ns);
