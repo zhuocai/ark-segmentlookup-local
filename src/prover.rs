@@ -98,6 +98,7 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
         poly_ql,
         poly_l_div_v,
         poly_eval_list_l,
+        poly_eval_list_d,
         poly_d,
         poly_qd,
     } = compute_index_polynomials_and_quotients::<P>(
@@ -125,7 +126,14 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     // Round 3 - Round 8:
     // Using the instantiation of Lemma 5,
     // the prover and verifier engage in a protocol that polynomial L is well-formed.
-    let multi_unity_proof = multi_unity_prove(pp, &mut transcript, &poly_d, &g1_affine_d, rng)?;
+    let multi_unity_proof = multi_unity_prove(
+        pp,
+        &mut transcript,
+        &poly_eval_list_d,
+        &poly_d,
+        &g1_affine_d,
+        rng,
+    )?;
 
     // Round 9: The verifier sends random scalar fields beta, delta to the prover.
     // Use Fiat-Shamir heuristic to make the protocol non-interactive.
@@ -342,8 +350,8 @@ fn compute_multiplicity_polynomials_and_quotient<P: Pairing>(
             // Linear combination of q_{i, 4}.
             // q_{i, 4} is equivalent to shift q_{i, 3} to the left by 1.
             let shifted_elem_index = (elem_index + 1) % table_element_size;
+            // negate the coefficient.
             g1_qm.add_assign(g1_affine_list_q3[shifted_elem_index].mul(-fr_mul));
-            // negate the coefficient
         }
     }
 
@@ -366,6 +374,7 @@ struct IndexPolynomialsAndQuotients<P: Pairing> {
     poly_ql: DensePolynomial<P::ScalarField>,
     poly_l_div_v: DensePolynomial<P::ScalarField>,
     poly_eval_list_l: Vec<P::ScalarField>,
+    poly_eval_list_d: Vec<P::ScalarField>,
     poly_d: DensePolynomial<P::ScalarField>,
     poly_qd: DensePolynomial<P::ScalarField>,
 }
@@ -420,7 +429,7 @@ fn compute_index_polynomials_and_quotients<P: Pairing>(
     // We can divide each L(X) polynomial coefficients by v^i.
     let roots_of_unity_v: Vec<P::ScalarField> = roots_of_unity::<P>(&domain_v);
     let poly_coeff_list_l_div_v: Vec<P::ScalarField> = poly_coeff_list_l
-        .iter()
+        .par_iter()
         .enumerate()
         .map(|(i, &c)| c / roots_of_unity_v[i])
         .collect();
@@ -429,7 +438,7 @@ fn compute_index_polynomials_and_quotients<P: Pairing>(
     // We can multiply each L(X / v) polynomial coefficients by w.
     let generator_w = domain_w.group_gen;
     let poly_coeff_list_w_mul_l_div_v: Vec<P::ScalarField> = poly_coeff_list_l_div_v
-        .iter()
+        .par_iter()
         .map(|&c| c * generator_w)
         .collect();
     let poly_w_mul_l_div_v = DensePolynomial::from_coefficients_vec(poly_coeff_list_w_mul_l_div_v);
@@ -446,8 +455,6 @@ fn compute_index_polynomials_and_quotients<P: Pairing>(
     poly_qd = divide_by_vanishing_poly_checked::<P>(domain_k, &poly_qd)?;
     let g1_affine_qd = Kzg::<P::G1>::commit(&g1_affine_srs, &poly_qd).into_affine();
 
-    // let poly_coset_eval_list_l = domain_v.coset_fft(&poly_l);
-
     Ok(IndexPolynomialsAndQuotients {
         g1_affine_l: g1_l.into_affine(),
         g1_affine_l_div_v: g1_l_div_v.into_affine(),
@@ -458,6 +465,7 @@ fn compute_index_polynomials_and_quotients<P: Pairing>(
         poly_ql,
         poly_l_div_v,
         poly_eval_list_l,
+        poly_eval_list_d,
         poly_d,
         poly_qd,
     })
@@ -702,7 +710,7 @@ mod tests {
         let g1_affine_m_expected = Kzg::<G1>::commit(&pp.g1_affine_srs, &poly_m).into_affine();
         let inv_generator_w = pp.domain_w.group_gen_inv;
         let poly_coeff_list_m_div_w: Vec<Fr> = poly_coeff_list_m
-            .iter()
+            .par_iter()
             .enumerate()
             .map(|(i, &c)| c * inv_generator_w.pow(&[i as u64]))
             .collect();

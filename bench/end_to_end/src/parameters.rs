@@ -1,5 +1,10 @@
-// Number of rows: from 2^7 to 2^20
-pub const N_VEC: [usize; 14] = [
+// Number of rows: from 2^2 to 2^20
+pub const N_VEC: [usize; 19] = [
+    1 << 2,
+    1 << 3,
+    1 << 4,
+    1 << 5,
+    1 << 6,
     1 << 7,
     1 << 8,
     1 << 9,
