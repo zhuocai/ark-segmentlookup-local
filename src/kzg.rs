@@ -182,7 +182,6 @@ impl<P: Pairing> CaulkKzg<P> {
         let mut poly_formatted: Vec<P::ScalarField> = Vec::new();
 
         for poly in polynomials {
-            // let temp = convert_to_big_ints(&poly.coeffs);
             poly_formatted.extend_from_slice(&poly.coeffs);
             for _ in poly.len()..deg_x {
                 poly_formatted.push(P::ScalarField::zero());

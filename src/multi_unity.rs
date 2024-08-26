@@ -36,6 +36,7 @@ pub(crate) struct MultiUnityProof<P: Pairing> {
 pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
     pp: &PublicParameters<P>,
     transcript: &mut Transcript<P::ScalarField>,
+    poly_eval_list_d: &[P::ScalarField],
     poly_d: &DensePolynomial<P::ScalarField>,
     g1_d: &P::G1Affine,
     rng: &mut R,
@@ -49,8 +50,7 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
 
     // Get the coefficients of the polynomial D(X):
     // {D{1}, D{v^s}, ..., D{v^{k-1}}}
-    let poly_coeff_list_d = poly_d.coeffs.clone();
-    let mut poly_eval_list_d = pp.domain_k.fft(&poly_coeff_list_d);
+    let mut poly_eval_list_d = poly_eval_list_d.to_vec();
 
     let log_num_table_segments = pp.log_num_table_segments;
     let mut poly_u_list: Vec<DensePolynomial<P::ScalarField>> =
@@ -488,13 +488,21 @@ mod tests {
         }
 
         let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
-        let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
+        let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d.clone());
         let g1_d =
             Kzg::<<Bn254 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &poly_d).into_affine();
 
         let mut transcript = Transcript::new();
 
-        multi_unity_prove(&pp, &mut transcript, &poly_d, &g1_d, &mut rng).unwrap();
+        multi_unity_prove(
+            &pp,
+            &mut transcript,
+            &poly_coeff_list_d,
+            &poly_d,
+            &g1_d,
+            &mut rng,
+        )
+        .unwrap();
     }
 
     #[test]
@@ -519,8 +527,15 @@ mod tests {
             Kzg::<<Bn254 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &poly_d).into_affine();
 
         let mut transcript = Transcript::new();
-        let multi_unity_proof =
-            multi_unity_prove(&pp, &mut transcript, &poly_d, &g1_affine_d, &mut rng).unwrap();
+        let multi_unity_proof = multi_unity_prove(
+            &pp,
+            &mut transcript,
+            &poly_eval_list_d,
+            &poly_d,
+            &g1_affine_d,
+            &mut rng,
+        )
+        .unwrap();
 
         let mut transcript = Transcript::new();
         transcript
@@ -553,8 +568,15 @@ mod tests {
                 .into_affine();
 
         let mut transcript = Transcript::new();
-        let multi_unity_proof =
-            multi_unity_prove(&pp, &mut transcript, &poly_d, &g1_affine_d, &mut rng).unwrap();
+        let multi_unity_proof = multi_unity_prove(
+            &pp,
+            &mut transcript,
+            &poly_eval_list_d,
+            &poly_d,
+            &g1_affine_d,
+            &mut rng,
+        )
+        .unwrap();
 
         let mut transcript = Transcript::new();
         transcript
@@ -587,6 +609,7 @@ mod tests {
         assert!(!multi_unity_prove(
             &pp,
             &mut transcript,
+            &incorrect_poly_eval_list_d,
             &incorrect_poly_d,
             &g1_affine_d,
             &mut rng,
