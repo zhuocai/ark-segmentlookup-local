@@ -15,6 +15,7 @@ use ark_poly::{
 };
 use ark_std::rand::Rng;
 use ark_std::{One, UniformRand, Zero};
+use rayon::prelude::*;
 
 /// Modified from https://github.com/caulk-crypto/caulk/blob/main/src/multi/unity.rs
 #[derive(Copy, Clone)]
@@ -58,13 +59,15 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
 
     // Compute U_l(X) for l = 1, ..., log(n)-1
     // u_poly_list contains U_1(X), U_2(X), ..., U_{log(n)-1}(X)
+    // Time complexity: (k * log(k) * log(n))
     let vanishing_poly_k: DensePolynomial<P::ScalarField> =
         pp.domain_k.vanishing_polynomial().into();
     for _ in 1..log_num_table_segments {
-        // In-place squaring of the evaluations of D(X)
-        for eval in &mut poly_eval_list_d {
+        // Parallel in-place squaring of the evaluations of D(X)
+        poly_eval_list_d.par_iter_mut().for_each(|eval| {
             *eval = eval.square();
-        }
+        });
+
         let poly_u = Evaluations::from_vec_and_domain(poly_eval_list_d.clone(), pp.domain_k)
             .interpolate()
             + blinded_vanishing_poly::<P, _>(&vanishing_poly_k, rng);
@@ -78,24 +81,25 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
 
     let partial_y_poly_list_u_bar: Vec<DensePolynomial<P::ScalarField>> = {
         let num_coefficients = poly_u_list[0].len();
-        let mut partial_y_poly_list_u_bar = Vec::with_capacity(num_coefficients);
-        for coeff_index in 0..num_coefficients {
-            let mut partial_y_poly = DensePolynomial::zero();
-            for (base_index, poly_u) in poly_u_list.iter().enumerate() {
-                let coeff_u = poly_u[coeff_index];
-                let scaled_coeffs: Vec<P::ScalarField> = lagrange_basis[base_index + 1]
-                    .coeffs
-                    .iter()
-                    .map(|&basis_coeff| basis_coeff * &coeff_u)
-                    .collect();
-                let scaled_poly = DensePolynomial::from_coefficients_vec(scaled_coeffs);
-                partial_y_poly += &scaled_poly;
-            }
+        (0..num_coefficients)
+            .into_par_iter()
+            .map(|coeff_index| {
+                let mut partial_y_poly = DensePolynomial::zero();
 
-            partial_y_poly_list_u_bar.push(partial_y_poly);
-        }
+                for (base_index, poly_u) in poly_u_list.iter().enumerate() {
+                    let coeff_u = poly_u[coeff_index];
+                    let scaled_coeffs: Vec<P::ScalarField> = lagrange_basis[base_index + 1]
+                        .coeffs
+                        .iter()
+                        .map(|&basis_coeff| basis_coeff * &coeff_u)
+                        .collect();
+                    let scaled_poly = DensePolynomial::from_coefficients_vec(scaled_coeffs);
+                    partial_y_poly += &scaled_poly;
+                }
 
-        partial_y_poly_list_u_bar
+                partial_y_poly
+            })
+            .collect()
     };
 
     // Add D(X) to the front and identity polynomial to the back.
@@ -105,47 +109,48 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
         .chain(iter::once(identity_poly.clone()))
         .collect();
 
-    let mut poly_h_s_list: Vec<DensePolynomial<P::ScalarField>> = Vec::new();
-    for s in 1..=log_num_table_segments {
-        let poly_h_s = divide_by_vanishing_poly_checked::<P>(
-            &pp.domain_k,
-            &(&(&poly_u_list[s - 1] * &poly_u_list[s - 1]) - &poly_u_list[s]),
-        )?;
-        poly_h_s_list.push(poly_h_s);
-    }
+    let poly_h_s_list: Vec<DensePolynomial<P::ScalarField>> = (1..=log_num_table_segments)
+        .into_par_iter() // Parallel iterator over `s`
+        .map(|s| {
+            divide_by_vanishing_poly_checked::<P>(
+                &pp.domain_k,
+                &(&(&poly_u_list[s - 1] * &poly_u_list[s - 1]) - &poly_u_list[s]),
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
-    // TODO: Optimize the code segment.
-    let partial_y_poly_list_h_2 = {
+    let partial_y_poly_list_h_2: Vec<DensePolynomial<P::ScalarField>> = {
         let num_coefficients = poly_h_s_list[1].len();
-        let mut partial_y_poly_list_h_2: Vec<DensePolynomial<P::ScalarField>> =
-            Vec::with_capacity(num_coefficients);
 
-        // Add H_1(X) * \rho_1(Y) and pad with zero polynomials if needed.
-        for j in 0..num_coefficients {
-            let h_0_j = if j < poly_h_s_list[0].len() {
-                DensePolynomial::from_coefficients_slice(&[poly_h_s_list[0][j]])
-            } else {
-                DensePolynomial::from_coefficients_slice(&[P::ScalarField::zero()])
-            };
-            partial_y_poly_list_h_2.push(&h_0_j * &lagrange_basis[0]);
-        }
+        // Create the initial `partial_y_poly_list_h_2` in parallel
+        let mut partial_y_poly_list_h_2: Vec<DensePolynomial<P::ScalarField>> = (0
+            ..num_coefficients)
+            .into_par_iter()
+            .map(|j| {
+                let h_0_j = if j < poly_h_s_list[0].len() {
+                    DensePolynomial::from_coefficients_slice(&[poly_h_s_list[0][j]])
+                } else {
+                    DensePolynomial::from_coefficients_slice(&[P::ScalarField::zero()])
+                };
+                &h_0_j * &lagrange_basis[0]
+            })
+            .collect();
 
-        // Update h_2_partial_y_polys with the sum of H_{s,j} * \rho_s(Y)
-        for (j, coeff) in partial_y_poly_list_h_2
-            .iter_mut()
+        // Parallel update of `partial_y_poly_list_h_2` with H_{s,j} * \rho_s(Y)
+        partial_y_poly_list_h_2
+            .par_iter_mut()
             .enumerate()
-            .take(num_coefficients)
-        {
-            for (s, h_s_poly) in poly_h_s_list
-                .iter()
-                .enumerate()
-                .take(log_num_table_segments)
-                .skip(1)
-            {
-                let h_s_j = DensePolynomial::from_coefficients_slice(&[h_s_poly[j]]);
-                *coeff += &(&h_s_j * &lagrange_basis[s]);
-            }
-        }
+            .for_each(|(j, coeff)| {
+                for (s, h_s_poly) in poly_h_s_list
+                    .iter()
+                    .enumerate()
+                    .take(log_num_table_segments)
+                    .skip(1)
+                {
+                    let h_s_j = DensePolynomial::from_coefficients_slice(&[h_s_poly[j]]);
+                    *coeff += &(&h_s_j * &lagrange_basis[s]);
+                }
+            });
 
         partial_y_poly_list_h_2
     };
@@ -308,7 +313,6 @@ pub(crate) fn multi_unity_verify<P: Pairing, R: Rng + ?Sized>(
     rng: &mut R,
 ) -> Result<(), Error> {
     let mut pairing_inputs = multi_unity_verify_defer_pairing(
-        // transcript,
         alpha,
         beta,
         &pp.g1_affine_srs_caulk,
@@ -322,34 +326,20 @@ pub(crate) fn multi_unity_verify<P: Pairing, R: Rng + ?Sized>(
         proof,
     )?;
 
-    // TODO: Optimize the code segment.
-    assert_eq!(pairing_inputs.len(), 10);
-
+    // Scale the pairing inputs by powers of zeta
     let mut zeta = P::ScalarField::rand(rng);
-    pairing_inputs[2].0.mul_assign(zeta);
-    pairing_inputs[3].0.mul_assign(zeta);
-    zeta.square_in_place();
-    pairing_inputs[4].0.mul_assign(zeta);
-    pairing_inputs[5].0.mul_assign(zeta);
-    zeta.square_in_place();
-    pairing_inputs[6].0.mul_assign(zeta);
-    pairing_inputs[7].0.mul_assign(zeta);
-    zeta.square_in_place();
-    pairing_inputs[8].0.mul_assign(zeta);
-    pairing_inputs[9].0.mul_assign(zeta);
+    for (i, (g1, _)) in pairing_inputs.iter_mut().enumerate().skip(2) {
+        g1.mul_assign(zeta);
+        if i % 2 != 0 {
+            zeta.square_in_place();
+        }
+    }
 
-    // let prepared_pairing_inputs: Vec<(P::G1Prepared, P::G2Prepared)> = pairing_inputs
-    //     .iter()
-    //     .map(|(g1, g2)| {
-    //         (
-    //             P::G1Prepared::from(g1.into_affine()),
-    //             P::G2Prepared::from(g2.into_affine()),
-    //         )
-    //     })
-    //     .collect();
-    let pairing_inputs_g1: Vec<P::G1> = pairing_inputs.iter().map(|(g1, _)| *g1).collect();
-    let pairing_inputs_g2: Vec<P::G2> = pairing_inputs.iter().map(|(_, g2)| *g2).collect();
-    // let res = P::product_of_pairings(prepared_pairing_inputs.iter()).is_one();
+    // Extract G1 and G2 elements for the pairing
+    let (pairing_inputs_g1, pairing_inputs_g2): (Vec<_>, Vec<_>) =
+        pairing_inputs.into_iter().unzip();
+
+    // Perform the multi-pairing operation and check the result
     let res = P::multi_pairing(pairing_inputs_g1, pairing_inputs_g2)
         .0
         .is_one();
