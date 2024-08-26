@@ -13,6 +13,7 @@ use ark_poly::univariate::DensePolynomial;
 use ark_poly::{DenseUVPolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain};
 use ark_std::rand::Rng;
 use ark_std::{One, Zero};
+use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::ops::{AddAssign, Mul, Sub};
 
@@ -534,6 +535,7 @@ fn compute_polynomial_b_and_quotient<P: Pairing>(
     g1_affine_srs: &[P::G1Affine],
 ) -> Result<PolynomialBAndQuotient<P>, Error> {
     let poly_eval_list_b: Result<Vec<P::ScalarField>, Error> = (0..witness_element_size)
+        .into_par_iter()
         .map(|i| {
             (beta + witness.poly_eval_list_f[i] + delta * poly_eval_list_l[i])
                 .inverse()
@@ -554,9 +556,9 @@ fn compute_polynomial_b_and_quotient<P: Pairing>(
     let poly_coset_eval_list_f = domain_coset_v.fft(&witness.poly_f);
     let fr_one = P::ScalarField::one();
     let poly_coset_eval_list_qb: Vec<P::ScalarField> = poly_coset_eval_list_b
-        .iter()
-        .zip(poly_coset_eval_list_f.iter())
-        .zip(poly_coset_eval_list_l.iter())
+        .par_iter()
+        .zip(poly_coset_eval_list_f.par_iter())
+        .zip(poly_coset_eval_list_l.par_iter())
         .map(|((&b_i, &f_i), &l_i)| (b_i * (beta + f_i + delta * l_i)) - fr_one)
         .collect();
     let poly_coeff_list_qb = domain_coset_v.ifft(&poly_coset_eval_list_qb);

@@ -3,6 +3,7 @@ use ark_poly::{
     domain::DomainCoeff, univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain,
     GeneralEvaluationDomain, Polynomial,
 };
+use rayon::prelude::*;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
@@ -68,9 +69,9 @@ impl<F: FftField, D: DomainCoeff<F> + Debug> Circulant<F, D> {
         let v = domain.fft(repr);
 
         let mut res = domain.fft(x);
-        for (i, _) in x.iter().enumerate() {
-            res[i] *= v[i]
-        }
+        res.par_iter_mut()
+            .zip(v.par_iter())
+            .for_each(|(res_i, v_i)| *res_i *= *v_i);
 
         domain.ifft(&res)
     }

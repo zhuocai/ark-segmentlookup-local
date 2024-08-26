@@ -29,6 +29,7 @@ pub enum Error {
     FailedToDivideByVanishingPolynomial,
     RemainderAfterDivisionIsNonZero,
     FailedToCheckMultiUnity,
+    MultiUnityPairingFailed,
 
     // Transcript
     FailedToSerializeElement,
