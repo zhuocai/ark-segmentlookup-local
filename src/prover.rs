@@ -213,9 +213,9 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     let gamma = transcript.get_and_append_challenge(Label::ChallengeGamma)?;
 
     // Round 12: The prover sends b_{0,gamma} = B_0(gamma), f_{gamma} = F(gamma),
-    // l_{gamma} = L(gamma), a_0 = A(0), l_{gamma,v} = L(v*gamma), q_{gamma,L} =
-    // Q_L(gamma), d_{gamma} = D(gamma), and q_{gamma, D} = Q_D(gamma) to the
-    // verifier.
+    // l_{gamma} = L(gamma), a_0 = A(0), l_{gamma,v} = L(v*gamma), q_{gamma,L}
+    // = Q_L(gamma), d_{gamma} = D(gamma), and q_{gamma, D} = Q_D(gamma)
+    // to the verifier.
     let fr_b0_at_gamma = poly_b0.evaluate(&gamma);
     let fr_f_at_gamma = witness.poly_f.evaluate(&gamma);
     let fr_l_at_gamma = poly_l.evaluate(&gamma);
@@ -251,8 +251,9 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     // Round 11-3: Use Fiat-Shamir transform to sample eta.
     let eta = transcript.get_and_append_challenge(Label::ChallengeEta)?;
 
-    // Round 14: Compute the commitment of H_P(X) = (P(X) - p_{gamma}) / (X -
-    // gamma), which is a KZG batch opening proof of the polynomials to be
+    // Round 14: Compute the commitment of H_P(X)
+    // = (P(X) - p_{gamma}) / (X - gamma),
+    // which is a KZG batch opening proof of the polynomials to be
     // checked, and send [H_P(tau)]_1 to the verifier.
     let g1_affine_hp = Kzg::<P::G1>::batch_open(
         &pp.g1_affine_srs,
@@ -617,11 +618,8 @@ fn compute_degree_check_g1_affine<P: Pairing>(
     if num_table_segments > num_witness_segments {
         // If n > k, the prover computes P_B(X) and sends [P_B(tau)]_1 to the verifier.
         let coeff_shift = (num_table_segments - num_witness_segments) * segment_size - 1;
-        let mut poly_coeff_list_pb = vec![P::ScalarField::zero(); coeff_shift];
-        poly_coeff_list_pb.extend_from_slice(&poly_b0.coeffs);
-        let poly_pb = DensePolynomial::from_coefficients_vec(poly_coeff_list_pb);
 
-        Kzg::<P::G1>::commit(&g1_affine_srs, &poly_pb).into_affine()
+        Kzg::<P::G1>::commit_with_offset(&g1_affine_srs, &poly_b0, coeff_shift).into_affine()
     } else if num_table_segments < num_witness_segments {
         // If n < k, the prover computes P_A(X) and sends [P_A(tau)]_1 to the verifier.
         // We can use Inverse FFT to compute the polynomial A(X),
@@ -632,12 +630,11 @@ fn compute_degree_check_g1_affine<P: Pairing>(
         }
         let poly_coeff_list_a = domain_w.ifft(&poly_eval_list_a);
         let poly_coeff_list_a0 = poly_coeff_list_a[1..].to_vec();
-        let coeff_shift = (num_witness_segments - num_table_segments) * segment_size - 1;
-        let mut poly_coeff_list_pa = vec![P::ScalarField::zero(); coeff_shift];
-        poly_coeff_list_pa.extend_from_slice(&poly_coeff_list_a0);
-        let poly_pa = DensePolynomial::from_coefficients_vec(poly_coeff_list_pa);
+        let poly_a0 = DensePolynomial::from_coefficients_slice(&poly_coeff_list_a0);
 
-        Kzg::<P::G1>::commit(&g1_affine_srs, &poly_pa).into_affine()
+        let coeff_shift = (num_witness_segments - num_table_segments) * segment_size - 1;
+
+        Kzg::<P::G1>::commit_with_offset(&g1_affine_srs, &poly_a0, coeff_shift).into_affine()
     } else {
         P::G1Affine::zero()
     }

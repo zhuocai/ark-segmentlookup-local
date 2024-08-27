@@ -31,6 +31,24 @@ impl<C: CurveGroup> Kzg<C> {
         VariableBaseMSM::msm_unchecked(affine_srs, &poly.coeffs)
     }
 
+    pub fn commit_with_offset(
+        affine_srs: &[C::Affine],
+        poly: &DensePolynomial<C::ScalarField>,
+        offset: usize,
+    ) -> C {
+        let affine_srs = &affine_srs[offset..];
+
+        if affine_srs.len() - 1 < poly.degree() {
+            panic!(
+                "SRS size to small! Can't commit to polynomial of degree {} with srs of size {}",
+                poly.degree(),
+                affine_srs.len()
+            );
+        }
+
+        VariableBaseMSM::msm_unchecked(affine_srs, &poly.coeffs)
+    }
+
     pub fn open(
         affine_srs: &[C::Affine],
         poly: &DensePolynomial<C::ScalarField>,
