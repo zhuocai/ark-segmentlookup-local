@@ -3,7 +3,7 @@ use crate::domain::{
 };
 use crate::error::Error;
 use crate::kzg::unsafe_setup_from_tau;
-use crate::lagrange_basis::{lagrange_basis, lagrange_basis_g1, zero_opening_proofs};
+use crate::lagrange_basis::{lagrange_basis_g1, zero_opening_proofs};
 use ark_ec::{pairing::Pairing, CurveGroup};
 use ark_ff::Field;
 use ark_poly::univariate::DensePolynomial;
@@ -56,7 +56,6 @@ pub struct PublicParameters<P: Pairing> {
     pub(crate) g2_affine_srs_caulk: Vec<P::G2Affine>,
     pub(crate) log_num_table_segments: usize,
     pub(crate) domain_log_n: Radix2EvaluationDomain<P::ScalarField>,
-    pub(crate) lagrange_basis_log_n: Vec<DensePolynomial<P::ScalarField>>,
     pub(crate) identity_poly_k: DensePolynomial<P::ScalarField>,
 }
 
@@ -74,7 +73,8 @@ impl<P: Pairing> PublicParameters<P> {
         // Step 1: Choose a random tau. Let max = max(k, n). Compute SRS from tau.
         let tau = P::ScalarField::rand(rng);
         let max_pow_of_tau_g1 = max(num_table_segments, num_witness_segments) * segment_size - 1;
-        let caulk_max_pow_of_tau_g1 = (num_witness_segments + 1) * num_table_segments;
+        let caulk_max_pow_of_tau_g1 =
+            (num_witness_segments + 1) * log_num_table_segments.next_power_of_two();
         let (g1_affine_srs, g2_affine_srs, g1_affine_srs_caulk, g2_affine_srs_caulk) =
             unsafe_setup_from_tau::<P, StdRng>(max_pow_of_tau_g1, caulk_max_pow_of_tau_g1, tau);
 
@@ -119,8 +119,9 @@ impl<P: Pairing> PublicParameters<P> {
         // Step 5: Compute [L^V_i(tau)]_1 for i in 1..k*s.
         let g1_affine_list_lv = lagrange_basis_g1::<P::G1>(&g1_affine_srs, &domain_v)?;
 
-        // Step 6: Compute quotient polynomial commitments q_{i, 3} and q_{i, 4} for i in 1..n*s.
-        // q_{i, 3} = [(w^i / ns) * (tau^n - w^{in}) / (tau - w^i)]_1.
+        // Step 6: Compute quotient polynomial commitments q_{i, 3} and q_{i, 4} for i
+        // in 1..n*s. q_{i, 3} = [(w^i / ns) * (tau^n - w^{in}) / (tau -
+        // w^i)]_1.
         let fr_inv_ns = domain_w
             .size_as_field_element()
             .inverse()
@@ -153,7 +154,6 @@ impl<P: Pairing> PublicParameters<P> {
         let domain_log_n: Radix2EvaluationDomain<P::ScalarField> =
             Radix2EvaluationDomain::<P::ScalarField>::new(log_num_table_segments)
                 .ok_or(Error::FailedToCreateEvaluationDomain)?;
-        let lagrange_basis_log_n = lagrange_basis::<P>(&domain_log_n);
         let identity_poly_k = identity_poly::<P>(&domain_k);
 
         Ok(PublicParameters {
@@ -178,7 +178,6 @@ impl<P: Pairing> PublicParameters<P> {
             g2_affine_srs_caulk,
             log_num_table_segments,
             domain_log_n,
-            lagrange_basis_log_n,
             identity_poly_k,
         })
     }

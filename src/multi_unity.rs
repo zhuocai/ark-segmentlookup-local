@@ -42,9 +42,10 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
     g1_d: &P::G1Affine,
     rng: &mut R,
 ) -> Result<MultiUnityProof<P>, Error> {
-    // Round 1: The prover takes the input srs and U_0(X) amd samples log(n) randomnesses
-    // to compute U_l(X) for l = 1, ..., log(n), U(X, Y), U_bar(X, Y), and Q_2(X, Y).
-    // And send [U_bar(\tau^{log(n)}, \tau)]_1, [Q_2(\tau^{log(n)}, \tau)]_1 to the verifier.
+    // Round 1: The prover takes the input srs and U_0(X) amd samples log(n)
+    // randomnesses to compute U_l(X) for l = 1, ..., log(n), U(X, Y), U_bar(X,
+    // Y), and Q_2(X, Y). And send [U_bar(\tau^{log(n)}, \tau)]_1,
+    // [Q_2(\tau^{log(n)}, \tau)]_1 to the verifier.
     if !pp.num_table_segments.is_power_of_two() {
         return Err(Error::InvalidNumberOfSegments(pp.num_table_segments));
     }
@@ -64,7 +65,7 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
         pp.domain_k.vanishing_polynomial().into();
     for _ in 1..log_num_table_segments {
         // Parallel in-place squaring of the evaluations of D(X)
-        poly_eval_list_d.par_iter_mut().for_each(|eval| {
+        poly_eval_list_d.iter_mut().for_each(|eval| {
             *eval = eval.square();
         });
 
@@ -77,27 +78,19 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
 
     // Compute U(X, Y) = \sum^{log(n)-1}_{l=0} U_l(X) * \rho_{l+1}(Y)
     // Store each term U_l(X) * \rho_l(Y) in a vector
-    let lagrange_basis = &pp.lagrange_basis_log_n;
-
+    // Time complexity: (k * log(n) * log(log(n)))
     let partial_y_poly_list_u_bar: Vec<DensePolynomial<P::ScalarField>> = {
         let num_coefficients = poly_u_list[0].len();
+
         (0..num_coefficients)
             .into_par_iter()
             .map(|coeff_index| {
-                let mut partial_y_poly = DensePolynomial::zero();
+                let coeff_list: Vec<P::ScalarField> = iter::once(P::ScalarField::zero())
+                    .chain(poly_u_list.iter().map(|poly_u| poly_u[coeff_index]))
+                    .collect();
 
-                for (base_index, poly_u) in poly_u_list.iter().enumerate() {
-                    let coeff_u = poly_u[coeff_index];
-                    let scaled_coeffs: Vec<P::ScalarField> = lagrange_basis[base_index + 1]
-                        .coeffs
-                        .iter()
-                        .map(|&basis_coeff| basis_coeff * &coeff_u)
-                        .collect();
-                    let scaled_poly = DensePolynomial::from_coefficients_vec(scaled_coeffs);
-                    partial_y_poly += &scaled_poly;
-                }
-
-                partial_y_poly
+                // Time complexity: (log(n) * log(log(n)))
+                Evaluations::from_vec_and_domain(coeff_list, pp.domain_log_n).interpolate()
             })
             .collect()
     };
@@ -109,6 +102,7 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
         .chain(iter::once(identity_poly.clone()))
         .collect();
 
+    // Time complexity: (log(n) * k * log(k))
     let poly_h_s_list: Vec<DensePolynomial<P::ScalarField>> = (1..=log_num_table_segments)
         .into_par_iter() // Parallel iterator over `s`
         .map(|s| {
@@ -119,53 +113,46 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
+    // Time complexity: (k * log(n) * log(log(n)))
     let partial_y_poly_list_h_2: Vec<DensePolynomial<P::ScalarField>> = {
+        let num_coefficients_first_poly = poly_h_s_list[0].len();
         let num_coefficients = poly_h_s_list[1].len();
 
-        // Create the initial `partial_y_poly_list_h_2` in parallel
-        let mut partial_y_poly_list_h_2: Vec<DensePolynomial<P::ScalarField>> = (0
-            ..num_coefficients)
+        (0..num_coefficients)
             .into_par_iter()
-            .map(|j| {
-                let h_0_j = if j < poly_h_s_list[0].len() {
-                    DensePolynomial::from_coefficients_slice(&[poly_h_s_list[0][j]])
+            .map(|coeff_index| {
+                let coeff0 = if coeff_index < num_coefficients_first_poly {
+                    poly_h_s_list[0][coeff_index]
                 } else {
-                    DensePolynomial::from_coefficients_slice(&[P::ScalarField::zero()])
+                    P::ScalarField::zero()
                 };
-                &h_0_j * &lagrange_basis[0]
+
+                let coeff_list: Vec<P::ScalarField> = iter::once(coeff0)
+                    .chain(
+                        poly_h_s_list
+                            .iter()
+                            .skip(1)
+                            .map(|poly_h_s| poly_h_s[coeff_index]),
+                    )
+                    .collect();
+
+                // Time complexity: (log(n) * log(log(n)))
+                Evaluations::from_vec_and_domain(coeff_list, pp.domain_log_n).interpolate()
             })
-            .collect();
-
-        // Parallel update of `partial_y_poly_list_h_2` with H_{s,j} * \rho_s(Y)
-        partial_y_poly_list_h_2
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(j, coeff)| {
-                for (s, h_s_poly) in poly_h_s_list
-                    .iter()
-                    .enumerate()
-                    .take(log_num_table_segments)
-                    .skip(1)
-                {
-                    let h_s_j = DensePolynomial::from_coefficients_slice(&[h_s_poly[j]]);
-                    *coeff += &(&h_s_j * &lagrange_basis[s]);
-                }
-            });
-
-        partial_y_poly_list_h_2
+            .collect()
     };
 
     let g1_u_bar = CaulkKzg::<P>::bi_poly_commit_g1(
         &pp.g1_affine_srs_caulk,
         &partial_y_poly_list_u_bar,
         log_num_table_segments,
-    );
+    )?;
 
     let g1_h_2 = CaulkKzg::<P>::bi_poly_commit_g1(
         &pp.g1_affine_srs_caulk,
         &partial_y_poly_list_h_2,
         log_num_table_segments,
-    );
+    )?;
 
     transcript.append_elements(&[
         (Label::CaulkG1D, *g1_d),
@@ -176,22 +163,31 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
     let alpha = transcript.get_and_append_challenge(Label::ChallengeCaulkAlpha)?;
 
     // Compute H_1(Y)
-    let mut poly_u_alpha = DensePolynomial::zero();
+    let bi_poly_u_at_alpha_list = poly_u_list
+        .par_iter()
+        .take(log_num_table_segments) // skip the identity polynomial
+        .map(|poly_u| poly_u.evaluate(&alpha))
+        .collect::<Vec<_>>();
 
-    let mut u_sqr_alpha_list = DensePolynomial::zero();
+    // Time complexity: (log(n) * log(log(n)))
+    let poly_u_alpha =
+        Evaluations::from_vec_and_domain(bi_poly_u_at_alpha_list.clone(), pp.domain_log_n)
+            .interpolate();
 
-    for (s, poly_u) in poly_u_list.iter().enumerate().take(log_num_table_segments) {
-        let u_s_alpha = poly_u.evaluate(&alpha);
-        let mut temp = DensePolynomial::from_coefficients_slice(&[u_s_alpha]);
-        poly_u_alpha += &(&temp * &lagrange_basis[s]);
+    let bi_poly_u_sqr_at_alpha_list = bi_poly_u_at_alpha_list
+        .iter()
+        .map(|u| u.square())
+        .collect::<Vec<_>>();
 
-        temp = DensePolynomial::from_coefficients_slice(&[u_s_alpha.square()]);
-        u_sqr_alpha_list += &(&temp * &lagrange_basis[s]);
-    }
+    // Time complexity: (log(n) * log(log(n)))
+    let poly_u_sqr_alpha =
+        Evaluations::from_vec_and_domain(bi_poly_u_sqr_at_alpha_list, pp.domain_log_n)
+            .interpolate();
+
     let domain_log_n = &pp.domain_log_n;
     let poly_h_1 = divide_by_vanishing_poly_checked::<P>(
         domain_log_n,
-        &(&(&poly_u_alpha * &poly_u_alpha) - &u_sqr_alpha_list),
+        &(&(&poly_u_alpha * &poly_u_alpha) - &poly_u_sqr_alpha),
     )?;
 
     assert!(pp.g1_affine_srs_caulk.len() >= poly_h_1.len());
@@ -206,6 +202,7 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
 
     let mut u_bar_alpha_shift_beta = P::ScalarField::zero();
     let beta_shift = beta * domain_log_n.element(1);
+    let lagrange_basis_at_beta_shift = domain_log_n.evaluate_all_lagrange_coefficients(beta_shift);
     for (s, ploy_u) in poly_u_list
         .iter()
         .enumerate()
@@ -213,27 +210,25 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
         .skip(1)
     {
         let u_s_alpha = ploy_u.evaluate(&alpha);
-        u_bar_alpha_shift_beta += u_s_alpha * lagrange_basis[s].evaluate(&beta_shift);
+        u_bar_alpha_shift_beta += u_s_alpha * lagrange_basis_at_beta_shift[s];
     }
 
+    let lagrange_basis_at_beta = domain_log_n.evaluate_all_lagrange_coefficients(beta);
     let temp = u_bar_alpha_shift_beta
-        + (identity_poly.evaluate(&alpha)
-            * lagrange_basis[log_num_table_segments - 1].evaluate(&beta));
+        + (identity_poly.evaluate(&alpha) * lagrange_basis_at_beta[log_num_table_segments - 1]);
     let temp = DensePolynomial::from_coefficients_slice(&[temp]);
-
     poly_p = &poly_p - &temp;
 
-    let vanishing_poly_log_n: DensePolynomial<P::ScalarField> =
-        domain_log_n.vanishing_polynomial().into();
-    let temp = &DensePolynomial::from_coefficients_slice(&[vanishing_poly_log_n.evaluate(&beta)])
-        * &poly_h_1;
+    let vanishing_poly_at_beta = domain_log_n.evaluate_vanishing_polynomial(beta);
+    let temp = &DensePolynomial::from_coefficients_slice(&[vanishing_poly_at_beta]) * &poly_h_1;
     poly_p = &poly_p - &temp;
 
-    let mut poly_h_2_alpha = DensePolynomial::from_coefficients_slice(&[P::ScalarField::zero()]);
-    for (s, poly_h_s) in poly_h_s_list.iter().enumerate() {
-        let h_s_j = DensePolynomial::from_coefficients_slice(&[poly_h_s.evaluate(&alpha)]);
-        poly_h_2_alpha = &poly_h_2_alpha + &(&h_s_j * &lagrange_basis[s]);
-    }
+    let poly_eval_list_h_2_alpha = poly_h_s_list
+        .iter()
+        .map(|poly_h_s| poly_h_s.evaluate(&alpha))
+        .collect::<Vec<_>>();
+    let poly_h_2_alpha =
+        Evaluations::from_vec_and_domain(poly_eval_list_h_2_alpha, pp.domain_log_n).interpolate();
 
     let temp = &DensePolynomial::from_coefficients_slice(&[vanishing_poly_k.evaluate(&alpha)])
         * &poly_h_2_alpha;
@@ -243,19 +238,20 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
 
     let (eval_list1, g1_pi1) =
         CaulkKzg::<P>::batch_open_g1(&pp.g1_affine_srs_caulk, &poly_u_list[0], None, &[alpha]);
+
     let (g1_u_bar_alpha, g1_pi2, poly_u_bar_alpha) = CaulkKzg::<P>::partial_open_g1(
         &pp.g1_affine_srs_caulk,
         &partial_y_poly_list_u_bar,
         domain_log_n.size(),
         &alpha,
-    );
+    )?;
 
     let (g1_h_2_alpha, g1_pi3, _) = CaulkKzg::<P>::partial_open_g1(
         &pp.g1_affine_srs_caulk,
         &partial_y_poly_list_h_2,
         domain_log_n.size(),
         &alpha,
-    );
+    )?;
 
     let (eval_list2, g1_pi4) = CaulkKzg::<P>::batch_open_g1(
         &pp.g1_affine_srs_caulk,
@@ -321,7 +317,6 @@ pub(crate) fn multi_unity_verify<P: Pairing, R: Rng + ?Sized>(
         &pp.domain_k,
         &pp.domain_log_n,
         pp.log_num_table_segments,
-        &pp.lagrange_basis_log_n,
         g1_d,
         proof,
     )?;
@@ -360,18 +355,18 @@ fn multi_unity_verify_defer_pairing<P: Pairing>(
     domain_k: &Radix2EvaluationDomain<P::ScalarField>,
     domain_log_n: &Radix2EvaluationDomain<P::ScalarField>,
     log_num_segments: usize,
-    lagrange_basis_log_n: &[DensePolynomial<P::ScalarField>],
     g1_d: &P::G1Affine,
     proof: &MultiUnityProof<P>,
 ) -> Result<Vec<(P::G1, P::G2)>, Error> {
-    let u_alpha_beta = proof.fr_v1 * lagrange_basis_log_n[0].evaluate(&beta) + proof.fr_v2;
+    let lagrange_basis_at_beta = domain_log_n.evaluate_all_lagrange_coefficients(beta);
+    let u_alpha_beta = proof.fr_v1 * lagrange_basis_at_beta[0] + proof.fr_v2;
 
     // g1_P = [ U^2 - (v3 + id(alpha)* pn(beta) )]_1
     let mut g1_p = g1_srs[0].mul(
         u_alpha_beta * u_alpha_beta
             - (proof.fr_v3
                 + (identity_poly_k.evaluate(&alpha)
-                    * lagrange_basis_log_n[log_num_segments - 1].evaluate(&beta))),
+                    * lagrange_basis_at_beta[log_num_segments - 1])),
     );
 
     // g1_P = g1_P  - h1 zVn(beta)
@@ -478,7 +473,7 @@ mod tests {
         }
 
         let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
-        let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d.clone());
+        let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
         let g1_d =
             Kzg::<<Bn254 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &poly_d).into_affine();
 
@@ -487,7 +482,7 @@ mod tests {
         multi_unity_prove(
             &pp,
             &mut transcript,
-            &poly_coeff_list_d,
+            &poly_eval_list_d,
             &poly_d,
             &g1_d,
             &mut rng,

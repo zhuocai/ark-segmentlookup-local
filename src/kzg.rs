@@ -1,3 +1,4 @@
+use crate::error::Error;
 use ark_ec::pairing::Pairing;
 use ark_ec::VariableBaseMSM;
 use ark_ec::{AffineRepr, CurveGroup};
@@ -173,25 +174,29 @@ impl<P: Pairing> CaulkKzg<P> {
     pub fn bi_poly_commit_g1(
         g1_affine_srs: &[P::G1Affine],
         polynomials: &[DensePolynomial<P::ScalarField>],
-        deg_x: usize,
-    ) -> P::G1Affine {
-        if polynomials.len() == 0 {
-            return P::G1Affine::zero();
+        degree_offset: usize,
+    ) -> Result<P::G1Affine, Error> {
+        if polynomials.is_empty() {
+            return Ok(P::G1Affine::zero());
         }
 
-        let mut poly_formatted: Vec<P::ScalarField> = Vec::new();
+        let degree_offset = degree_offset.next_power_of_two();
 
-        for poly in polynomials {
-            poly_formatted.extend_from_slice(&poly.coeffs);
-            for _ in poly.len()..deg_x {
-                poly_formatted.push(P::ScalarField::zero());
-            }
+        let final_poly_size = degree_offset * polynomials.len();
+        if final_poly_size > g1_affine_srs.len() {
+            return Err(Error::InvalidStructuredReferenceStrings);
         }
 
-        assert!(g1_affine_srs.len() >= poly_formatted.len());
-        let g1_poly = P::G1::msm_unchecked(g1_affine_srs, poly_formatted.as_slice()).into_affine();
+        let g1_poly = polynomials
+            .par_iter()
+            .enumerate()
+            .map(|(i, poly)| {
+                let offset_srs = &g1_affine_srs[i * degree_offset..(i + 1) * degree_offset];
+                P::G1::msm_unchecked(offset_srs, &poly.coeffs)
+            })
+            .reduce(P::G1::zero, |a, b| a + b);
 
-        g1_poly
+        Ok(g1_poly.into_affine())
     }
 
     pub fn batch_open_g1(
@@ -238,14 +243,14 @@ impl<P: Pairing> CaulkKzg<P> {
         polynomials: &[DensePolynomial<P::ScalarField>],
         deg_x: usize,
         point: &P::ScalarField,
-    ) -> (P::G1Affine, P::G1Affine, DensePolynomial<P::ScalarField>) {
+    ) -> Result<(P::G1Affine, P::G1Affine, DensePolynomial<P::ScalarField>), Error> {
         if polynomials.len() == 0 {
-            let proof = Self::bi_poly_commit_g1(g1_affine_srs, &polynomials, deg_x);
-            return (
+            let proof = Self::bi_poly_commit_g1(g1_affine_srs, &polynomials, deg_x)?;
+            return Ok((
                 P::G1Affine::zero(),
                 proof,
                 DensePolynomial::from_coefficients_slice(&[P::ScalarField::zero()]),
-            );
+            ));
         }
         let mut poly_partial_eval =
             DensePolynomial::from_coefficients_vec(vec![P::ScalarField::zero()]);
@@ -269,9 +274,9 @@ impl<P: Pairing> CaulkKzg<P> {
 
         witness_bipolynomial.reverse();
 
-        let proof = Self::bi_poly_commit_g1(g1_affine_srs, &witness_bipolynomial, deg_x);
+        let proof = Self::bi_poly_commit_g1(g1_affine_srs, &witness_bipolynomial, deg_x)?;
 
-        (eval, proof, poly_partial_eval)
+        Ok((eval, proof, poly_partial_eval))
     }
 
     pub fn verify_defer_pairing_g1(

@@ -125,7 +125,8 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
 
     // Round 3 - Round 8:
     // Using the instantiation of Lemma 5,
-    // the prover and verifier engage in a protocol that polynomial L is well-formed.
+    // the prover and verifier engage in a protocol that polynomial L is
+    // well-formed.
     let multi_unity_proof = multi_unity_prove(
         pp,
         &mut transcript,
@@ -212,8 +213,9 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     let gamma = transcript.get_and_append_challenge(Label::ChallengeGamma)?;
 
     // Round 12: The prover sends b_{0,gamma} = B_0(gamma), f_{gamma} = F(gamma),
-    // l_{gamma} = L(gamma), a_0 = A(0), l_{gamma,v} = L(v*gamma), q_{gamma,L} = Q_L(gamma),
-    // d_{gamma} = D(gamma), and q_{gamma, D} = Q_D(gamma) to the verifier.
+    // l_{gamma} = L(gamma), a_0 = A(0), l_{gamma,v} = L(v*gamma), q_{gamma,L} =
+    // Q_L(gamma), d_{gamma} = D(gamma), and q_{gamma, D} = Q_D(gamma) to the
+    // verifier.
     let fr_b0_at_gamma = poly_b0.evaluate(&gamma);
     let fr_f_at_gamma = witness.poly_f.evaluate(&gamma);
     let fr_l_at_gamma = poly_l.evaluate(&gamma);
@@ -249,9 +251,9 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     // Round 11-3: Use Fiat-Shamir transform to sample eta.
     let eta = transcript.get_and_append_challenge(Label::ChallengeEta)?;
 
-    // Round 14: Compute the commitment of H_P(X) = (P(X) - p_{gamma}) / (X - gamma),
-    // which is a KZG batch opening proof of the polynomials to be checked,
-    // and send [H_P(tau)]_1 to the verifier.
+    // Round 14: Compute the commitment of H_P(X) = (P(X) - p_{gamma}) / (X -
+    // gamma), which is a KZG batch opening proof of the polynomials to be
+    // checked, and send [H_P(tau)]_1 to the verifier.
     let g1_affine_hp = Kzg::<P::G1>::batch_open(
         &pp.g1_affine_srs,
         &[
@@ -363,7 +365,8 @@ fn compute_multiplicity_polynomials_and_quotient<P: Pairing>(
 }
 
 // Index polynomials and the quotients,
-// containing [L(tau)]_1, [L(tau * v)]_1, [D(tau)]_1, [Q_L(tau)]_1, and [Q_D(tau)]_1.
+// containing [L(tau)]_1, [L(tau * v)]_1, [D(tau)]_1, [Q_L(tau)]_1, and
+// [Q_D(tau)]_1.
 struct IndexPolynomialsAndQuotients<P: Pairing> {
     g1_affine_l: P::G1Affine,
     g1_affine_l_div_v: P::G1Affine,
@@ -379,7 +382,8 @@ struct IndexPolynomialsAndQuotients<P: Pairing> {
     poly_qd: DensePolynomial<P::ScalarField>,
 }
 
-// Compute the commitments of [L(tau)]_1, [L(tau*v)]_1, [D(tau)]_1, [Q_L(tau)]_1, and [Q_D(tau)]_1.
+// Compute the commitments of [L(tau)]_1, [L(tau*v)]_1, [D(tau)]_1,
+// [Q_L(tau)]_1, and [Q_D(tau)]_1.
 fn compute_index_polynomials_and_quotients<P: Pairing>(
     domain_w: &Radix2EvaluationDomain<P::ScalarField>,
     domain_k: &Radix2EvaluationDomain<P::ScalarField>,
@@ -422,14 +426,14 @@ fn compute_index_polynomials_and_quotients<P: Pairing>(
     let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
     let g1_affine_d = Kzg::<P::G1>::commit(g1_affine_srs, &poly_d).into_affine();
 
-    // Compute the quotient polynomial Q_L(X) s.t. (X^k - 1) * (L(X) - w * L(X / v)) = Z_V(X) * Q_L(X),
-    // Inverse FFT costs O(ks log(ks)) operations.
+    // Compute the quotient polynomial Q_L(X) s.t. (X^k - 1) * (L(X) - w * L(X / v))
+    // = Z_V(X) * Q_L(X), Inverse FFT costs O(ks log(ks)) operations.
     let poly_coeff_list_l = domain_v.ifft(&poly_eval_list_l);
     // The coefficients of L(X / v).
     // We can divide each L(X) polynomial coefficients by v^i.
     let roots_of_unity_v: Vec<P::ScalarField> = roots_of_unity::<P>(&domain_v);
     let poly_coeff_list_l_div_v: Vec<P::ScalarField> = poly_coeff_list_l
-        .par_iter()
+        .iter()
         .enumerate()
         .map(|(i, &c)| c / roots_of_unity_v[i])
         .collect();
@@ -438,7 +442,7 @@ fn compute_index_polynomials_and_quotients<P: Pairing>(
     // We can multiply each L(X / v) polynomial coefficients by w.
     let generator_w = domain_w.group_gen;
     let poly_coeff_list_w_mul_l_div_v: Vec<P::ScalarField> = poly_coeff_list_l_div_v
-        .par_iter()
+        .iter()
         .map(|&c| c * generator_w)
         .collect();
     let poly_w_mul_l_div_v = DensePolynomial::from_coefficients_vec(poly_coeff_list_w_mul_l_div_v);
@@ -710,7 +714,7 @@ mod tests {
         let g1_affine_m_expected = Kzg::<G1>::commit(&pp.g1_affine_srs, &poly_m).into_affine();
         let inv_generator_w = pp.domain_w.group_gen_inv;
         let poly_coeff_list_m_div_w: Vec<Fr> = poly_coeff_list_m
-            .par_iter()
+            .iter()
             .enumerate()
             .map(|(i, &c)| c * inv_generator_w.pow(&[i as u64]))
             .collect();

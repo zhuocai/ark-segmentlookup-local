@@ -13,6 +13,8 @@ use ark_std::{One, Zero};
 use rayon::prelude::*;
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg};
 
+const BATCH_SIZE: usize = 8;
+
 pub fn verify<P: Pairing, R: Rng + ?Sized>(
     pp: &PublicParameters<P>,
     tpp: &TablePreprocessedParameters<P>,
@@ -31,9 +33,6 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
         (Label::G1Ql, proof.g1_affine_ql),
         (Label::G1D, proof.g1_affine_d),
         (Label::G1Qd, proof.g1_affine_qd),
-    ])?;
-
-    transcript.append_elements(&[
         (Label::CaulkG1D, proof.g1_affine_d),
         (Label::CaulkG1UBar, proof.multi_unity_proof.g1_u_bar),
         (Label::CaulkG1H2, proof.multi_unity_proof.g1_h_2),
@@ -271,9 +270,11 @@ fn third_pairing_check<P: Pairing>(
     fr_qb_at_gamma = fr_qb_at_gamma * fr_inv_zv_at_gamma;
 
     // Compute p_{gamma} = l_{gamma, v} + eta * l_{gamma} + eta^2 * q_{gamma, L} +
-    // eta^3 * d_{gamma} + eta^4 * q_{gamma, D} + eta^5 * b_{0, gamma} + eta^6 * f_{gamma} +
-    // eta^7 * q_{B, gamma}
-    let mut eta_pow_x = P::ScalarField::one();
+    // eta^3 * d_{gamma} + eta^4 * q_{gamma, D} + eta^5 * b_{0, gamma} + eta^6 *
+    // f_{gamma} + eta^7 * q_{B, gamma}
+    let eta_pow_list = (0..BATCH_SIZE)
+        .map(|i| eta.pow([i as u64]))
+        .collect::<Vec<P::ScalarField>>();
     let fr_p_at_gamma_terms: Vec<P::ScalarField> = [
         &proof.fr_l_at_gamma_div_v,
         &proof.fr_l_at_gamma,
@@ -284,10 +285,10 @@ fn third_pairing_check<P: Pairing>(
         &proof.fr_f_at_gamma,
         &fr_qb_at_gamma,
     ]
-    .iter()
-    .map(|fr| {
+    .par_iter()
+    .zip(eta_pow_list.par_iter())
+    .map(|(fr, eta_pow_x)| {
         let term = fr.mul(eta_pow_x);
-        eta_pow_x *= eta;
 
         term
     })
@@ -297,7 +298,6 @@ fn third_pairing_check<P: Pairing>(
         fr_p_at_gamma = fr_p_at_gamma.add(&term);
     }
 
-    let mut eta_pow_x = P::ScalarField::one();
     let g1_affine_p_terms: Vec<P::G1> = [
         &proof.g1_affine_l_div_v,
         &proof.g1_affine_l,
@@ -308,10 +308,10 @@ fn third_pairing_check<P: Pairing>(
         &statement,
         &proof.g1_affine_qb,
     ]
-    .iter()
-    .map(|g1| {
+    .par_iter()
+    .zip(eta_pow_list.par_iter())
+    .map(|(g1, eta_pow_x)| {
         let term = g1.mul(eta_pow_x);
-        eta_pow_x *= eta;
 
         term
     })
