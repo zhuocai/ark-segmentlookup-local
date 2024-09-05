@@ -14,6 +14,7 @@ pub enum Error {
     InvalidSegmentElementIndex(usize),
     InvalidSegmentSize(usize),
     InvalidEvaluationDomainSize(usize),
+    InvalidPolynomialDegree(usize),
 
     SizeNotPowerOfTwo(usize),
 
