@@ -1,15 +1,15 @@
-use ark_ec::pairing::Pairing;
-use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::Field;
-use ark_poly::univariate::DensePolynomial;
-use ark_poly::{DenseUVPolynomial, EvaluationDomain, Radix2EvaluationDomain};
-use std::ops::Mul;
-
 use crate::error::Error;
 use crate::kzg::Kzg;
 use crate::public_parameters::PublicParameters;
 use crate::toeplitz::UpperToeplitz;
+use ark_ec::pairing::Pairing;
+use ark_ec::{AffineRepr, CurveGroup};
+use ark_ff::Field;
+use ark_poly::univariate::DensePolynomial;
+use ark_poly::{DenseUVPolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain};
+use ark_std::Zero;
 use rayon::prelude::*;
+use std::ops::Mul;
 
 pub struct Table<P: Pairing> {
     num_segments: usize,
@@ -85,7 +85,15 @@ fn compute_quotients<P: Pairing>(
         - N (table size) is always pow2
         - Toeplitz multiplication will happen in 2 * N, so appending zero commitments on hs is not needed
     */
-    let toeplitz = UpperToeplitz::from_poly(poly_t);
+    if poly_t.degree() >= domain.size() {
+        return Err(Error::InvalidPolynomialDegree(poly_t.degree()));
+    }
+
+    // Resize the polynomial coefficients to the domain size
+    let mut poly_t_coeffs = poly_t.coeffs().to_vec();
+    poly_t_coeffs.resize(domain.size(), P::ScalarField::zero());
+
+    let toeplitz = UpperToeplitz::from_coeff_slice(&poly_t_coeffs);
 
     let domain_size = domain.size();
     let g1_affine_srs = g1_affine_srs.iter().take(domain_size).collect::<Vec<_>>();

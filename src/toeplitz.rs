@@ -1,8 +1,5 @@
 use ark_ff::{FftField, Zero};
-use ark_poly::{
-    domain::DomainCoeff, univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain,
-    GeneralEvaluationDomain, Polynomial,
-};
+use ark_poly::{domain::DomainCoeff, EvaluationDomain, GeneralEvaluationDomain};
 use rayon::prelude::*;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -16,16 +13,26 @@ use std::marker::PhantomData;
     .   ... fm f(m-1)
     0   ...   ... fm
 */
-/// Succinct representation of Toeplitz matrix that is instantiated from polynomial
-/// on which mul by vector can be run efficiently
+/// Succinct representation of Toeplitz matrix that is instantiated from
+/// polynomial on which mul by vector can be run efficiently
 pub(crate) struct UpperToeplitz<F: FftField> {
     pub(crate) repr: Vec<F>,
 }
 
 impl<F: FftField> UpperToeplitz<F> {
-    pub(crate) fn from_poly(poly: &DensePolynomial<F>) -> Self {
-        let mut repr = poly.coeffs()[1..].to_vec();
-        let next_pow2_degree = poly.degree().next_power_of_two();
+    // pub(crate) fn from_poly(poly: &DensePolynomial<F>) -> Self {
+    //     let mut repr = poly.coeffs()[1..].to_vec();
+    //     let next_pow2_degree = poly.degree().next_power_of_two();
+    //     repr.resize(next_pow2_degree, F::zero());
+    //
+    //     assert!(repr.len().is_power_of_two());
+    //
+    //     Self { repr }
+    // }
+
+    pub(crate) fn from_coeff_slice(coeffs: &[F]) -> Self {
+        let next_pow2_degree = coeffs.len().next_power_of_two();
+        let mut repr = coeffs[1..].to_vec();
         repr.resize(next_pow2_degree, F::zero());
 
         assert!(repr.len().is_power_of_two());
