@@ -66,12 +66,27 @@ impl<P: Pairing> PublicParameters<P> {
         num_witness_segments: usize,
         segment_size: usize,
     ) -> Result<PublicParameters<P>, Error> {
+        let tau = P::ScalarField::rand(rng);
+
+        PublicParameters::setup_with_tau(
+            num_table_segments,
+            num_witness_segments,
+            segment_size,
+            tau,
+        )
+    }
+
+    pub fn setup_with_tau(
+        num_table_segments: usize,
+        num_witness_segments: usize,
+        segment_size: usize,
+        tau: P::ScalarField,
+    ) -> Result<PublicParameters<P>, Error> {
         let table_element_size = num_table_segments * segment_size;
         let witness_element_size = num_witness_segments * segment_size;
         let log_num_table_segments = max(num_table_segments.trailing_zeros() as usize, 2);
 
         // Step 1: Choose a random tau. Let max = max(k, n). Compute SRS from tau.
-        let tau = P::ScalarField::rand(rng);
         let max_pow_of_tau_g1 = max(num_table_segments, num_witness_segments) * segment_size - 1;
         let caulk_max_pow_of_tau_g1 =
             (num_witness_segments + 1) * log_num_table_segments.next_power_of_two();
