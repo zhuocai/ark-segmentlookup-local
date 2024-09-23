@@ -159,8 +159,12 @@ mod tests {
     #[test]
     fn test_table_new() {
         let mut rng = test_rng();
-        let pp =
-            PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
+        let pp = PublicParameters::builder()
+            .num_table_segments(8)
+            .num_witness_segments(4)
+            .segment_size(4)
+            .build(&mut rng)
+            .expect("Failed to setup public parameters");
         let segments = rand_segments::generate::<Bn254>(&pp);
 
         Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
@@ -169,8 +173,12 @@ mod tests {
     #[test]
     fn test_table_preprocess() {
         let mut rng = test_rng();
-        let pp =
-            PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
+        let pp = PublicParameters::builder()
+            .num_table_segments(8)
+            .num_witness_segments(4)
+            .segment_size(4)
+            .build(&mut rng)
+            .expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
 
         let t = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");

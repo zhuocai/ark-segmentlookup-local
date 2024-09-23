@@ -1,6 +1,6 @@
 mod domain;
 mod error;
-mod kzg;
+pub mod kzg;
 mod lagrange_basis;
 pub mod multi_unity;
 pub mod prover;
@@ -34,13 +34,12 @@ mod tests {
         TablePreprocessedParameters<P>,
     ) {
         let mut rng = test_rng();
-        let pp = PublicParameters::setup(
-            &mut rng,
-            num_table_segments,
-            num_witness_segments,
-            segment_size,
-        )
-        .unwrap();
+        let pp = PublicParameters::builder()
+            .num_table_segments(num_table_segments)
+            .num_witness_segments(num_witness_segments)
+            .segment_size(segment_size)
+            .build(&mut rng)
+            .expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
 
         let t = Table::<P>::new(&pp, segments).expect("Failed to create table");

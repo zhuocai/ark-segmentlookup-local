@@ -12,8 +12,13 @@ use std::ops::Mul;
 use std::{iter, marker::PhantomData};
 
 /// Minimal KZG functionalities needed for the lookup argument.
-/// Modified from https://github.com/geometryxyz/cq/blob/main/src/kzg.rs
-/// and https://github.com/caulk-crypto/caulk/blob/main/src/kzg.rs
+///
+/// This module provides functionalities to commit to polynomials,
+/// open evaluations, and verify proofs using KZG commitments.
+///
+/// Adapted from:
+/// - [geometryxyz/cq](https://github.com/geometryxyz/cq/blob/main/src/kzg.rs)
+/// - [caulk-crypto/caulk](https://github.com/caulk-crypto/caulk/blob/main/src/kzg.rs)
 pub struct Kzg<C: CurveGroup> {
     _marker: PhantomData<C>,
 }

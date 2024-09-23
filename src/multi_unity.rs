@@ -456,7 +456,11 @@ mod tests {
     #[test]
     fn test_multi_unity_prove() {
         let mut rng = test_rng();
-        let pp = PublicParameters::<Bn254>::setup(&mut rng, 8, 4, 4)
+        let pp = PublicParameters::<Bn254>::builder()
+            .num_table_segments(8)
+            .num_witness_segments(4)
+            .segment_size(4)
+            .build(&mut rng)
             .expect("Failed to setup public parameters");
 
         let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
@@ -493,7 +497,11 @@ mod tests {
     #[test]
     fn test_multi_unity_verify() {
         let mut rng = test_rng();
-        let pp = PublicParameters::<Bn254>::setup(&mut rng, 8, 4, 4)
+        let pp = PublicParameters::<Bn254>::builder()
+            .num_table_segments(8)
+            .num_witness_segments(4)
+            .segment_size(4)
+            .build(&mut rng)
             .expect("Failed to setup public parameters");
         let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)

@@ -217,7 +217,7 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     // = Q_L(gamma), d_{gamma} = D(gamma), and q_{gamma, D} = Q_D(gamma)
     // to the verifier.
     let fr_b0_at_gamma = poly_b0.evaluate(&gamma);
-    let fr_f_at_gamma = witness.poly_f.evaluate(&gamma);
+    let fr_f_at_gamma = witness.poly.evaluate(&gamma);
     let fr_l_at_gamma = poly_l.evaluate(&gamma);
     // Compute a_0 using sumcheck lemma.
     let fr_a_at_zero = {
@@ -264,7 +264,7 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
             poly_d,
             poly_qd,
             poly_b0,
-            witness.poly_f.clone(),
+            witness.poly.clone(),
             poly_qb,
         ],
         gamma,
@@ -550,7 +550,7 @@ fn compute_polynomial_b_and_quotient<P: Pairing>(
     let poly_eval_list_b: Result<Vec<P::ScalarField>, Error> = (0..witness_element_size)
         .into_par_iter()
         .map(|i| {
-            (beta + witness.poly_eval_list_f[i] + delta * poly_eval_list_l[i])
+            (beta + witness.evaluations[i] + delta * poly_eval_list_l[i])
                 .inverse()
                 .ok_or(Error::FailedToInverseFieldElement)
         })
@@ -566,7 +566,7 @@ fn compute_polynomial_b_and_quotient<P: Pairing>(
 
     let poly_coset_eval_list_l = domain_coset_v.fft(&poly_l);
     let poly_coset_eval_list_b = domain_coset_v.fft(&poly_b);
-    let poly_coset_eval_list_f = domain_coset_v.fft(&witness.poly_f);
+    let poly_coset_eval_list_f = domain_coset_v.fft(&witness.poly);
     let fr_one = P::ScalarField::one();
     let poly_coset_eval_list_qb: Vec<P::ScalarField> = poly_coset_eval_list_b
         .par_iter()
@@ -687,15 +687,18 @@ mod tests {
     #[test]
     fn test_compute_multiplicity_polynomials_and_quotient() {
         let mut rng = test_rng();
-        let num_segments = 16;
-        let num_queries = 8;
+        let num_table_segments = 16;
+        let num_witness_segments = 8;
         let segment_size = 4;
-        let pp =
-            PublicParameters::<Bn254>::setup(&mut rng, num_segments, num_queries, segment_size)
-                .unwrap();
+        let pp = PublicParameters::<Bn254>::builder()
+            .num_table_segments(num_table_segments)
+            .num_witness_segments(num_witness_segments)
+            .segment_size(segment_size)
+            .build(&mut rng)
+            .expect("Failed to setup public parameters");
         let queried_segment_indices = vec![0, 1, 2, 3, 0, 1, 2, 3];
         let multiplicities =
-            compute_segment_multiplicities(&queried_segment_indices, num_segments).unwrap();
+            compute_segment_multiplicities(&queried_segment_indices, num_table_segments).unwrap();
 
         // Construct polynomial M(X) using Inverse FFT.
         let mut poly_eval_m_list = vec![Fr::zero(); pp.table_element_size];
@@ -752,13 +755,12 @@ mod tests {
         let mut rng = test_rng();
         let inputs = [(4, 8, 4), (8, 4, 4), (8, 16, 4), (16, 8, 4)];
         for (num_table_segments, num_witness_segments, segment_size) in inputs.into_iter() {
-            let pp = PublicParameters::<Bn254>::setup(
-                &mut rng,
-                num_table_segments,
-                num_witness_segments,
-                segment_size,
-            )
-            .expect("Failed to setup public parameters");
+            let pp = PublicParameters::<Bn254>::builder()
+                .num_table_segments(num_table_segments)
+                .num_witness_segments(num_witness_segments)
+                .segment_size(segment_size)
+                .build(&mut rng)
+                .expect("Failed to setup public parameters");
             let segments = rand_segments::generate(&pp);
 
             let t = Table::new(&pp, segments).unwrap();

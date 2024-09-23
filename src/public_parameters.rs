@@ -1,5 +1,6 @@
 use crate::domain::{
-    create_sub_domain, identity_poly, roots_of_unity, vanishing_poly_commitment_affine,
+    create_domain_with_generator, create_sub_domain, identity_poly, roots_of_unity,
+    vanishing_poly_commitment_affine,
 };
 use crate::error::Error;
 use crate::kzg::unsafe_setup_from_tau;
@@ -30,9 +31,11 @@ pub struct PublicParameters<P: Pairing> {
     // [tau^i]_1 for i in 0..max*s.
     pub g1_affine_srs: Vec<P::G1Affine>,
     // [tau^i]_2 for i in 0..max*s.
-    pub(crate) g2_affine_srs: Vec<P::G2Affine>,
+    pub g2_affine_srs: Vec<P::G2Affine>,
     // [Z_W(tau)]_2.
-    pub(crate) g2_affine_zw: P::G2Affine,
+    pub g2_affine_zw: P::G2Affine,
+    // [Z_V(tau)]_2.
+    pub g2_affine_zv: P::G2Affine,
     // q_{i, 2} for i in 1..n*s.
     // The commitment of quotient polynomials Q_{i, 2} s.t.
     // L^W_i(X) * X = omega^i * L^W_i(X) + Z_W(X) * Q_{i, 2}(X).
@@ -47,9 +50,9 @@ pub struct PublicParameters<P: Pairing> {
     pub(crate) g1_affine_list_lv: Vec<P::G1Affine>,
 
     // Domain W, V, and K.
-    pub(crate) domain_w: Radix2EvaluationDomain<P::ScalarField>,
-    pub(crate) domain_v: Radix2EvaluationDomain<P::ScalarField>,
-    pub(crate) domain_k: Radix2EvaluationDomain<P::ScalarField>,
+    pub domain_w: Radix2EvaluationDomain<P::ScalarField>,
+    pub domain_v: Radix2EvaluationDomain<P::ScalarField>,
+    pub domain_k: Radix2EvaluationDomain<P::ScalarField>,
 
     // Caulk Sub-protocol parameters.
     pub(crate) g1_affine_srs_caulk: Vec<P::G1Affine>,
@@ -60,53 +63,115 @@ pub struct PublicParameters<P: Pairing> {
 }
 
 impl<P: Pairing> PublicParameters<P> {
-    pub fn setup<R: Rng + ?Sized>(
-        rng: &mut R,
-        num_table_segments: usize,
-        num_witness_segments: usize,
-        segment_size: usize,
-    ) -> Result<PublicParameters<P>, Error> {
-        let tau = P::ScalarField::rand(rng);
+    pub fn builder() -> PublicParametersBuilder<P> {
+        PublicParametersBuilder::<P>::default()
+    }
+}
 
-        PublicParameters::setup_with_tau(
-            num_table_segments,
-            num_witness_segments,
-            segment_size,
-            tau,
-        )
+pub struct PublicParametersBuilder<P: Pairing> {
+    num_table_segments: Option<usize>,
+    num_witness_segments: Option<usize>,
+    segment_size: Option<usize>,
+    tau: Option<P::ScalarField>,
+    domain_generator_w: Option<P::ScalarField>,
+    domain_generator_v: Option<P::ScalarField>,
+}
+
+impl<P: Pairing> PublicParametersBuilder<P> {
+    fn default() -> Self {
+        Self {
+            num_table_segments: None,
+            num_witness_segments: None,
+            segment_size: None,
+            tau: None,
+            domain_generator_w: None,
+            domain_generator_v: None,
+        }
     }
 
-    pub fn setup_with_tau(
-        num_table_segments: usize,
-        num_witness_segments: usize,
-        segment_size: usize,
-        tau: P::ScalarField,
-    ) -> Result<PublicParameters<P>, Error> {
+    /// Sets the number of table segments.
+    pub fn num_table_segments(mut self, num: usize) -> Self {
+        self.num_table_segments = Some(num);
+        self
+    }
+
+    /// Sets the number of witness segments.
+    pub fn num_witness_segments(mut self, num: usize) -> Self {
+        self.num_witness_segments = Some(num);
+        self
+    }
+
+    /// Sets the segment size.
+    pub fn segment_size(mut self, size: usize) -> Self {
+        self.segment_size = Some(size);
+        self
+    }
+
+    /// Sets a specific tau value.
+    pub fn tau(mut self, tau: P::ScalarField) -> Self {
+        self.tau = Some(tau);
+        self
+    }
+
+    /// Sets a specific generator for domain W.
+    pub fn domain_generator_w(mut self, gen: P::ScalarField) -> Self {
+        self.domain_generator_w = Some(gen);
+        self
+    }
+
+    /// Sets a specific generator for domain V.
+    pub fn domain_generator_v(mut self, gen: P::ScalarField) -> Self {
+        self.domain_generator_v = Some(gen);
+        self
+    }
+
+    pub fn build<R: Rng + ?Sized>(self, rng: &mut R) -> Result<PublicParameters<P>, Error> {
+        // Extract parameters or set defaults.
+        let num_table_segments = self
+            .num_table_segments
+            .ok_or(Error::MissingParameter("num_table_segments"))?;
+        let num_witness_segments = self
+            .num_witness_segments
+            .ok_or(Error::MissingParameter("num_witness_segments"))?;
+        let segment_size = self
+            .segment_size
+            .ok_or(Error::MissingParameter("segment_size"))?;
+        let tau = self.tau.unwrap_or_else(|| P::ScalarField::rand(rng));
+
+        // Compute the other sizes.
         let table_element_size = num_table_segments * segment_size;
         let witness_element_size = num_witness_segments * segment_size;
         let log_num_table_segments = max(num_table_segments.trailing_zeros() as usize, 2);
 
-        // Step 1: Choose a random tau. Let max = max(k, n). Compute SRS from tau.
+        // Step 1: Compute SRS from tau.
         let max_pow_of_tau_g1 = max(num_table_segments, num_witness_segments) * segment_size - 1;
         let caulk_max_pow_of_tau_g1 =
             (num_witness_segments + 1) * log_num_table_segments.next_power_of_two();
         let (g1_affine_srs, g2_affine_srs, g1_affine_srs_caulk, g2_affine_srs_caulk) =
             unsafe_setup_from_tau::<P, StdRng>(max_pow_of_tau_g1, caulk_max_pow_of_tau_g1, tau);
 
-        // Step 2: Compute [Z_W(tau)]_2.
+        // Step 2: Define domains.
+        // Compute [Z_W(tau)]_2.
         let order_w = num_table_segments * segment_size;
-        let domain_w: Radix2EvaluationDomain<P::ScalarField> =
+        let domain_w = if let Some(domain_generator_w) = self.domain_generator_w {
+            create_domain_with_generator::<P::ScalarField>(domain_generator_w, order_w)?
+        } else {
             Radix2EvaluationDomain::<P::ScalarField>::new(order_w)
-                .ok_or(Error::FailedToCreateEvaluationDomain)?;
+                .ok_or(Error::FailedToCreateEvaluationDomain)?
+        };
         let g2_affine_zw = vanishing_poly_commitment_affine::<P::G2>(&g2_affine_srs, &domain_w);
 
-        // Step 2: Compute [Z_V(tau)]_2.
+        // Compute [Z_V(tau)]_2.
         let order_v = num_witness_segments * segment_size;
-        let domain_v: Radix2EvaluationDomain<P::ScalarField> =
+        let domain_v = if let Some(domain_generator_v) = self.domain_generator_v {
+            create_domain_with_generator::<P::ScalarField>(domain_generator_v, order_v)?
+        } else {
             Radix2EvaluationDomain::<P::ScalarField>::new(order_v)
-                .ok_or(Error::FailedToCreateEvaluationDomain)?;
+                .ok_or(Error::FailedToCreateEvaluationDomain)?
+        };
+        let g2_affine_zv = vanishing_poly_commitment_affine::<P::G2>(&g2_affine_srs, &domain_v);
 
-        // Step 2: Compute [Z_K(tau)]_2.
+        // Compute [Z_K(tau)]_2.
         // K = {v^{is}, i \in [0, k - 1]}.
         let order_k = num_witness_segments;
         let domain_k = create_sub_domain::<P>(&domain_v, order_k, segment_size)?;
@@ -180,6 +245,7 @@ impl<P: Pairing> PublicParameters<P> {
             g1_affine_srs,
             g2_affine_srs,
             g2_affine_zw,
+            g2_affine_zv,
             g1_affine_list_q2,
             g1_affine_list_q3,
             g1_affine_list_lw,
@@ -208,6 +274,11 @@ mod test {
     #[test]
     fn test_public_parameters_setup() {
         let mut rng = test_rng();
-        PublicParameters::<Bn254>::setup(&mut rng, 8, 4, 4).unwrap();
+        PublicParameters::<Bn254>::builder()
+            .num_table_segments(8)
+            .num_witness_segments(4)
+            .segment_size(4)
+            .build(&mut rng)
+            .unwrap();
     }
 }
