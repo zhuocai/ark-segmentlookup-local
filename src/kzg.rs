@@ -2,14 +2,14 @@ use crate::error::Error;
 use ark_ec::pairing::Pairing;
 use ark_ec::VariableBaseMSM;
 use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::{Field, One};
+use ark_ff::{FftField, Field, One};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Polynomial};
 use ark_std::rand::Rng;
 use ark_std::{UniformRand, Zero};
 use rayon::prelude::*;
 use std::cmp::max;
+use std::marker::PhantomData;
 use std::ops::Mul;
-use std::{iter, marker::PhantomData};
 
 /// Minimal KZG functionalities needed for the lookup argument.
 ///
@@ -79,12 +79,22 @@ impl<C: CurveGroup> Kzg<C> {
         fr_opening: C::ScalarField,
         fr_separation: C::ScalarField,
     ) -> C::Affine {
-        let powers_of_sep = iter::successors(Some(fr_separation), |p| Some(*p * fr_separation));
+        let num_polys = poly_list.len();
+        let powers_of_sep = powers_of_scalars::<C::ScalarField>(fr_separation, num_polys);
 
         let mut batched = poly_list[0].clone();
-        for (p_i, fr_sep_pow_i) in poly_list.iter().skip(1).zip(powers_of_sep) {
-            batched += (fr_sep_pow_i, p_i);
-        }
+        let rest_batched: DensePolynomial<C::ScalarField> = poly_list[1..]
+            .par_iter()
+            .zip(powers_of_sep.par_iter().skip(1))
+            .map(|(p_i, &fr_sep_pow_i)| {
+                p_i * fr_sep_pow_i // Multiply each polynomial by its
+                                   // corresponding power of `fr_separation`
+            })
+            .reduce(
+                || DensePolynomial::from_coefficients_slice(&[C::ScalarField::zero()]),
+                |a, b| a + b,
+            );
+        batched += &rest_batched;
 
         let q = &batched
             / &DensePolynomial::from_coefficients_slice(&[-fr_opening, C::ScalarField::one()]);
@@ -131,7 +141,7 @@ pub fn unsafe_setup_from_tau<P: Pairing, R: Rng + ?Sized>(
     let max_power_g2 = max_power_g1 + 1;
     let max_power_caulk_g2 = caulk_max_power_g1 + 1;
     let powers_of_tau_size = max(max_power_g2 + 1, max_power_caulk_g2 + 1);
-    let powers_of_tau = powers_of_tau::<P>(tau, powers_of_tau_size);
+    let powers_of_tau = powers_of_scalars::<P::ScalarField>(tau, powers_of_tau_size);
     let g1_srs = srs::<P::G1>(&powers_of_tau, max_power_g1);
     let g2_srs = srs::<P::G2>(&powers_of_tau, max_power_g2);
     let g1_srs_caulk = srs::<P::G1>(&powers_of_tau, caulk_max_power_g1);
@@ -140,10 +150,29 @@ pub fn unsafe_setup_from_tau<P: Pairing, R: Rng + ?Sized>(
     (g1_srs, g2_srs, g1_srs_caulk, g2_srs_caulk)
 }
 
-fn powers_of_tau<P: Pairing>(tau: P::ScalarField, size: usize) -> Vec<P::ScalarField> {
-    iter::successors(Some(P::ScalarField::one()), |p| Some(*p * tau))
-        .take(size)
-        .collect()
+const CHUNK_SIZE: usize = 1024;
+
+fn powers_of_scalars<F: FftField>(s: F, size: usize) -> Vec<F> {
+    let num_chunks = (size + CHUNK_SIZE - 1) / CHUNK_SIZE;
+
+    let mut result: Vec<F> = (0..num_chunks)
+        .into_par_iter()
+        .flat_map(|chunk_index| {
+            let start_power = chunk_index * CHUNK_SIZE;
+            let mut chunk = Vec::with_capacity(CHUNK_SIZE.min(size - start_power));
+            let mut power = s.pow(&[start_power as u64]);
+
+            for _ in 0..CHUNK_SIZE.min(size - start_power) {
+                chunk.push(power);
+                power *= s;
+            }
+            chunk
+        })
+        .collect();
+
+    result.truncate(size);
+
+    result
 }
 
 fn srs<C: CurveGroup>(powers_of_tau: &[C::ScalarField], max_power: usize) -> Vec<C::Affine> {
@@ -234,31 +263,32 @@ impl<P: Pairing> CaulkKzg<P> {
                 P::G1Affine::zero(),
             );
         }
-        let mut evals = Vec::new();
-        let mut proofs = Vec::new();
-        for p in points.iter() {
-            let (eval, pi) = Self::open_g1(g1_affine_srs, poly, max_deg, p);
-            evals.push(eval);
-            proofs.push(pi);
-        }
 
-        let mut res = P::G1::zero(); // default value
+        let (evaluations, proofs): (Vec<_>, Vec<_>) = points
+            .par_iter()
+            .map(|p| Self::open_g1(g1_affine_srs, poly, max_deg, p))
+            .unzip();
 
-        for j in 0..points.len() {
-            let w_j = points[j];
-            // 1. Computing coefficient [1/prod]
-            let mut prod = P::ScalarField::one();
-            for (k, p) in points.iter().enumerate() {
-                if k != j {
-                    prod *= w_j - p;
+        // Parallelize the second loop (computing summations)
+        let res = points
+            .par_iter()
+            .enumerate()
+            .map(|(j, w_j)| {
+                // Compute the coefficient [1/prod]
+                let mut prod = P::ScalarField::one();
+                for (k, p) in points.iter().enumerate() {
+                    if k != j {
+                        prod *= *w_j - p;
+                    }
                 }
-            }
-            // 2. Summation
-            let q_add = proofs[j].mul(prod.inverse().unwrap()); //[1/prod]Q_{j}
-            res += q_add;
-        }
 
-        (evals, res.into_affine())
+                // Summation step
+                let q_add = proofs[j].mul(prod.inverse().unwrap()); // [1/prod]Q_{j}
+                q_add
+            })
+            .reduce(P::G1::zero, |acc, q_add| acc + q_add); // Reduce results into a final sum
+
+        (evaluations, res.into_affine())
     }
 
     pub fn partial_open_g1(
@@ -267,7 +297,7 @@ impl<P: Pairing> CaulkKzg<P> {
         deg_x: usize,
         point: &P::ScalarField,
     ) -> Result<(P::G1Affine, P::G1Affine, DensePolynomial<P::ScalarField>), Error> {
-        if polynomials.len() == 0 {
+        if polynomials.is_empty() {
             let proof = Self::bi_poly_commit_g1(g1_affine_srs, &polynomials, deg_x)?;
             return Ok((
                 P::G1Affine::zero(),
@@ -275,29 +305,35 @@ impl<P: Pairing> CaulkKzg<P> {
                 DensePolynomial::from_coefficients_slice(&[P::ScalarField::zero()]),
             ));
         }
-        let mut poly_partial_eval =
-            DensePolynomial::from_coefficients_vec(vec![P::ScalarField::zero()]);
-        let mut alpha = P::ScalarField::one();
-        for coeff in polynomials {
-            let pow_alpha = DensePolynomial::from_coefficients_vec(vec![alpha]);
-            poly_partial_eval += &(&pow_alpha * coeff);
-            alpha *= point;
-        }
+
+        let num_polys = polynomials.len();
+
+        let powers_of_point: Vec<P::ScalarField> =
+            powers_of_scalars::<P::ScalarField>(*point, num_polys);
+
+        let poly_partial_eval: DensePolynomial<P::ScalarField> = polynomials
+            .par_iter()
+            .zip(powers_of_point.par_iter())
+            .map(|(coeff, alpha)| coeff * &DensePolynomial::from_coefficients_slice(&[*alpha]))
+            .reduce(
+                || DensePolynomial::from_coefficients_slice(&[P::ScalarField::zero()]),
+                |a, b| a + b,
+            );
 
         let eval = P::G1::msm_unchecked(g1_affine_srs, &poly_partial_eval.coeffs).into_affine();
 
-        let mut witness_bipolynomial = Vec::new();
+        let mut witness_bi_poly = Vec::new();
         let poly_reverse: Vec<_> = polynomials.iter().rev().collect();
-        witness_bipolynomial.push(poly_reverse[0].clone());
+        witness_bi_poly.push(poly_reverse[0].clone());
 
         let alpha = DensePolynomial::from_coefficients_vec(vec![*point]);
         for i in 1..(poly_reverse.len() - 1) {
-            witness_bipolynomial.push(poly_reverse[i] + &(&alpha * &witness_bipolynomial[i - 1]));
+            witness_bi_poly.push(poly_reverse[i] + &(&alpha * &witness_bi_poly[i - 1]));
         }
 
-        witness_bipolynomial.reverse();
+        witness_bi_poly.reverse();
 
-        let proof = Self::bi_poly_commit_g1(g1_affine_srs, &witness_bipolynomial, deg_x)?;
+        let proof = Self::bi_poly_commit_g1(g1_affine_srs, &witness_bi_poly, deg_x)?;
 
         Ok((eval, proof, poly_partial_eval))
     }
