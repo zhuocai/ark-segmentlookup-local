@@ -272,7 +272,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_public_parameters_setup() {
+    fn test_public_parameters_builder() {
         let mut rng = test_rng();
         PublicParameters::<Bn254>::builder()
             .num_table_segments(8)

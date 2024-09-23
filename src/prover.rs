@@ -1,4 +1,6 @@
-use crate::domain::{divide_by_vanishing_poly_checked, roots_of_unity};
+use crate::domain::{
+    divide_by_vanishing_poly_checked, divide_by_vanishing_poly_on_coset_in_place, roots_of_unity,
+};
 use crate::error::Error;
 use crate::kzg::Kzg;
 use crate::multi_unity::{multi_unity_prove, MultiUnityProof};
@@ -13,8 +15,8 @@ use ark_poly::univariate::DensePolynomial;
 use ark_poly::{DenseUVPolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain};
 use ark_std::rand::Rng;
 use ark_std::{One, Zero};
+use dashmap::DashMap;
 use rayon::prelude::*;
-use std::collections::BTreeMap;
 use std::ops::{AddAssign, Mul, Sub};
 
 pub struct Proof<P: Pairing> {
@@ -88,6 +90,9 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     // Inverse FFT costs O(ks log(ks)) operations
     // Round 1-6: Compute Q_D s.t. L(X) - D(X) = Z_K(X)*Q_D(X),
     // and send [Q_D(tau)]_1 to the verifier.
+    let roots_of_unity_w = roots_of_unity::<P>(&pp.domain_w);
+    let roots_of_unity_v = roots_of_unity::<P>(&pp.domain_v);
+    let domain_generator_w = pp.domain_w.group_gen;
     let IndexPolynomialsAndQuotients {
         g1_affine_l,
         g1_affine_l_div_v,
@@ -102,15 +107,16 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
         poly_d,
         poly_qd,
     } = compute_index_polynomials_and_quotients::<P>(
-        &pp.domain_w,
         &pp.domain_k,
         &pp.domain_v,
+        &roots_of_unity_w,
+        &roots_of_unity_v,
         &pp.g1_affine_list_lv,
         &pp.g1_affine_srs,
         &witness.segment_indices,
+        domain_generator_w,
         pp.witness_element_size,
         pp.segment_size,
-        pp.num_witness_segments,
     )?;
 
     transcript.append_elements(&[
@@ -156,8 +162,8 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
         delta,
         table,
         &segment_multiplicities,
-        &pp.domain_w,
         pp.segment_size,
+        &roots_of_unity_w,
         &pp.g1_affine_list_lw,
         &tpp.g1_affine_list_q1,
         &pp.g1_affine_list_q2,
@@ -181,7 +187,6 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
         pp.witness_element_size,
         &pp.domain_v,
         &poly_eval_list_l,
-        // &poly_coset_eval_list_l,
         &poly_l,
         &pp.g1_affine_srs,
     )?;
@@ -304,16 +309,21 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
 fn compute_segment_multiplicities(
     queried_segment_indices: &[usize],
     num_segments: usize,
-) -> Result<BTreeMap<usize, usize>, Error> {
-    let mut multiplicities = BTreeMap::<usize, usize>::default();
-    for &i in queried_segment_indices {
-        if i > num_segments {
+) -> Result<DashMap<usize, usize>, Error> {
+    let multiplicities = DashMap::new();
+
+    queried_segment_indices.par_iter().try_for_each(|&i| {
+        if i >= num_segments {
             return Err(Error::InvalidSegmentIndex(i));
         }
 
-        let segment_index_multiplicity = multiplicities.entry(i).or_insert(0);
-        *segment_index_multiplicity += 1;
-    }
+        multiplicities
+            .entry(i)
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+
+        Ok(())
+    })?;
 
     Ok(multiplicities)
 }
@@ -326,42 +336,55 @@ struct MultiplicityPolynomialsAndQuotient<P: Pairing> {
     g1_affine_qm: P::G1Affine,
 }
 
-// Compute [M(tau)]_1, [M(tau / w)]_1, and [Q_M(tau)]_1.
 fn compute_multiplicity_polynomials_and_quotient<P: Pairing>(
-    segment_multiplicities: &BTreeMap<usize, usize>,
+    segment_multiplicities: &DashMap<usize, usize>,
     g1_affine_list_lw: &[P::G1Affine],
     g1_affine_list_q3: &[P::G1Affine],
     segment_size: usize,
     table_element_size: usize,
 ) -> MultiplicityPolynomialsAndQuotient<P> {
-    let mut g1_m = P::G1::zero(); // [M(tau)]_1
-    let mut g1_m_div_w = P::G1::zero(); // [M(tau / w)]_1
-    let mut g1_qm = P::G1::zero(); // [Q_M(tau)]_1
-    for (&i, &m) in segment_multiplicities.iter() {
-        let segment_element_indices = i * segment_size..(i + 1) * segment_size;
-        let fr_mul = P::ScalarField::from(m as u64);
-        for elem_index in segment_element_indices {
-            // Linear combination of [L^W_i(tau)]_1.
-            g1_m.add_assign(g1_affine_list_lw[elem_index].mul(fr_mul));
-            // Linear combination of [L^W_i(tau / w)]_1.
-            // L^W_i(tau / w) = L^W_{i+1}(tau).
-            // We can shift [L^W_i(tau)]_1 to the left by 1 to get [L^W_i(tau / w)]_1.
-            let shifted_elem_index = (elem_index + 1) % table_element_size;
-            g1_m_div_w.add_assign(g1_affine_list_lw[shifted_elem_index].mul(fr_mul));
-            // Linear combination of q_{i, 3}.
-            g1_qm.add_assign(g1_affine_list_q3[elem_index].mul(fr_mul));
-            // Linear combination of q_{i, 4}.
-            // q_{i, 4} is equivalent to shift q_{i, 3} to the left by 1.
-            let shifted_elem_index = (elem_index + 1) % table_element_size;
-            // negate the coefficient.
-            g1_qm.add_assign(g1_affine_list_q3[shifted_elem_index].mul(-fr_mul));
-        }
-    }
+    // Compute partial [M(tau)]_1, [M(tau / w)]_1, and [Q_M(tau)]_1 in parallel.
+    let (g1_m, g1_m_div_w, g1_qm) = segment_multiplicities
+        .par_iter()
+        .map(|entry| {
+            let i = *entry.key();
+            let m = *entry.value();
+            let mut g1_m_partial = P::G1::zero();
+            let mut g1_m_div_w_partial = P::G1::zero();
+            let mut g1_qm_partial = P::G1::zero();
+            let segment_element_indices = i * segment_size..(i + 1) * segment_size;
+            let fr_mul = P::ScalarField::from(m as u64);
+            for elem_index in segment_element_indices {
+                // Linear combination of [L^W_i(tau)]_1.
+                g1_m_partial.add_assign(g1_affine_list_lw[elem_index].mul(fr_mul));
+                // Linear combination of [L^W_i(tau / w)]_1.
+                // L^W_i(tau / w) = L^W_{i+1}(tau).
+                let shifted_elem_index = (elem_index + 1) % table_element_size;
+                g1_m_div_w_partial.add_assign(g1_affine_list_lw[shifted_elem_index].mul(fr_mul));
+                // Linear combination of q_{i, 3}.
+                g1_qm_partial.add_assign(g1_affine_list_q3[elem_index].mul(fr_mul));
+                // Linear combination of q_{i, 4}.
+                // q_{i, 4} is equivalent to shift q_{i, 3} to the left by 1.
+                let shifted_elem_index = (elem_index + 1) % table_element_size;
+                // Negate the coefficient of multiplicity.
+                g1_qm_partial.add_assign(g1_affine_list_q3[shifted_elem_index].mul(-fr_mul));
+            }
+
+            (g1_m_partial, g1_m_div_w_partial, g1_qm_partial)
+        })
+        .reduce(
+            || (P::G1::zero(), P::G1::zero(), P::G1::zero()),
+            |(g1_m1, g1_m_div_w1, g1_qm1), (g1_m2, g1_m_div_w2, g1_qm2)| {
+                (g1_m1 + g1_m2, g1_m_div_w1 + g1_m_div_w2, g1_qm1 + g1_qm2)
+            },
+        );
+
+    let g1_affine_list = P::G1::normalize_batch(&[g1_m, g1_m_div_w, g1_qm]);
 
     MultiplicityPolynomialsAndQuotient {
-        g1_affine_m: g1_m.into_affine(),
-        g1_affine_m_div_w: g1_m_div_w.into_affine(),
-        g1_affine_qm: g1_qm.into_affine(),
+        g1_affine_m: g1_affine_list[0],
+        g1_affine_m_div_w: g1_affine_list[1],
+        g1_affine_qm: g1_affine_list[2],
     }
 }
 
@@ -386,42 +409,74 @@ struct IndexPolynomialsAndQuotients<P: Pairing> {
 // Compute the commitments of [L(tau)]_1, [L(tau*v)]_1, [D(tau)]_1,
 // [Q_L(tau)]_1, and [Q_D(tau)]_1.
 fn compute_index_polynomials_and_quotients<P: Pairing>(
-    domain_w: &Radix2EvaluationDomain<P::ScalarField>,
     domain_k: &Radix2EvaluationDomain<P::ScalarField>,
     domain_v: &Radix2EvaluationDomain<P::ScalarField>,
+    roots_of_unity_w: &[P::ScalarField],
+    roots_of_unity_v: &[P::ScalarField],
     g1_affine_list_lv: &[P::G1Affine],
     g1_affine_srs: &[P::G1Affine],
     queried_segment_indices: &[usize],
+    domain_generator_w: P::ScalarField,
     witness_size: usize,
     segment_size: usize,
-    num_queries: usize,
 ) -> Result<IndexPolynomialsAndQuotients<P>, Error> {
-    let mut poly_eval_list_l: Vec<P::ScalarField> = Vec::with_capacity(witness_size);
-    let mut g1_l = P::G1::zero(); // [L(tau)]_1
-    let mut g1_l_div_v = P::G1::zero(); // [L(tau / v)]_1
-    let roots_of_unity_w: Vec<P::ScalarField> = roots_of_unity::<P>(&domain_w);
-    let mut witness_element_index: usize = 0;
-    let mut poly_eval_list_d: Vec<P::ScalarField> = Vec::with_capacity(num_queries);
-    for &seg_index in queried_segment_indices.iter() {
-        let segment_element_indices = seg_index * segment_size..(seg_index + 1) * segment_size;
-        for elem_index in segment_element_indices {
-            let root_of_unity_w = roots_of_unity_w[elem_index];
-            poly_eval_list_l.push(root_of_unity_w);
-            // Linear combination of [L^V_i(tau)]_1.
-            g1_l.add_assign(g1_affine_list_lv[witness_element_index].mul(root_of_unity_w));
-            // Linear combination of [L^V_i(tau / v)]_1.
-            // L^V_i(tau / v) = L^V_{i+1}(tau).
-            // We can shift [L^V_i(tau)]_1 to the left by 1
-            // to get [L^V_i(tau / v)]_1.
-            let shifted_witness_elem_index = (witness_element_index + 1) % witness_size;
-            g1_l_div_v
-                .add_assign(g1_affine_list_lv[shifted_witness_elem_index].mul(root_of_unity_w));
-            witness_element_index += 1;
-        }
+    let (poly_eval_list_l, g1_l, g1_l_div_v, poly_eval_list_d) = queried_segment_indices
+        .par_iter()
+        .enumerate() // Get both index and segment.
+        .map(|(i, &seg_index)| {
+            let mut partial_poly_eval_list_l = Vec::with_capacity(segment_size);
+            let mut partial_g1_l = P::G1::zero();
+            let mut partial_g1_l_div_v = P::G1::zero();
+            let mut partial_poly_eval_list_d = Vec::with_capacity(1);
 
-        let root_of_unity_w = roots_of_unity_w[seg_index * segment_size];
-        poly_eval_list_d.push(root_of_unity_w);
-    }
+            // Compute the range of element indices for this segment.
+            let segment_element_start = seg_index * segment_size;
+            let segment_element_end = (seg_index + 1) * segment_size;
+            let segment_element_indices = segment_element_start..segment_element_end;
+
+            for (j, elem_index) in segment_element_indices.enumerate() {
+                let root_of_unity_w = roots_of_unity_w[elem_index];
+                partial_poly_eval_list_l.push(root_of_unity_w);
+
+                // Compute witness_element_index based on segment position and element position.
+                let witness_element_index = i * segment_size + j;
+
+                // Linear combination of [L^V_i(tau)]_1.
+                partial_g1_l
+                    .add_assign(g1_affine_list_lv[witness_element_index].mul(root_of_unity_w));
+
+                // Linear combination of [L^V_i(tau / v)]_1.
+                // L^V_i(tau / v) = L^V_{i+1}(tau).
+                // We can shift [L^V_i(tau)]_1 to the left by 1
+                // to get [L^V_i(tau / v)]_1.
+                let shifted_witness_elem_index = (witness_element_index + 1) % witness_size;
+                partial_g1_l_div_v.add_assign(
+                    g1_affine_list_lv[shifted_witness_elem_index].mul(root_of_unity_w),
+                );
+            }
+
+            // Push the first root of unity for this segment to poly_eval_list_d.
+            let root_of_unity_w = roots_of_unity_w[seg_index * segment_size];
+            partial_poly_eval_list_d.push(root_of_unity_w);
+
+            // Return the partial results.
+            (
+                partial_poly_eval_list_l,
+                partial_g1_l,
+                partial_g1_l_div_v,
+                partial_poly_eval_list_d,
+            )
+        })
+        .reduce(
+            || (Vec::new(), P::G1::zero(), P::G1::zero(), Vec::new()), // Initial accumulator
+            |mut acc, (part_l, part_g1_l, part_g1_l_div_v, part_d)| {
+                acc.0.extend(part_l); // Combine poly_eval_list_l
+                acc.1.add_assign(part_g1_l); // Combine g1_l
+                acc.2.add_assign(part_g1_l_div_v); // Combine g1_l_div_v
+                acc.3.extend(part_d); // Combine poly_eval_list_d
+                acc
+            },
+        );
 
     let poly_coeff_list_d = domain_k.ifft(&poly_eval_list_d);
     let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
@@ -432,19 +487,17 @@ fn compute_index_polynomials_and_quotients<P: Pairing>(
     let poly_coeff_list_l = domain_v.ifft(&poly_eval_list_l);
     // The coefficients of L(X / v).
     // We can divide each L(X) polynomial coefficients by v^i.
-    let roots_of_unity_v: Vec<P::ScalarField> = roots_of_unity::<P>(&domain_v);
     let poly_coeff_list_l_div_v: Vec<P::ScalarField> = poly_coeff_list_l
-        .iter()
+        .par_iter()
         .enumerate()
         .map(|(i, &c)| c / roots_of_unity_v[i])
         .collect();
     let poly_l_div_v = DensePolynomial::from_coefficients_slice(&poly_coeff_list_l_div_v);
     // The coefficients of w * L(X / v).
     // We can multiply each L(X / v) polynomial coefficients by w.
-    let generator_w = domain_w.group_gen;
     let poly_coeff_list_w_mul_l_div_v: Vec<P::ScalarField> = poly_coeff_list_l_div_v
-        .iter()
-        .map(|&c| c * generator_w)
+        .par_iter()
+        .map(|&c| c * domain_generator_w)
         .collect();
     let poly_w_mul_l_div_v = DensePolynomial::from_coefficients_vec(poly_coeff_list_w_mul_l_div_v);
     // Compute y(X) = X^k - 1, which is the vanishing polynomial of Domain V.
@@ -480,51 +533,80 @@ struct PolynomialAAndQuotient<P: Pairing> {
     g1_affine_a: P::G1Affine,
     g1_affine_qa: P::G1Affine,
     g1_affine_a0: P::G1Affine,
-    sparse_poly_eval_list_a: BTreeMap<usize, P::ScalarField>,
+    sparse_poly_eval_list_a: DashMap<usize, P::ScalarField>,
 }
 
 fn compute_polynomial_a_and_quotient<P: Pairing>(
     beta: P::ScalarField,
     delta: P::ScalarField,
     table: &Table<P>,
-    segment_multiplicities: &BTreeMap<usize, usize>,
-    domain_w: &Radix2EvaluationDomain<P::ScalarField>,
+    segment_multiplicities: &DashMap<usize, usize>,
     segment_size: usize,
+    roots_of_unity_w: &[P::ScalarField],
     g1_affine_lw_list: &[P::G1Affine],
     g1_affine_q1_list: &[P::G1Affine],
     g1_affine_q2_list: &[P::G1Affine],
     g1_affine_lw_opening_proofs_at_zero: &[P::G1Affine],
 ) -> Result<PolynomialAAndQuotient<P>, Error> {
-    let mut sparse_poly_eval_list_a = BTreeMap::<usize, P::ScalarField>::default();
-    let mut g1_a = P::G1::zero();
-    let mut g1_qa = P::G1::zero();
-    let roots_of_unity_w = roots_of_unity::<P>(domain_w);
+    let sparse_poly_eval_list_a = DashMap::<usize, P::ScalarField>::default();
 
-    for (&segment_index, &multiplicity) in segment_multiplicities.iter() {
-        let segment_element_indices =
-            segment_index * segment_size..(segment_index + 1) * segment_size;
-        for elem_index in segment_element_indices {
-            let fr_a_i = (beta + table.values[elem_index] + delta * roots_of_unity_w[elem_index])
-                .inverse()
-                .ok_or(Error::FailedToInverseFieldElement)?
-                * P::ScalarField::from(multiplicity as u64);
+    // Parallel computation of g1_a and g1_qa
+    let (g1_a, g1_qa) = segment_multiplicities
+        .par_iter()
+        .try_fold(
+            || (P::G1::zero(), P::G1::zero()),
+            |(mut g1_a_partial, mut g1_qa_partial), entry| {
+                let segment_index = *entry.key();
+                let multiplicity = *entry.value();
 
-            sparse_poly_eval_list_a.insert(elem_index, fr_a_i);
-            g1_a.add_assign(g1_affine_lw_list[elem_index].mul(fr_a_i));
-            g1_qa.add_assign(g1_affine_q1_list[elem_index].mul(fr_a_i));
-            g1_qa.add_assign(g1_affine_q2_list[elem_index].mul(delta.mul(fr_a_i)));
-        }
-    }
+                let segment_element_indices =
+                    segment_index * segment_size..(segment_index + 1) * segment_size;
+                for elem_index in segment_element_indices {
+                    let fr_a_i =
+                        (beta + table.values[elem_index] + delta * roots_of_unity_w[elem_index])
+                            .inverse()
+                            .ok_or(Error::FailedToInverseFieldElement)?
+                            * P::ScalarField::from(multiplicity as u64);
 
-    let mut g1_a0 = P::G1::zero();
-    for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
-        g1_a0.add_assign(g1_affine_lw_opening_proofs_at_zero[i].mul(a_i));
-    }
+                    // Insert into DashMap (thread-safe)
+                    sparse_poly_eval_list_a.insert(elem_index, fr_a_i);
+
+                    // Accumulate partial G1 points
+                    g1_a_partial.add_assign(g1_affine_lw_list[elem_index].mul(fr_a_i));
+                    g1_qa_partial.add_assign(g1_affine_q1_list[elem_index].mul(fr_a_i));
+                    g1_qa_partial.add_assign(g1_affine_q2_list[elem_index].mul(delta.mul(fr_a_i)));
+                }
+
+                Ok((g1_a_partial, g1_qa_partial))
+            },
+        )
+        .try_reduce(
+            || (P::G1::zero(), P::G1::zero()),
+            |(g1_a1, g1_qa1), (g1_a2, g1_qa2)| {
+                let mut combined_g1_a = g1_a1;
+                combined_g1_a.add_assign(&g1_a2);
+                let mut combined_g1_qa = g1_qa1;
+                combined_g1_qa.add_assign(&g1_qa2);
+                Ok((combined_g1_a, combined_g1_qa))
+            },
+        )?;
+
+    // Parallel computation of g1_a0
+    let g1_a0 = sparse_poly_eval_list_a
+        .par_iter()
+        .map(|entry| {
+            let i = *entry.key();
+            let a_i = *entry.value();
+
+            g1_affine_lw_opening_proofs_at_zero[i].mul(a_i)
+        })
+        .reduce(|| P::G1::zero(), |acc, x| acc + x)
+        .into_affine();
 
     Ok(PolynomialAAndQuotient {
         g1_affine_a: g1_a.into_affine(),
         g1_affine_qa: g1_qa.into_affine(),
-        g1_affine_a0: g1_a0.into_affine(),
+        g1_affine_a0: g1_a0,
         sparse_poly_eval_list_a,
     })
 }
@@ -555,8 +637,9 @@ fn compute_polynomial_b_and_quotient<P: Pairing>(
                 .ok_or(Error::FailedToInverseFieldElement)
         })
         .collect();
-    let poly_eval_list_b = poly_eval_list_b?;
-    let poly_coeff_list_b = domain_v.ifft(&poly_eval_list_b);
+    let mut poly_eval_list_b = poly_eval_list_b?;
+    domain_v.ifft_in_place(&mut poly_eval_list_b);
+    let poly_coeff_list_b = poly_eval_list_b;
     let poly_b = DensePolynomial::from_coefficients_vec(poly_coeff_list_b);
 
     // Round 10-4: The prover computes [Q_B(tau)]_1 using the SRS and Lemma 4.
@@ -568,41 +651,31 @@ fn compute_polynomial_b_and_quotient<P: Pairing>(
     let poly_coset_eval_list_b = domain_coset_v.fft(&poly_b);
     let poly_coset_eval_list_f = domain_coset_v.fft(&witness.poly);
     let fr_one = P::ScalarField::one();
-    let poly_coset_eval_list_qb: Vec<P::ScalarField> = poly_coset_eval_list_b
+    let mut poly_coset_eval_list_qb: Vec<P::ScalarField> = poly_coset_eval_list_b
         .par_iter()
         .zip(poly_coset_eval_list_f.par_iter())
         .zip(poly_coset_eval_list_l.par_iter())
         .map(|((&b_i, &f_i), &l_i)| (b_i * (beta + f_i + delta * l_i)) - fr_one)
         .collect();
-    let poly_coeff_list_qb = domain_coset_v.ifft(&poly_coset_eval_list_qb);
+    domain_coset_v.ifft_in_place(&mut poly_coset_eval_list_qb);
+    let poly_coeff_list_qb = poly_coset_eval_list_qb;
 
     let mut poly_qb = DensePolynomial::from_coefficients_vec(poly_coeff_list_qb);
     divide_by_vanishing_poly_on_coset_in_place::<P::G1>(&domain_v, &mut poly_qb.coeffs)?;
-    let g1_affine_qb = Kzg::<P::G1>::commit(g1_affine_srs, &poly_qb).into_affine();
+    let g1_qb = Kzg::<P::G1>::commit(g1_affine_srs, &poly_qb);
 
     let poly_b0 = DensePolynomial::from_coefficients_slice(&poly_b.coeffs[1..]);
-    let g1_affine_b0 = Kzg::<P::G1>::commit(g1_affine_srs, &poly_b0).into_affine();
+    let g1_b0 = Kzg::<P::G1>::commit(g1_affine_srs, &poly_b0);
+
+    let g1_affine_list = P::G1::normalize_batch(&[g1_qb, g1_b0]);
 
     Ok(PolynomialBAndQuotient {
         poly_b,
         poly_qb,
         poly_b0,
-        g1_affine_qb,
-        g1_affine_b0,
+        g1_affine_qb: g1_affine_list[0],
+        g1_affine_b0: g1_affine_list[1],
     })
-}
-
-fn divide_by_vanishing_poly_on_coset_in_place<C: CurveGroup>(
-    domain: &Radix2EvaluationDomain<C::ScalarField>,
-    evaluations: &mut [C::ScalarField],
-) -> Result<(), Error> {
-    let vanishing_poly_eval = domain.evaluate_vanishing_polynomial(C::ScalarField::GENERATOR);
-    let inv_vanishing_poly_eval = vanishing_poly_eval
-        .inverse()
-        .ok_or(Error::FailedToInverseFieldElement)?;
-    ark_std::cfg_iter_mut!(evaluations).for_each(|eval| *eval *= &inv_vanishing_poly_eval);
-
-    Ok(())
 }
 
 fn compute_degree_check_g1_affine<P: Pairing>(
@@ -612,7 +685,7 @@ fn compute_degree_check_g1_affine<P: Pairing>(
     table_element_size: usize,
     poly_b0: &DensePolynomial<P::ScalarField>,
     g1_affine_srs: &[P::G1Affine],
-    sparse_poly_eval_list_a: &BTreeMap<usize, P::ScalarField>,
+    sparse_poly_eval_list_a: &DashMap<usize, P::ScalarField>,
     domain_w: &Radix2EvaluationDomain<P::ScalarField>,
 ) -> P::G1Affine {
     if num_table_segments > num_witness_segments {
@@ -625,10 +698,21 @@ fn compute_degree_check_g1_affine<P: Pairing>(
         // We can use Inverse FFT to compute the polynomial A(X),
         // since the runtime does not exceed O(ks log ks) as n < k.
         let mut poly_eval_list_a = vec![P::ScalarField::zero(); table_element_size];
-        for (&i, &a_i) in sparse_poly_eval_list_a.iter() {
+
+        // Step 1: Collect all (index, value) pairs in parallel
+        let entries: Vec<(usize, P::ScalarField)> = sparse_poly_eval_list_a
+            .par_iter()
+            .map(|entry| (*entry.key(), *entry.value()))
+            .collect();
+
+        // Step 2: Assign the collected values sequentially
+        for (i, a_i) in entries {
             poly_eval_list_a[i] = a_i;
         }
-        let poly_coeff_list_a = domain_w.ifft(&poly_eval_list_a);
+
+        // Proceed with Inverse FFT and commitment
+        domain_w.ifft_in_place(&mut poly_eval_list_a);
+        let poly_coeff_list_a = poly_eval_list_a;
         let poly_coeff_list_a0 = poly_coeff_list_a[1..].to_vec();
         let poly_a0 = DensePolynomial::from_coefficients_slice(&poly_coeff_list_a0);
 
@@ -678,10 +762,10 @@ mod tests {
         let multiplicities =
             compute_segment_multiplicities(&queried_segment_indices, num_segments).unwrap();
         assert_eq!(multiplicities.len(), 4);
-        assert_eq!(multiplicities[&0], 2);
-        assert_eq!(multiplicities[&1], 2);
-        assert_eq!(multiplicities[&2], 2);
-        assert_eq!(multiplicities[&3], 2);
+        assert_eq!(*multiplicities.get(&0).unwrap().value(), 2);
+        assert_eq!(*multiplicities.get(&1).unwrap().value(), 2);
+        assert_eq!(*multiplicities.get(&2).unwrap().value(), 2);
+        assert_eq!(*multiplicities.get(&3).unwrap().value(), 2);
     }
 
     #[test]
@@ -702,19 +786,21 @@ mod tests {
 
         // Construct polynomial M(X) using Inverse FFT.
         let mut poly_eval_m_list = vec![Fr::zero(); pp.table_element_size];
-        for (&i, &m) in multiplicities.iter() {
+        multiplicities.iter().for_each(|entry| {
+            let i = *entry.key();
+            let m = *entry.value();
             let segment_element_indices = i * segment_size..(i + 1) * segment_size;
             let fr_multiplicity = Fr::from(m as u64);
             for j in segment_element_indices {
                 poly_eval_m_list[j] = fr_multiplicity;
             }
-        }
+        });
         let poly_coeff_list_m = pp.domain_w.ifft(&poly_eval_m_list);
         let poly_m = DensePolynomial::from_coefficients_vec(poly_coeff_list_m.clone());
         let g1_affine_m_expected = Kzg::<G1>::commit(&pp.g1_affine_srs, &poly_m).into_affine();
         let inv_generator_w = pp.domain_w.group_gen_inv;
         let poly_coeff_list_m_div_w: Vec<Fr> = poly_coeff_list_m
-            .iter()
+            .par_iter()
             .enumerate()
             .map(|(i, &c)| c * inv_generator_w.pow(&[i as u64]))
             .collect();

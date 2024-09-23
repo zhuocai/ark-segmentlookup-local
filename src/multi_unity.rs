@@ -175,7 +175,7 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
             .interpolate();
 
     let bi_poly_u_sqr_at_alpha_list = bi_poly_u_at_alpha_list
-        .iter()
+        .par_iter()
         .map(|u| u.square())
         .collect::<Vec<_>>();
 
@@ -200,18 +200,19 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
     let u_alpha_beta = poly_u_alpha.evaluate(&beta);
     let mut poly_p = DensePolynomial::from_coefficients_slice(&[u_alpha_beta.square()]);
 
-    let mut u_bar_alpha_shift_beta = P::ScalarField::zero();
     let beta_shift = beta * domain_log_n.element(1);
     let lagrange_basis_at_beta_shift = domain_log_n.evaluate_all_lagrange_coefficients(beta_shift);
-    for (s, ploy_u) in poly_u_list
-        .iter()
+
+    let u_bar_alpha_shift_beta = poly_u_list
+        .par_iter()
         .enumerate()
         .take(log_num_table_segments)
         .skip(1)
-    {
-        let u_s_alpha = ploy_u.evaluate(&alpha);
-        u_bar_alpha_shift_beta += u_s_alpha * lagrange_basis_at_beta_shift[s];
-    }
+        .map(|(s, ploy_u)| {
+            let u_s_alpha = ploy_u.evaluate(&alpha);
+            u_s_alpha * lagrange_basis_at_beta_shift[s]
+        })
+        .reduce(|| P::ScalarField::zero(), |acc, x| acc + x);
 
     let lagrange_basis_at_beta = domain_log_n.evaluate_all_lagrange_coefficients(beta);
     let temp = u_bar_alpha_shift_beta
@@ -224,7 +225,7 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
     poly_p = &poly_p - &temp;
 
     let poly_eval_list_h_2_alpha = poly_h_s_list
-        .iter()
+        .par_iter()
         .map(|poly_h_s| poly_h_s.evaluate(&alpha))
         .collect::<Vec<_>>();
     let poly_h_2_alpha =
@@ -293,7 +294,7 @@ fn blinded_vanishing_poly<P: Pairing, R: Rng + ?Sized>(
     let fr_rand = P::ScalarField::rand(rng);
     let vanishing_poly_coefficients: Vec<P::ScalarField> = vanishing_poly.coeffs.clone();
     let rand_poly_coefficients = vanishing_poly_coefficients
-        .iter()
+        .par_iter()
         .map(|&s| s * fr_rand)
         .collect();
 
