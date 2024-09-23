@@ -43,7 +43,12 @@ fn end_to_end(n: usize, k: usize, s: usize) {
     let (segments, queried_segment_indices) = rand_inputs::<Bn254>(n, k, s);
     let mut rng = &mut test_rng();
     let curr_time = std::time::Instant::now();
-    let pp = PublicParameters::setup(&mut rng, n, k, s).expect("Failed to setup public parameters");
+    let pp = PublicParameters::builder()
+        .num_table_segments(n)
+        .num_witness_segments(k)
+        .segment_size(s)
+        .build(&mut rng)
+        .expect("Failed to setup public parameters");
     let table = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
     let tpp = table.preprocess(&pp).expect("Failed to preprocess table");
     println!("setup time: {:?} ms", curr_time.elapsed().as_millis());

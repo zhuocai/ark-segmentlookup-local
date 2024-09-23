@@ -9,11 +9,11 @@ use crate::public_parameters::PublicParameters;
 use crate::table::Table;
 
 pub struct Witness<P: Pairing> {
-    pub(crate) num_witness_segments: usize,
-    pub(crate) segment_size: usize,
-    pub(crate) poly_f: DensePolynomial<P::ScalarField>,
-    pub(crate) poly_eval_list_f: Vec<P::ScalarField>,
-    pub(crate) segment_indices: Vec<usize>,
+    pub num_segments: usize,
+    pub segment_size: usize,
+    pub segment_indices: Vec<usize>,
+    pub poly: DensePolynomial<P::ScalarField>,
+    pub evaluations: Vec<P::ScalarField>,
 }
 
 impl<P: Pairing> Witness<P> {
@@ -47,16 +47,16 @@ impl<P: Pairing> Witness<P> {
         let poly_f = DensePolynomial::from_coefficients_vec(poly_coeff_list_f);
 
         Ok(Self {
-            num_witness_segments: pp.num_witness_segments,
+            num_segments: pp.num_witness_segments,
             segment_size: pp.segment_size,
-            poly_f,
-            poly_eval_list_f,
+            poly: poly_f,
+            evaluations: poly_eval_list_f,
             segment_indices: queried_segment_indices.to_vec(),
         })
     }
 
     pub fn generate_statement(&self, g1_srs: &[P::G1Affine]) -> P::G1Affine {
-        Kzg::<P::G1>::commit(g1_srs, &self.poly_f).into_affine()
+        Kzg::<P::G1>::commit(g1_srs, &self.poly).into_affine()
     }
 }
 
@@ -73,8 +73,12 @@ mod tests {
     #[test]
     fn test_witness_new() {
         let mut rng = test_rng();
-        let pp =
-            PublicParameters::setup(&mut rng, 8, 4, 4).expect("Failed to setup public parameters");
+        let pp = PublicParameters::builder()
+            .num_table_segments(8)
+            .num_witness_segments(4)
+            .segment_size(4)
+            .build(&mut rng)
+            .expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
 
         let t = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");

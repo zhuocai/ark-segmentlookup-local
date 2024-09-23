@@ -433,13 +433,12 @@ mod tests {
         let inputs = [(4, 8, 4), (8, 4, 4), (16, 8, 4)];
 
         for (num_table_segments, num_witness_segments, segment_size) in inputs.into_iter() {
-            let pp = PublicParameters::setup(
-                &mut rng,
-                num_table_segments,
-                num_witness_segments,
-                segment_size,
-            )
-            .expect("Failed to setup public parameters");
+            let pp = PublicParameters::builder()
+                .num_table_segments(num_table_segments)
+                .num_witness_segments(num_witness_segments)
+                .segment_size(segment_size)
+                .build(&mut rng)
+                .expect("Failed to setup public parameters");
             let segments = rand_segments::generate(&pp);
 
             let t = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
@@ -469,13 +468,18 @@ mod tests {
         let inputs = [(4, 8, 4), (8, 4, 4), (16, 8, 4)];
 
         for (num_table_segments, num_witness_segments, segment_size) in inputs.into_iter() {
-            let pp = PublicParameters::setup(
-                &mut rng,
-                num_table_segments,
-                num_witness_segments,
-                segment_size,
-            )
-            .expect("Failed to setup public parameters");
+            // let pp = PublicParameters::setup(
+            //     &mut rng,
+            //     num_table_segments,
+            //     num_witness_segments,
+            //     segment_size,
+            // )
+            let pp = PublicParameters::builder()
+                .num_table_segments(num_table_segments)
+                .num_witness_segments(num_witness_segments)
+                .segment_size(segment_size)
+                .build(&mut rng)
+                .expect("Failed to setup public parameters");
             let segments = rand_segments::generate(&pp);
 
             let t = Table::<Bn254>::new(&pp, segments.clone()).expect("Failed to create table");
@@ -523,11 +527,11 @@ mod tests {
                 .map(|_| rng.next_u32() as usize % pp.num_table_segments)
                 .collect();
             let new_witness = Witness {
-                num_witness_segments: pp.num_witness_segments,
+                num_segments: pp.num_witness_segments,
                 segment_size: pp.segment_size,
-                poly_f: witness.poly_f.clone(),
-                poly_eval_list_f: witness.poly_eval_list_f.clone(),
                 segment_indices: new_queried_segment_indices,
+                poly: witness.poly.clone(),
+                evaluations: witness.evaluations.clone(),
             };
 
             let proof = prove(&pp, &t, &tpp, &new_witness, rng).expect("Failed to prove");
