@@ -24,7 +24,7 @@ pub struct TablePreprocessedParameters<P: Pairing> {
     pub g1_affine_d: P::G1Affine,
     pub(crate) g2_affine_t: P::G2Affine,
     pub(crate) g2_affine_adjusted_t: P::G2Affine,
-    pub(crate) adjusted_table_values: Vec<P::ScalarField>,
+    pub adjusted_table_values: Vec<P::ScalarField>,
     pub(crate) poly_d: DensePolynomial<P::ScalarField>,
 }
 
