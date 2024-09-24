@@ -15,7 +15,8 @@ pub(crate) enum Label {
     ChallengeCaulkAlpha,
     ChallengeCaulkBeta,
 
-    CommonInputs,
+    PublicParameters,
+    TablePreprocessedParameters,
 
     G1M,
     G1MDivW,
@@ -56,7 +57,8 @@ impl Label {
             Label::ChallengeEta => b"eta",
             Label::ChallengeCaulkAlpha => b"caulk_alpha",
             Label::ChallengeCaulkBeta => b"caulk_beta",
-            Label::CommonInputs => b"common_inputs",
+            Label::PublicParameters => b"common_inputs",
+            Label::TablePreprocessedParameters => b"table_preprocessed_parameters",
             Label::G1M => b"g1_m",
             Label::G1MDivW => b"g1_m_div_w",
             Label::G1Qm => b"g1_qm",

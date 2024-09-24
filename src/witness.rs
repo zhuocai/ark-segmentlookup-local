@@ -19,7 +19,7 @@ pub struct Witness<P: Pairing> {
 impl<P: Pairing> Witness<P> {
     pub fn new(
         pp: &PublicParameters<P>,
-        table: &Table<P>,
+        table_values: &[P::ScalarField],
         queried_segment_indices: &[usize],
     ) -> Result<Self, Error> {
         if queried_segment_indices.len() != pp.num_witness_segments {
@@ -31,7 +31,7 @@ impl<P: Pairing> Witness<P> {
         for &segment_index in queried_segment_indices {
             for j in 0..pp.segment_size {
                 let index = segment_index * pp.segment_size + j;
-                if index >= table.values.len() {
+                if index >= table_values.len() {
                     return Err(Error::InvalidSegmentElementIndex(index));
                 }
 
@@ -41,7 +41,7 @@ impl<P: Pairing> Witness<P> {
 
         let poly_eval_list_f: Vec<P::ScalarField> = table_element_indices
             .iter()
-            .map(|&i| table.values[i])
+            .map(|&i| table_values[i])
             .collect();
         let poly_coeff_list_f = pp.domain_v.ifft(&poly_eval_list_f);
         let poly_f = DensePolynomial::from_coefficients_vec(poly_coeff_list_f);
@@ -87,6 +87,6 @@ mod tests {
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)
             .collect();
 
-        Witness::new(&pp, &t, &queried_segment_indices).expect("Failed to create witness");
+        Witness::new(&pp, &t.values, &queried_segment_indices).expect("Failed to create witness");
     }
 }

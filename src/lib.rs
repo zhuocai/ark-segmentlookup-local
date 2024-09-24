@@ -43,16 +43,16 @@ mod tests {
         let segments = rand_segments::generate(&pp);
 
         let t = Table::<P>::new(&pp, segments).expect("Failed to create table");
+        let tpp = t.preprocess(&pp).unwrap();
 
         let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)
             .collect();
 
-        let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
+        let witness =
+            Witness::new(&pp, &tpp.adjusted_table_values, &queried_segment_indices).unwrap();
 
         let statement = witness.generate_statement(&pp.g1_affine_srs);
-
-        let tpp = t.preprocess(&pp).unwrap();
 
         (pp, t, witness, statement, tpp)
     }

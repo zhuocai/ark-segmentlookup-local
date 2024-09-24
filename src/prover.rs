@@ -56,7 +56,8 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     rng: &mut R,
 ) -> Result<Proof<P>, Error> {
     let mut transcript = Transcript::<P::ScalarField>::new();
-    transcript.append_element(Label::CommonInputs, pp)?;
+    transcript.append_element(Label::PublicParameters, pp)?;
+    transcript.append_element(Label::TablePreprocessedParameters, tpp)?;
 
     // Round 1-1: Compute the multiplicity polynomial M of degree (ns - 1),
     // and send [M(tau)]_1 and [M(tau / w)]_1 to the verifier.
@@ -158,10 +159,10 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
         g1_affine_qa,
         g1_affine_a0,
         sparse_poly_eval_list_a,
-    } = compute_polynomial_a_and_quotient(
+    }: PolynomialAAndQuotient<P> = compute_polynomial_a_and_quotient(
         beta,
         delta,
-        table,
+        &tpp.adjusted_table_values,
         &segment_multiplicities,
         pp.segment_size,
         &roots_of_unity_w,
@@ -540,7 +541,7 @@ struct PolynomialAAndQuotient<P: Pairing> {
 fn compute_polynomial_a_and_quotient<P: Pairing>(
     beta: P::ScalarField,
     delta: P::ScalarField,
-    table: &Table<P>,
+    table_values: &[P::ScalarField],
     segment_multiplicities: &DashMap<usize, usize>,
     segment_size: usize,
     roots_of_unity_w: &[P::ScalarField],
@@ -564,7 +565,7 @@ fn compute_polynomial_a_and_quotient<P: Pairing>(
                     segment_index * segment_size..(segment_index + 1) * segment_size;
                 for elem_index in segment_element_indices {
                     let fr_a_i =
-                        (beta + table.values[elem_index] + delta * roots_of_unity_w[elem_index])
+                        (beta + table_values[elem_index] + delta * roots_of_unity_w[elem_index])
                             .inverse()
                             .ok_or(Error::FailedToInverseFieldElement)?
                             * P::ScalarField::from(multiplicity as u64);
@@ -856,7 +857,7 @@ mod tests {
                 .map(|_| rng.next_u32() as usize % pp.num_table_segments)
                 .collect();
 
-            let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
+            let witness = Witness::new(&pp, &t.values, &queried_segment_indices).unwrap();
 
             let tpp = t.preprocess(&pp).unwrap();
 
