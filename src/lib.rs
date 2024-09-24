@@ -79,7 +79,7 @@ mod tests {
                 "num_table_segments: {}, num_witness_segments: {}, segment_size: {}",
                 num_table_segments, num_witness_segments, segment_size
             );
-            let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(
+            let (pp, _, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(
                 *num_table_segments,
                 *num_witness_segments,
                 *segment_size,
@@ -87,7 +87,7 @@ mod tests {
 
             let rng = &mut test_rng();
 
-            let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
+            let proof = prove(&pp, &tpp, &witness, rng).unwrap();
 
             let result = verify(&pp, &tpp, statement, &proof, rng);
             assert!(result.is_ok(), "Failed to verify proof: {:?} num_table_segments: {}, num_witness_segments: {}, segment_size: {}", result, num_table_segments, num_witness_segments, segment_size);

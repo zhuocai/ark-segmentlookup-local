@@ -5,7 +5,7 @@ use crate::error::Error;
 use crate::kzg::Kzg;
 use crate::multi_unity::{multi_unity_prove, MultiUnityProof};
 use crate::public_parameters::PublicParameters;
-use crate::table::{Table, TablePreprocessedParameters};
+use crate::table::TablePreprocessedParameters;
 use crate::transcript::{Label, Transcript};
 use crate::witness::Witness;
 use ark_ec::pairing::Pairing;
@@ -50,7 +50,6 @@ pub struct Proof<P: Pairing> {
 
 pub fn prove<P: Pairing, R: Rng + ?Sized>(
     pp: &PublicParameters<P>,
-    table: &Table<P>,
     tpp: &TablePreprocessedParameters<P>,
     witness: &Witness<P>,
     rng: &mut R,
@@ -731,7 +730,7 @@ mod tests {
     use std::ops::Neg;
 
     use super::*;
-    use crate::table::rand_segments;
+    use crate::table::{rand_segments, Table};
     use ark_bn254::Bn254;
     use ark_ec::Group;
     use ark_std::rand::RngCore;
@@ -863,7 +862,7 @@ mod tests {
 
             let rng = &mut test_rng();
 
-            prove(&pp, &t, &tpp, &witness, rng).unwrap();
+            prove(&pp, &tpp, &witness, rng).unwrap();
         }
     }
 }

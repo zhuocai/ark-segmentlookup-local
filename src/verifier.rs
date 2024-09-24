@@ -457,7 +457,7 @@ mod tests {
 
             let rng = &mut test_rng();
 
-            let proof = prove::<Bn254, _>(&pp, &t, &tpp, &witness, rng).expect("Failed to prove");
+            let proof = prove::<Bn254, _>(&pp, &tpp, &witness, rng).expect("Failed to prove");
 
             assert!(verify::<Bn254, _>(&pp, &tpp, statement, &proof, rng).is_ok());
         }
@@ -505,7 +505,7 @@ mod tests {
             let new_t = Table::new(&pp, new_segments).expect("Failed to create table");
             let new_tpp = new_t.preprocess(&pp).unwrap();
 
-            let proof = prove(&pp, &new_t, &new_tpp, &witness, rng).expect("Failed to prove");
+            let proof = prove(&pp, &new_tpp, &witness, rng).expect("Failed to prove");
 
             assert!(!verify(&pp, &tpp, statement, &proof, rng).is_ok());
 
@@ -520,7 +520,7 @@ mod tests {
             )
             .unwrap();
 
-            let proof = prove(&pp, &t, &tpp, &new_witness, rng).expect("Failed to prove");
+            let proof = prove(&pp, &tpp, &new_witness, rng).expect("Failed to prove");
 
             assert!(!verify(&pp, &tpp, statement, &proof, rng).is_ok());
 
@@ -536,13 +536,13 @@ mod tests {
                 evaluations: witness.evaluations.clone(),
             };
 
-            let proof = prove(&pp, &t, &tpp, &new_witness, rng).expect("Failed to prove");
+            let proof = prove(&pp, &tpp, &new_witness, rng).expect("Failed to prove");
 
             assert!(!verify(&pp, &tpp, statement, &proof, rng).is_ok());
 
             // Wrong statement
             let new_statement = G1Affine::generator().mul(Fr::rand(rng)).into_affine();
-            let proof = prove(&pp, &t, &tpp, &witness, rng).expect("Failed to prove");
+            let proof = prove(&pp, &tpp, &witness, rng).expect("Failed to prove");
 
             assert!(!verify(&pp, &tpp, new_statement, &proof, rng).is_ok());
         }

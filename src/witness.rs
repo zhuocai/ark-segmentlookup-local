@@ -6,7 +6,6 @@ use ark_poly::{DenseUVPolynomial, EvaluationDomain};
 use crate::error::Error;
 use crate::kzg::Kzg;
 use crate::public_parameters::PublicParameters;
-use crate::table::Table;
 
 pub struct Witness<P: Pairing> {
     pub num_segments: usize,
@@ -66,7 +65,7 @@ mod tests {
     use ark_std::rand::RngCore;
     use ark_std::test_rng;
 
-    use crate::table::rand_segments;
+    use crate::table::{rand_segments, Table};
 
     use super::*;
 

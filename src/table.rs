@@ -25,7 +25,6 @@ pub struct TablePreprocessedParameters<P: Pairing> {
     pub(crate) g2_affine_t: P::G2Affine,
     pub(crate) g2_affine_adjusted_t: P::G2Affine,
     pub adjusted_table_values: Vec<P::ScalarField>,
-    pub(crate) poly_d: DensePolynomial<P::ScalarField>,
 }
 
 impl<P: Pairing> CanonicalSerialize for TablePreprocessedParameters<P> {
@@ -180,7 +179,6 @@ impl<P: Pairing> Table<P> {
             g2_affine_adjusted_t: g2_affine_list[1],
             g1_affine_d,
             adjusted_table_values,
-            poly_d,
         })
     }
 }
