@@ -23,6 +23,7 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
     rng: &mut R,
 ) -> Result<(), Error> {
     let mut transcript = Transcript::<P::ScalarField>::new();
+    transcript.append_element(Label::CommonInputs, pp)?;
 
     transcript.append_elements(&[
         (Label::G1M, proof.g1_affine_m),
