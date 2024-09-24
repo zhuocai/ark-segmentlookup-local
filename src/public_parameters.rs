@@ -9,11 +9,13 @@ use ark_ec::{pairing::Pairing, CurveGroup};
 use ark_ff::Field;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
+use ark_serialize::{CanonicalSerialize, Compress, SerializationError};
 use ark_std::rand::rngs::StdRng;
 use ark_std::rand::Rng;
 use ark_std::{UniformRand, Zero};
 use rayon::prelude::*;
 use std::cmp::max;
+use std::io::Write;
 use std::ops::{Mul, MulAssign};
 
 #[derive(Debug)]
@@ -36,6 +38,8 @@ pub struct PublicParameters<P: Pairing> {
     pub g2_affine_zw: P::G2Affine,
     // [Z_V(tau)]_2.
     pub g2_affine_zv: P::G2Affine,
+    // [Z_K(tau)]_2.
+    pub g2_affine_zk: P::G2Affine,
     // q_{i, 2} for i in 1..n*s.
     // The commitment of quotient polynomials Q_{i, 2} s.t.
     // L^W_i(X) * X = omega^i * L^W_i(X) + Z_W(X) * Q_{i, 2}(X).
@@ -65,6 +69,127 @@ pub struct PublicParameters<P: Pairing> {
 impl<P: Pairing> PublicParameters<P> {
     pub fn builder() -> PublicParametersBuilder<P> {
         PublicParametersBuilder::<P>::default()
+    }
+}
+
+impl<P: Pairing> CanonicalSerialize for PublicParameters<P> {
+    fn serialize_with_mode<W: Write>(
+        &self,
+        mut writer: W,
+        compress: Compress,
+    ) -> Result<(), SerializationError> {
+        // Helper function to serialize usize as u64 for consistency.
+        fn serialize_usize<W: Write>(
+            value: usize,
+            writer: &mut W,
+        ) -> Result<(), SerializationError> {
+            let value_u64 = value as u64;
+            value_u64.serialize_with_mode(writer, Compress::Yes)
+        }
+
+        // Serialize fixed-size usize fields.
+        serialize_usize(self.num_table_segments, &mut writer)?;
+        serialize_usize(self.num_witness_segments, &mut writer)?;
+        serialize_usize(self.segment_size, &mut writer)?;
+        serialize_usize(self.table_element_size, &mut writer)?;
+        serialize_usize(self.witness_element_size, &mut writer)?;
+
+        // Serialize vectors of G1Affine and G2Affine.
+        self.g1_affine_srs
+            .serialize_with_mode(&mut writer, compress)?;
+        self.g2_affine_srs
+            .serialize_with_mode(&mut writer, compress)?;
+        self.g2_affine_zw
+            .serialize_with_mode(&mut writer, compress)?;
+        self.g2_affine_zv
+            .serialize_with_mode(&mut writer, compress)?;
+        self.g2_affine_zk
+            .serialize_with_mode(&mut writer, compress)?;
+        self.g1_affine_list_q2
+            .serialize_with_mode(&mut writer, compress)?;
+        self.g1_affine_list_q3
+            .serialize_with_mode(&mut writer, compress)?;
+        self.g1_affine_list_lw
+            .serialize_with_mode(&mut writer, compress)?;
+        self.g1_affine_lw_opening_proofs_at_zero
+            .serialize_with_mode(&mut writer, compress)?;
+        self.g1_affine_list_lv
+            .serialize_with_mode(&mut writer, compress)?;
+
+        // Serialize Evaluation Domains.
+        self.domain_w.serialize_with_mode(&mut writer, compress)?;
+        self.domain_v.serialize_with_mode(&mut writer, compress)?;
+        self.domain_k.serialize_with_mode(&mut writer, compress)?;
+
+        // Serialize Caulk Sub-protocol parameters.
+        self.g1_affine_srs_caulk
+            .serialize_with_mode(&mut writer, compress)?;
+        self.g2_affine_srs_caulk
+            .serialize_with_mode(&mut writer, compress)?;
+
+        // Serialize additional usize fields.
+        serialize_usize(self.log_num_table_segments, &mut writer)?;
+
+        // Serialize remaining Evaluation Domains and polynomials.
+        self.domain_log_n
+            .serialize_with_mode(&mut writer, compress)?;
+        self.identity_poly_k
+            .serialize_with_mode(&mut writer, compress)?;
+
+        Ok(())
+    }
+
+    fn serialized_size(&self, compress: Compress) -> usize {
+        // Helper function to calculate the size of usize serialized as u64.
+        fn size_usize() -> usize {
+            u64::serialized_size(&0u64, Compress::Yes) // 8 bytes
+        }
+
+        let mut size = 0;
+        size += size_usize(); // num_table_segments
+        size += size_usize(); // num_witness_segments
+        size += size_usize(); // segment_size
+        size += size_usize(); // table_element_size
+        size += size_usize(); // witness_element_size
+
+        size += self.g1_affine_srs.serialized_size(compress);
+        size += self.g2_affine_srs.serialized_size(compress);
+        size += self.g2_affine_zw.serialized_size(compress);
+        size += self.g2_affine_zv.serialized_size(compress);
+        size += self.g2_affine_zk.serialized_size(compress);
+        size += self.g1_affine_list_q2.serialized_size(compress);
+        size += self.g1_affine_list_q3.serialized_size(compress);
+        size += self.g1_affine_list_lw.serialized_size(compress);
+        size += self
+            .g1_affine_lw_opening_proofs_at_zero
+            .serialized_size(compress);
+        size += self.g1_affine_list_lv.serialized_size(compress);
+        size += self.domain_w.serialized_size(compress);
+        size += self.domain_v.serialized_size(compress);
+        size += self.domain_k.serialized_size(compress);
+        size += self.g1_affine_srs_caulk.serialized_size(compress);
+        size += self.g2_affine_srs_caulk.serialized_size(compress);
+        size += size_usize(); // log_num_table_segments
+        size += self.domain_log_n.serialized_size(compress);
+        size += self.identity_poly_k.serialized_size(compress);
+
+        size
+    }
+
+    fn serialize_compressed<W: Write>(&self, writer: W) -> Result<(), SerializationError> {
+        self.serialize_with_mode(writer, Compress::Yes)
+    }
+
+    fn compressed_size(&self) -> usize {
+        self.serialized_size(Compress::Yes)
+    }
+
+    fn serialize_uncompressed<W: Write>(&self, writer: W) -> Result<(), SerializationError> {
+        self.serialize_with_mode(writer, Compress::No)
+    }
+
+    fn uncompressed_size(&self) -> usize {
+        self.serialized_size(Compress::No)
     }
 }
 
@@ -175,6 +300,7 @@ impl<P: Pairing> PublicParametersBuilder<P> {
         // K = {v^{is}, i \in [0, k - 1]}.
         let order_k = num_witness_segments;
         let domain_k = create_sub_domain::<P>(&domain_v, order_k, segment_size)?;
+        let g2_affine_zk = vanishing_poly_commitment_affine::<P::G2>(&g2_affine_srs, &domain_k);
 
         // Step 4-a: Compute q_{i, 2} = [Q_{i,2}(tau)]_1 for i in 1..n*s.
         // Q_{i,2}(X) = w^i / (ns).
@@ -246,6 +372,7 @@ impl<P: Pairing> PublicParametersBuilder<P> {
             g2_affine_srs,
             g2_affine_zw,
             g2_affine_zv,
+            g2_affine_zk,
             g1_affine_list_q2,
             g1_affine_list_q3,
             g1_affine_list_lw,

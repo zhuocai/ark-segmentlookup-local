@@ -56,6 +56,7 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     rng: &mut R,
 ) -> Result<Proof<P>, Error> {
     let mut transcript = Transcript::<P::ScalarField>::new();
+    transcript.append_element(Label::CommonInputs, pp)?;
 
     // Round 1-1: Compute the multiplicity polynomial M of degree (ns - 1),
     // and send [M(tau)]_1 and [M(tau / w)]_1 to the verifier.
