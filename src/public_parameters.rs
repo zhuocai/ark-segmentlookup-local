@@ -25,7 +25,7 @@ pub struct PublicParameters<P: Pairing> {
     // Number of segments in the witness. This is fixed for all queries (k).
     pub num_witness_segments: usize,
     // Segment size (s).
-    pub(crate) segment_size: usize,
+    pub segment_size: usize,
     // Table size (n * s).
     pub(crate) table_element_size: usize,
     // Witness size (k * s).
