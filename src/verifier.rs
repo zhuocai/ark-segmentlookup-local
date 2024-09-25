@@ -23,8 +23,7 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
     rng: &mut R,
 ) -> Result<(), Error> {
     let mut transcript = Transcript::<P::ScalarField>::new();
-    transcript.append_element(Label::PublicParameters, pp)?;
-    transcript.append_element(Label::TablePreprocessedParameters, tpp)?;
+    transcript.append_public_parameters(&pp, &tpp)?;
 
     transcript.append_elements(&[
         (Label::G1M, proof.g1_affine_m),
@@ -143,7 +142,7 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
         second_point_check(&proof, gamma, &pp.domain_k),
     ];
 
-    checks.into_par_iter().try_for_each(|check| check)?;
+    checks.iter().try_for_each(|check| check)?;
 
     Ok(())
 }

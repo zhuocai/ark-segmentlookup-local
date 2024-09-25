@@ -7,10 +7,8 @@ use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{DenseUVPolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain};
-use ark_serialize::{CanonicalSerialize, Compress, SerializationError};
 use ark_std::{One, Zero};
 use rayon::prelude::*;
-use std::io::Write;
 use std::ops::Mul;
 
 pub struct Table<P: Pairing> {
@@ -25,51 +23,6 @@ pub struct TablePreprocessedParameters<P: Pairing> {
     pub(crate) g2_affine_t: P::G2Affine,
     pub(crate) g2_affine_adjusted_t: P::G2Affine,
     pub adjusted_table_values: Vec<P::ScalarField>,
-}
-
-impl<P: Pairing> CanonicalSerialize for TablePreprocessedParameters<P> {
-    fn serialize_with_mode<W: Write>(
-        &self,
-        mut writer: W,
-        compress: Compress,
-    ) -> Result<(), SerializationError> {
-        self.g1_affine_list_q1
-            .serialize_with_mode(&mut writer, compress)?;
-        self.g1_affine_d
-            .serialize_with_mode(&mut writer, compress)?;
-        self.g2_affine_t
-            .serialize_with_mode(&mut writer, compress)?;
-        self.g2_affine_adjusted_t
-            .serialize_with_mode(&mut writer, compress)?;
-
-        Ok(())
-    }
-
-    fn serialized_size(&self, compress: Compress) -> usize {
-        let mut size = 0;
-        size += self.g1_affine_list_q1.serialized_size(compress);
-        size += self.g1_affine_d.serialized_size(compress);
-        size += self.g2_affine_t.serialized_size(compress);
-        size += self.g2_affine_adjusted_t.serialized_size(compress);
-
-        size
-    }
-
-    fn serialize_compressed<W: Write>(&self, writer: W) -> Result<(), SerializationError> {
-        self.serialize_with_mode(writer, Compress::Yes)
-    }
-
-    fn compressed_size(&self) -> usize {
-        self.serialized_size(Compress::Yes)
-    }
-
-    fn serialize_uncompressed<W: Write>(&self, writer: W) -> Result<(), SerializationError> {
-        self.serialize_with_mode(writer, Compress::No)
-    }
-
-    fn uncompressed_size(&self) -> usize {
-        self.serialized_size(Compress::No)
-    }
 }
 
 impl<P: Pairing> Table<P> {
