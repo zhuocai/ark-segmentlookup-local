@@ -52,10 +52,11 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     pp: &PublicParameters<P>,
     tpp: &TablePreprocessedParameters<P>,
     witness: &Witness<P>,
+    statement: P::G1Affine,
     rng: &mut R,
 ) -> Result<Proof<P>, Error> {
     let mut transcript = Transcript::<P::ScalarField>::new();
-    transcript.append_public_parameters(&pp, &tpp)?;
+    transcript.append_public_parameters(&pp, &tpp, statement)?;
 
     // Round 1-1: Compute the multiplicity polynomial M of degree (ns - 1),
     // and send [M(tau)]_1 and [M(tau / w)]_1 to the verifier.
@@ -856,12 +857,13 @@ mod tests {
                 .collect();
 
             let witness = Witness::new(&pp, &t.values, &queried_segment_indices).unwrap();
+            let statement = witness.generate_statement(&pp.g1_affine_srs);
 
             let tpp = t.preprocess(&pp).unwrap();
 
             let rng = &mut test_rng();
 
-            prove(&pp, &tpp, &witness, rng).unwrap();
+            prove(&pp, &tpp, &witness, statement, rng).unwrap();
         }
     }
 }

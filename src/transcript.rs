@@ -4,10 +4,7 @@ use crate::table::TablePreprocessedParameters;
 use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
 use ark_serialize::{CanonicalSerialize, Compress};
-use blake2::{Blake2b512, Digest};
 use merlin::Transcript as MerlinTranscript;
-use rayon::prelude::*;
-use std::io::Write;
 use std::marker::PhantomData;
 
 /// Modified from https://github.com/caulk-crypto/caulk/blob/main/src/transcript.rs
@@ -154,55 +151,56 @@ impl<F: PrimeField> Transcript<F> {
         &mut self,
         pp: &PublicParameters<P>,
         tpp: &TablePreprocessedParameters<P>,
+        statement: P::G1Affine,
     ) -> Result<(), Error> {
-        fn serialize_usize<W: Write>(value: usize, writer: &mut W) -> Result<(), Error> {
-            let value_u64 = value as u64;
-            value_u64
-                .serialize_with_mode(writer, Compress::Yes)
-                .map_err(|_| Error::FailedToSerializeElement)
-        }
+        // fn serialize_usize<W: Write>(value: usize, writer: &mut W) -> Result<(),
+        // Error> {     let value_u64 = value as u64;
+        //     value_u64
+        //         .serialize_with_mode(writer, Compress::Yes)
+        //         .map_err(|_| Error::FailedToSerializeElement)
+        // }
 
-        fn serialize_and_hash<T: CanonicalSerialize>(
-            group: &Vec<T>,
-            compress: Compress,
-        ) -> Result<Vec<u8>, Error> {
-            let mut buffer = Vec::new();
-            group
-                .serialize_with_mode(&mut buffer, compress)
-                .map_err(|_| Error::FailedToSerializeElement)?;
-            let mut hasher = Blake2b512::new();
-            hasher.update(&buffer);
-            let hash = hasher.finalize();
-            Ok(hash.to_vec()) // 64 bytes for Blake2b512
-        }
+        // fn serialize_and_hash<T: CanonicalSerialize>(
+        //     group: &Vec<T>,
+        //     compress: Compress,
+        // ) -> Result<Vec<u8>, Error> {
+        //     let mut buffer = Vec::new();
+        //     group
+        //         .serialize_with_mode(&mut buffer, compress)
+        //         .map_err(|_| Error::FailedToSerializeElement)?;
+        //     let mut hasher = Blake2b512::new();
+        //     hasher.update(&buffer);
+        //     let hash = hasher.finalize();
+        //     Ok(hash.to_vec()) // 64 bytes for Blake2b512
+        // }
 
         const COMPRESS_MOD: Compress = Compress::No;
 
         let mut buf = vec![];
 
         // PP: Serialize fixed-size usize fields.
-        serialize_usize(pp.num_table_segments, &mut buf)?;
-        serialize_usize(pp.num_witness_segments, &mut buf)?;
-        serialize_usize(pp.segment_size, &mut buf)?;
-        serialize_usize(pp.table_element_size, &mut buf)?;
-        serialize_usize(pp.witness_element_size, &mut buf)?;
-        serialize_usize(pp.log_num_table_segments, &mut buf)?;
+        // serialize_usize(pp.num_table_segments, &mut buf)?;
+        // serialize_usize(pp.num_witness_segments, &mut buf)?;
+        // serialize_usize(pp.segment_size, &mut buf)?;
+        // serialize_usize(pp.table_element_size, &mut buf)?;
+        // serialize_usize(pp.witness_element_size, &mut buf)?;
+        // serialize_usize(pp.log_num_table_segments, &mut buf)?;
 
         // PP: Serialize Evaluation Domains.
-        pp.domain_w
-            .serialize_with_mode(&mut buf, COMPRESS_MOD)
-            .map_err(|_| Error::FailedToSerializeElement)?;
-        pp.domain_v
-            .serialize_with_mode(&mut buf, COMPRESS_MOD)
-            .map_err(|_| Error::FailedToSerializeElement)?;
-        pp.domain_k
-            .serialize_with_mode(&mut buf, COMPRESS_MOD)
-            .map_err(|_| Error::FailedToSerializeElement)?;
-        pp.domain_log_n
-            .serialize_with_mode(&mut buf, COMPRESS_MOD)
-            .map_err(|_| Error::FailedToSerializeElement)?;
+        // pp.domain_w
+        //     .serialize_with_mode(&mut buf, COMPRESS_MOD)
+        //     .map_err(|_| Error::FailedToSerializeElement)?;
+        // pp.domain_v
+        //     .serialize_with_mode(&mut buf, COMPRESS_MOD)
+        //     .map_err(|_| Error::FailedToSerializeElement)?;
+        // pp.domain_k
+        //     .serialize_with_mode(&mut buf, COMPRESS_MOD)
+        //     .map_err(|_| Error::FailedToSerializeElement)?;
+        // pp.domain_log_n
+        //     .serialize_with_mode(&mut buf, COMPRESS_MOD)
+        //     .map_err(|_| Error::FailedToSerializeElement)?;
 
-        // PP: Serialize Points.
+        // PP: Serialize points.
         pp.g2_affine_zw
             .serialize_with_mode(&mut buf, COMPRESS_MOD)
             .map_err(|_| Error::FailedToSerializeElement)?;
@@ -214,17 +212,17 @@ impl<F: PrimeField> Transcript<F> {
             .map_err(|_| Error::FailedToSerializeElement)?;
 
         // PP: Serialize Identity Polynomial.
-        let mut serialized_id_poly_k = vec![];
-        pp.identity_poly_k
-            .serialize_with_mode(&mut serialized_id_poly_k, COMPRESS_MOD)
-            .map_err(|_| Error::FailedToSerializeElement)?;
-        let mut hasher = Blake2b512::new();
-        hasher.update(&serialized_id_poly_k);
-        let hash = hasher.finalize();
-        buf.write_all(&hash)
-            .map_err(|_| Error::FailedToSerializeElement)?;
+        // let mut serialized_id_poly_k = vec![];
+        // pp.identity_poly_k
+        //     .serialize_with_mode(&mut serialized_id_poly_k, COMPRESS_MOD)
+        //     .map_err(|_| Error::FailedToSerializeElement)?;
+        // let mut hasher = Blake2b512::new();
+        // hasher.update(&serialized_id_poly_k);
+        // let hash = hasher.finalize();
+        // buf.write_all(&hash)
+        //     .map_err(|_| Error::FailedToSerializeElement)?;
 
-        // TPP: Serialize Points.
+        // TPP: Serialize points.
         tpp.g1_affine_d
             .serialize_with_mode(&mut buf, COMPRESS_MOD)
             .map_err(|_| Error::FailedToSerializeElement)?;
@@ -235,41 +233,46 @@ impl<F: PrimeField> Transcript<F> {
             .serialize_with_mode(&mut buf, COMPRESS_MOD)
             .map_err(|_| Error::FailedToSerializeElement)?;
 
+        // Statement: Serialize the point.
+        statement
+            .serialize_with_mode(&mut buf, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+
         // Lists will be serialized in parallel.
-        let g1_affine_lists = vec![
-            &pp.g1_affine_srs,
-            &pp.g1_affine_list_q2,
-            &pp.g1_affine_list_q3,
-            &pp.g1_affine_list_lw,
-            &pp.g1_affine_lw_opening_proofs_at_zero,
-            &pp.g1_affine_list_lv,
-            &pp.g1_affine_srs_caulk,
-            &tpp.g1_affine_list_q1,
-        ];
+        // let g1_affine_lists = vec![
+        //     &pp.g1_affine_srs,
+        //     &pp.g1_affine_list_q2,
+        //     &pp.g1_affine_list_q3,
+        //     &pp.g1_affine_list_lw,
+        //     &pp.g1_affine_lw_opening_proofs_at_zero,
+        //     &pp.g1_affine_list_lv,
+        //     &pp.g1_affine_srs_caulk,
+        //     &tpp.g1_affine_list_q1,
+        // ];
 
-        let g2_affine_lists = vec![&pp.g2_affine_srs, &pp.g2_affine_srs_caulk];
+        // let g2_affine_lists = vec![&pp.g2_affine_srs, &pp.g2_affine_srs_caulk];
 
-        let g1_affine_list_hashes: Result<Vec<Vec<u8>>, Error> = g1_affine_lists
-            .par_iter()
-            .map(|group| serialize_and_hash(*group, COMPRESS_MOD))
-            .collect();
+        // let g1_affine_list_hashes: Result<Vec<Vec<u8>>, Error> = g1_affine_lists
+        //     .par_iter()
+        //     .map(|group| serialize_and_hash(*group, COMPRESS_MOD))
+        //     .collect();
 
-        let g1_affine_list_hashes = g1_affine_list_hashes?;
+        // let g1_affine_list_hashes = g1_affine_list_hashes?;
 
-        let g2_affine_list_hashes: Result<Vec<Vec<u8>>, Error> = g2_affine_lists
-            .par_iter()
-            .map(|group| serialize_and_hash(*group, COMPRESS_MOD))
-            .collect();
+        // let g2_affine_list_hashes: Result<Vec<Vec<u8>>, Error> = g2_affine_lists
+        //     .par_iter()
+        //     .map(|group| serialize_and_hash(*group, COMPRESS_MOD))
+        //     .collect();
 
-        let g2_affine_list_hashes = g2_affine_list_hashes?;
+        // let g2_affine_list_hashes = g2_affine_list_hashes?;
 
-        for hash in g1_affine_list_hashes
-            .into_iter()
-            .chain(g2_affine_list_hashes)
-        {
-            buf.write_all(&hash)
-                .map_err(|_| Error::FailedToSerializeElement)?;
-        }
+        // for hash in g1_affine_list_hashes
+        //     .into_iter()
+        //     .chain(g2_affine_list_hashes)
+        // {
+        //     buf.write_all(&hash)
+        //         .map_err(|_| Error::FailedToSerializeElement)?;
+        // }
 
         self.transcript
             .append_message(Label::PublicParameters.as_bytes(), buf.as_ref());

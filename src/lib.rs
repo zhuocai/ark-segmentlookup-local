@@ -87,7 +87,7 @@ mod tests {
 
             let rng = &mut test_rng();
 
-            let proof = prove(&pp, &tpp, &witness, rng).unwrap();
+            let proof = prove(&pp, &tpp, &witness, statement, rng).unwrap();
 
             let result = verify(&pp, &tpp, statement, &proof, rng);
             assert!(result.is_ok(), "Failed to verify proof: {:?} num_table_segments: {}, num_witness_segments: {}, segment_size: {}", result, num_table_segments, num_witness_segments, segment_size);
