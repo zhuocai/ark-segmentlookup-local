@@ -6,6 +6,7 @@ use ark_ff::{FftField, Field};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use ark_std::{One, Zero};
+use rayon::prelude::*;
 
 pub(crate) fn vanishing_poly_commitment_affine<C: CurveGroup>(
     affine_srs: &[C::Affine],
@@ -145,7 +146,9 @@ pub fn divide_by_vanishing_poly_on_coset_in_place<C: CurveGroup>(
     let inv_vanishing_poly_eval = vanishing_poly_eval
         .inverse()
         .ok_or(Error::FailedToInverseFieldElement)?;
-    ark_std::cfg_iter_mut!(evaluations).for_each(|eval| *eval *= &inv_vanishing_poly_eval);
+    evaluations
+        .par_iter_mut()
+        .for_each(|eval| *eval *= &inv_vanishing_poly_eval);
 
     Ok(())
 }

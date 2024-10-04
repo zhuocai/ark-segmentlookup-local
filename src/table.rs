@@ -71,6 +71,7 @@ impl<P: Pairing> Table<P> {
         let table_poly = DensePolynomial::from_coefficients_slice(&domain.ifft(&self.values));
         let g2_t = Kzg::<P::G2>::commit(g2_affine_srs, &table_poly);
 
+        // TODO: Make this a feature.
         // Make-Unique process.
         // Find T_{max}.
         let max_absolute_value = self
