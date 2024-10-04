@@ -43,16 +43,16 @@ mod tests {
         let segments = rand_segments::generate(&pp);
 
         let t = Table::<P>::new(&pp, segments).expect("Failed to create table");
+        let tpp = t.preprocess(&pp).unwrap();
 
         let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)
             .collect();
 
-        let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
+        let witness =
+            Witness::new(&pp, &tpp.adjusted_table_values, &queried_segment_indices).unwrap();
 
         let statement = witness.generate_statement(&pp.g1_affine_srs);
-
-        let tpp = t.preprocess(&pp).unwrap();
 
         (pp, t, witness, statement, tpp)
     }
@@ -79,7 +79,7 @@ mod tests {
                 "num_table_segments: {}, num_witness_segments: {}, segment_size: {}",
                 num_table_segments, num_witness_segments, segment_size
             );
-            let (pp, t, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(
+            let (pp, _, witness, statement, tpp) = prepare_common_inputs::<ark_bn254::Bn254>(
                 *num_table_segments,
                 *num_witness_segments,
                 *segment_size,
@@ -87,7 +87,7 @@ mod tests {
 
             let rng = &mut test_rng();
 
-            let proof = prove(&pp, &t, &tpp, &witness, rng).unwrap();
+            let proof = prove(&pp, &tpp, &witness, statement, rng).unwrap();
 
             let result = verify(&pp, &tpp, statement, &proof, rng);
             assert!(result.is_ok(), "Failed to verify proof: {:?} num_table_segments: {}, num_witness_segments: {}, segment_size: {}", result, num_table_segments, num_witness_segments, segment_size);

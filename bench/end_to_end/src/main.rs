@@ -53,13 +53,12 @@ fn end_to_end(n: usize, k: usize, s: usize) {
     let tpp = table.preprocess(&pp).expect("Failed to preprocess table");
     println!("setup time: {:?} ms", curr_time.elapsed().as_millis());
 
-    let witness = Witness::new(&pp, &table, &queried_segment_indices).unwrap();
+    let witness = Witness::new(&pp, &tpp.adjusted_table_values, &queried_segment_indices).unwrap();
+    let statement = witness.generate_statement(&pp.g1_affine_srs);
 
     let curr_time = std::time::Instant::now();
-    let proof = prove(&pp, &table, &tpp, &witness, rng).expect("Failed to prove");
+    let proof = prove(&pp, &tpp, &witness, statement, rng).expect("Failed to prove");
     println!("prove time: {:?} ms", curr_time.elapsed().as_millis());
-
-    let statement = witness.generate_statement(&pp.g1_affine_srs);
 
     let curr_time = std::time::Instant::now();
     let res = verify(&pp, &tpp, statement, &proof, rng);

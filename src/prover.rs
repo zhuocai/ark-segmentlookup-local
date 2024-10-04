@@ -5,7 +5,7 @@ use crate::error::Error;
 use crate::kzg::Kzg;
 use crate::multi_unity::{multi_unity_prove, MultiUnityProof};
 use crate::public_parameters::PublicParameters;
-use crate::table::{Table, TablePreprocessedParameters};
+use crate::table::TablePreprocessedParameters;
 use crate::transcript::{Label, Transcript};
 use crate::witness::Witness;
 use ark_ec::pairing::Pairing;
@@ -50,13 +50,13 @@ pub struct Proof<P: Pairing> {
 
 pub fn prove<P: Pairing, R: Rng + ?Sized>(
     pp: &PublicParameters<P>,
-    table: &Table<P>,
     tpp: &TablePreprocessedParameters<P>,
     witness: &Witness<P>,
+    statement: P::G1Affine,
     rng: &mut R,
 ) -> Result<Proof<P>, Error> {
     let mut transcript = Transcript::<P::ScalarField>::new();
-    transcript.append_element(Label::CommonInputs, pp)?;
+    transcript.append_public_parameters(&pp, &tpp, statement)?;
 
     // Round 1-1: Compute the multiplicity polynomial M of degree (ns - 1),
     // and send [M(tau)]_1 and [M(tau / w)]_1 to the verifier.
@@ -158,10 +158,10 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
         g1_affine_qa,
         g1_affine_a0,
         sparse_poly_eval_list_a,
-    } = compute_polynomial_a_and_quotient(
+    }: PolynomialAAndQuotient<P> = compute_polynomial_a_and_quotient(
         beta,
         delta,
-        table,
+        &tpp.adjusted_table_values,
         &segment_multiplicities,
         pp.segment_size,
         &roots_of_unity_w,
@@ -540,7 +540,7 @@ struct PolynomialAAndQuotient<P: Pairing> {
 fn compute_polynomial_a_and_quotient<P: Pairing>(
     beta: P::ScalarField,
     delta: P::ScalarField,
-    table: &Table<P>,
+    table_values: &[P::ScalarField],
     segment_multiplicities: &DashMap<usize, usize>,
     segment_size: usize,
     roots_of_unity_w: &[P::ScalarField],
@@ -564,7 +564,7 @@ fn compute_polynomial_a_and_quotient<P: Pairing>(
                     segment_index * segment_size..(segment_index + 1) * segment_size;
                 for elem_index in segment_element_indices {
                     let fr_a_i =
-                        (beta + table.values[elem_index] + delta * roots_of_unity_w[elem_index])
+                        (beta + table_values[elem_index] + delta * roots_of_unity_w[elem_index])
                             .inverse()
                             .ok_or(Error::FailedToInverseFieldElement)?
                             * P::ScalarField::from(multiplicity as u64);
@@ -730,7 +730,7 @@ mod tests {
     use std::ops::Neg;
 
     use super::*;
-    use crate::table::rand_segments;
+    use crate::table::{rand_segments, Table};
     use ark_bn254::Bn254;
     use ark_ec::Group;
     use ark_std::rand::RngCore;
@@ -856,13 +856,14 @@ mod tests {
                 .map(|_| rng.next_u32() as usize % pp.num_table_segments)
                 .collect();
 
-            let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
+            let witness = Witness::new(&pp, &t.values, &queried_segment_indices).unwrap();
+            let statement = witness.generate_statement(&pp.g1_affine_srs);
 
             let tpp = t.preprocess(&pp).unwrap();
 
             let rng = &mut test_rng();
 
-            prove(&pp, &t, &tpp, &witness, rng).unwrap();
+            prove(&pp, &tpp, &witness, statement, rng).unwrap();
         }
     }
 }

@@ -23,7 +23,7 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
     rng: &mut R,
 ) -> Result<(), Error> {
     let mut transcript = Transcript::<P::ScalarField>::new();
-    transcript.append_element(Label::CommonInputs, pp)?;
+    transcript.append_public_parameters(&pp, &tpp, statement)?;
 
     transcript.append_elements(&[
         (Label::G1M, proof.g1_affine_m),
@@ -101,7 +101,7 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
             beta,
             delta,
             proof.g1_affine_m,
-            tpp.g2_affine_t,
+            tpp.g2_affine_adjusted_t,
             pp.g2_affine_zw,
             &pp.g2_affine_srs,
         ),
@@ -142,7 +142,7 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
         second_point_check(&proof, gamma, &pp.domain_k),
     ];
 
-    checks.into_par_iter().try_for_each(|check| check)?;
+    checks.into_iter().try_for_each(|check| check)?;
 
     Ok(())
 }
@@ -443,20 +443,21 @@ mod tests {
             let segments = rand_segments::generate(&pp);
 
             let t = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
+            let tpp = t.preprocess(&pp).unwrap();
 
             let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
                 .map(|_| rng.next_u32() as usize % pp.num_table_segments)
                 .collect();
 
-            let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
+            let witness =
+                Witness::new(&pp, &tpp.adjusted_table_values, &queried_segment_indices).unwrap();
 
             let statement = witness.generate_statement(&pp.g1_affine_srs);
 
-            let tpp = t.preprocess(&pp).unwrap();
-
             let rng = &mut test_rng();
 
-            let proof = prove::<Bn254, _>(&pp, &t, &tpp, &witness, rng).expect("Failed to prove");
+            let proof =
+                prove::<Bn254, _>(&pp, &tpp, &witness, statement, rng).expect("Failed to prove");
 
             assert!(verify::<Bn254, _>(&pp, &tpp, statement, &proof, rng).is_ok());
         }
@@ -469,12 +470,6 @@ mod tests {
         let inputs = [(4, 8, 4), (8, 4, 4), (16, 8, 4)];
 
         for (num_table_segments, num_witness_segments, segment_size) in inputs.into_iter() {
-            // let pp = PublicParameters::setup(
-            //     &mut rng,
-            //     num_table_segments,
-            //     num_witness_segments,
-            //     segment_size,
-            // )
             let pp = PublicParameters::builder()
                 .num_table_segments(num_table_segments)
                 .num_witness_segments(num_witness_segments)
@@ -484,16 +479,16 @@ mod tests {
             let segments = rand_segments::generate(&pp);
 
             let t = Table::<Bn254>::new(&pp, segments.clone()).expect("Failed to create table");
+            let tpp = t.preprocess(&pp).unwrap();
 
             let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
                 .map(|_| rng.next_u32() as usize % pp.num_table_segments)
                 .collect();
 
-            let witness = Witness::new(&pp, &t, &queried_segment_indices).unwrap();
+            let witness =
+                Witness::new(&pp, &tpp.adjusted_table_values, &queried_segment_indices).unwrap();
 
             let statement = witness.generate_statement(&pp.g1_affine_srs);
-
-            let tpp = t.preprocess(&pp).unwrap();
 
             let rng = &mut test_rng();
 
@@ -508,8 +503,9 @@ mod tests {
                 })
                 .collect();
             let new_t = Table::new(&pp, new_segments).expect("Failed to create table");
+            let new_tpp = new_t.preprocess(&pp).unwrap();
 
-            let proof = prove(&pp, &new_t, &tpp, &witness, rng).expect("Failed to prove");
+            let proof = prove(&pp, &new_tpp, &witness, statement, rng).expect("Failed to prove");
 
             assert!(!verify(&pp, &tpp, statement, &proof, rng).is_ok());
 
@@ -517,9 +513,14 @@ mod tests {
             let new_queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
                 .map(|_| rng.next_u32() as usize % pp.num_table_segments)
                 .collect();
-            let new_witness = Witness::new(&pp, &new_t, &new_queried_segment_indices).unwrap();
+            let new_witness = Witness::new(
+                &pp,
+                &new_tpp.adjusted_table_values,
+                &new_queried_segment_indices,
+            )
+            .unwrap();
 
-            let proof = prove(&pp, &t, &tpp, &new_witness, rng).expect("Failed to prove");
+            let proof = prove(&pp, &tpp, &new_witness, statement, rng).expect("Failed to prove");
 
             assert!(!verify(&pp, &tpp, statement, &proof, rng).is_ok());
 
@@ -535,13 +536,13 @@ mod tests {
                 evaluations: witness.evaluations.clone(),
             };
 
-            let proof = prove(&pp, &t, &tpp, &new_witness, rng).expect("Failed to prove");
+            let proof = prove(&pp, &tpp, &new_witness, statement, rng).expect("Failed to prove");
 
             assert!(!verify(&pp, &tpp, statement, &proof, rng).is_ok());
 
             // Wrong statement
             let new_statement = G1Affine::generator().mul(Fr::rand(rng)).into_affine();
-            let proof = prove(&pp, &t, &tpp, &witness, rng).expect("Failed to prove");
+            let proof = prove(&pp, &tpp, &witness, statement, rng).expect("Failed to prove");
 
             assert!(!verify(&pp, &tpp, new_statement, &proof, rng).is_ok());
         }
