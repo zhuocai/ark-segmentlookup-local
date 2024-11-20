@@ -1,3 +1,5 @@
+use ark_serialize::Compress;
+
 mod domain;
 mod error;
 pub mod kzg;
@@ -10,6 +12,8 @@ mod toeplitz;
 mod transcript;
 pub mod verifier;
 pub mod witness;
+
+const COMPRESS_MOD: Compress = Compress::No;
 
 #[cfg(test)]
 mod tests {

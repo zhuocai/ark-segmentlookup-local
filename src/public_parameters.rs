@@ -5,13 +5,16 @@ use crate::domain::{
 use crate::error::Error;
 use crate::kzg::unsafe_setup_from_tau;
 use crate::lagrange_basis::{lagrange_basis_g1, zero_opening_proofs};
+use crate::COMPRESS_MOD;
 use ark_ec::{pairing::Pairing, CurveGroup};
 use ark_ff::{FftField, Field};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
+use ark_serialize::CanonicalSerialize;
 use ark_std::rand::rngs::StdRng;
 use ark_std::rand::Rng;
 use ark_std::{One, UniformRand, Zero};
+use blake2::{Blake2b512, Digest};
 use rayon::prelude::*;
 use std::cmp::max;
 use std::ops::{Mul, MulAssign};
@@ -66,6 +69,8 @@ pub struct PublicParameters<P: Pairing> {
     pub(crate) log_num_table_segments: usize,
     pub(crate) domain_log_n: Radix2EvaluationDomain<P::ScalarField>,
     pub(crate) identity_poly_k: DensePolynomial<P::ScalarField>,
+
+    pub(crate) hash_representation: Vec<u8>,
 }
 
 impl<P: Pairing> PublicParameters<P> {
@@ -265,6 +270,64 @@ impl<P: Pairing> PublicParametersBuilder<P> {
                 .ok_or(Error::FailedToCreateEvaluationDomain)?;
         let identity_poly_k = identity_poly::<P>(&domain_k);
 
+        let mut buffer = Vec::new();
+        let mut hasher = Blake2b512::new();
+
+        serialize_usize(num_table_segments, &mut buffer);
+        serialize_usize(num_witness_segments, &mut buffer);
+        serialize_usize(segment_size, &mut buffer);
+        g2_affine_zw
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        g2_affine_zv
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        g2_affine_zk
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        domain_w
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        domain_v
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        domain_k
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        domain_coset_v
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        domain_log_n
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        hasher.update(&buffer);
+        buffer.clear();
+
+        g1_affine_srs
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        hasher.update(&buffer);
+        buffer.clear();
+
+        g2_affine_srs
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        hasher.update(&buffer);
+        buffer.clear();
+
+        g1_affine_srs_caulk
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        hasher.update(&buffer);
+        buffer.clear();
+
+        g2_affine_srs_caulk
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        hasher.update(&buffer);
+
+        let hash_representation = hasher.finalize().to_vec();
+
         Ok(PublicParameters {
             num_table_segments,
             num_witness_segments,
@@ -295,8 +358,14 @@ impl<P: Pairing> PublicParametersBuilder<P> {
             log_num_table_segments,
             domain_log_n,
             identity_poly_k,
+
+            hash_representation,
         })
     }
+}
+
+fn serialize_usize(input: usize, buf: &mut Vec<u8>) {
+    buf.extend_from_slice(&input.to_le_bytes());
 }
 
 #[cfg(test)]

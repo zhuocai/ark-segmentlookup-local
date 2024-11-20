@@ -56,7 +56,14 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     rng: &mut R,
 ) -> Result<Proof<P>, Error> {
     let mut transcript = Transcript::<P::ScalarField>::new();
-    transcript.append_public_parameters(&pp, &tpp, statement)?;
+    transcript.append_elements(&[
+        (Label::PublicParameters, pp.hash_representation.clone()),
+        (
+            Label::TablePreprocessedParameters,
+            tpp.hash_representation.clone(),
+        ),
+    ])?;
+    transcript.append_element(Label::Statement, &statement)?;
 
     // Round 1-1: Compute the multiplicity polynomial M of degree (ns - 1),
     // and send [M(tau)]_1 and [M(tau / w)]_1 to the verifier.
@@ -147,8 +154,8 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
 
     // Round 9: The verifier sends random scalar fields beta, delta to the prover.
     // Use Fiat-Shamir heuristic to make the protocol non-interactive.
-    let beta = transcript.get_and_append_challenge(Label::ChallengeBeta)?;
-    let delta = transcript.get_and_append_challenge(Label::ChallengeDelta)?;
+    let beta = transcript.squeeze_challenge(Label::ChallengeBeta)?;
+    let delta = transcript.squeeze_challenge(Label::ChallengeDelta)?;
 
     // Round 10-1: The prover computes A(X) of degree ns-1 in sparse form,
     // and sends [A(tau)]_1 to the verifier.
@@ -219,7 +226,7 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
 
     // Round 11-3: The verifier sends random scalar gamma to the prover.
     // Use Fiat-Shamir heuristic to make the protocol non-interactive.
-    let gamma = transcript.get_and_append_challenge(Label::ChallengeGamma)?;
+    let gamma = transcript.squeeze_challenge(Label::ChallengeGamma)?;
 
     // Round 12: The prover sends b_{0,gamma} = B_0(gamma), f_{gamma} = F(gamma),
     // l_{gamma} = L(gamma), a_0 = A(0), l_{gamma,v} = L(v*gamma), q_{gamma,L}
@@ -258,7 +265,7 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     ])?;
 
     // Round 11-3: Use Fiat-Shamir transform to sample eta.
-    let eta = transcript.get_and_append_challenge(Label::ChallengeEta)?;
+    let eta = transcript.squeeze_challenge(Label::ChallengeEta)?;
 
     // Round 14: Compute the commitment of H_P(X)
     // = (P(X) - p_{gamma}) / (X - gamma),

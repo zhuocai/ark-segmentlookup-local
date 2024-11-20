@@ -23,7 +23,15 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
     rng: &mut R,
 ) -> Result<(), Error> {
     let mut transcript = Transcript::<P::ScalarField>::new();
-    transcript.append_public_parameters(&pp, &tpp, statement)?;
+    transcript.append_elements(&[
+        (Label::PublicParameters, pp.hash_representation.clone()),
+        (
+            Label::TablePreprocessedParameters,
+            tpp.hash_representation.clone(),
+        ),
+    ])?;
+
+    transcript.append_element(Label::Statement, &statement)?;
 
     transcript.append_elements(&[
         (Label::G1M, proof.g1_affine_m),
@@ -39,14 +47,14 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
         (Label::CaulkG1H2, proof.multi_unity_proof.g1_h_2),
     ])?;
 
-    let caulk_alpha = transcript.get_and_append_challenge(Label::ChallengeCaulkAlpha)?;
+    let caulk_alpha = transcript.squeeze_challenge(Label::ChallengeCaulkAlpha)?;
 
     transcript.append_element(Label::CaulkG1H1, &proof.multi_unity_proof.g1_h_1)?;
 
-    let caulk_beta = transcript.get_and_append_challenge(Label::ChallengeCaulkBeta)?;
+    let caulk_beta = transcript.squeeze_challenge(Label::ChallengeCaulkBeta)?;
 
-    let beta = transcript.get_and_append_challenge(Label::ChallengeBeta)?;
-    let delta = transcript.get_and_append_challenge(Label::ChallengeDelta)?;
+    let beta = transcript.squeeze_challenge(Label::ChallengeBeta)?;
+    let delta = transcript.squeeze_challenge(Label::ChallengeDelta)?;
 
     transcript.append_elements(&[
         (Label::G1A, proof.g1_affine_a),
@@ -57,7 +65,7 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
         (Label::G1Px, proof.g1_affine_px),
     ])?;
 
-    let gamma = transcript.get_and_append_challenge(Label::ChallengeGamma)?;
+    let gamma = transcript.squeeze_challenge(Label::ChallengeGamma)?;
 
     transcript.append_elements(&[
         (Label::FrB0AtGamma, proof.fr_b0_at_gamma),
@@ -70,7 +78,7 @@ pub fn verify<P: Pairing, R: Rng + ?Sized>(
         (Label::FrQdAtGamma, proof.fr_qd_at_gamma),
     ])?;
 
-    let eta = transcript.get_and_append_challenge(Label::ChallengeEta)?;
+    let eta = transcript.squeeze_challenge(Label::ChallengeEta)?;
 
     let g2_affine_one = pp.g2_affine_srs[0];
     let g2_affine_tau = pp.g2_affine_srs[1];

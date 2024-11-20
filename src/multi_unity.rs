@@ -160,7 +160,7 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
         (Label::CaulkG1H2, g1_h_2),
     ])?;
 
-    let alpha = transcript.get_and_append_challenge(Label::ChallengeCaulkAlpha)?;
+    let alpha = transcript.squeeze_challenge(Label::ChallengeCaulkAlpha)?;
 
     // Compute H_1(Y)
     let bi_poly_u_at_alpha_list = poly_u_list
@@ -195,7 +195,7 @@ pub(crate) fn multi_unity_prove<P: Pairing, R: Rng + ?Sized>(
     let g1_h_1 = P::G1::msm_unchecked(&pp.g1_affine_srs_caulk, &poly_h_1.coeffs).into_affine();
 
     transcript.append_element(Label::CaulkG1H1, &g1_h_1)?;
-    let beta = transcript.get_and_append_challenge(Label::ChallengeCaulkBeta)?;
+    let beta = transcript.squeeze_challenge(Label::ChallengeCaulkBeta)?;
 
     let u_alpha_beta = poly_u_alpha.evaluate(&beta);
     let mut poly_p = DensePolynomial::from_coefficients_slice(&[u_alpha_beta.square()]);
@@ -540,13 +540,13 @@ mod tests {
             ])
             .unwrap();
         let alpha = transcript
-            .get_and_append_challenge(Label::ChallengeCaulkAlpha)
+            .squeeze_challenge(Label::ChallengeCaulkAlpha)
             .unwrap();
         transcript
             .append_element(Label::CaulkG1H1, &multi_unity_proof.g1_h_1)
             .unwrap();
         let beta = transcript
-            .get_and_append_challenge(Label::ChallengeCaulkBeta)
+            .squeeze_challenge(Label::ChallengeCaulkBeta)
             .unwrap();
         assert!(
             multi_unity_verify(&pp, alpha, beta, &g1_affine_d, &multi_unity_proof, &mut rng)
@@ -581,13 +581,13 @@ mod tests {
             ])
             .unwrap();
         let alpha = transcript
-            .get_and_append_challenge(Label::ChallengeCaulkAlpha)
+            .squeeze_challenge(Label::ChallengeCaulkAlpha)
             .unwrap();
         transcript
             .append_element(Label::CaulkG1H1, &multi_unity_proof.g1_h_1)
             .unwrap();
         let beta = transcript
-            .get_and_append_challenge(Label::ChallengeCaulkBeta)
+            .squeeze_challenge(Label::ChallengeCaulkBeta)
             .unwrap();
         assert!(!multi_unity_verify(
             &pp,
