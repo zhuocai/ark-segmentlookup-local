@@ -77,7 +77,6 @@ mod tests {
     use ark_poly::univariate::DensePolynomial;
     use ark_poly::DenseUVPolynomial;
     use ark_std::{test_rng, One, Zero};
-    use std::ops::Div;
 
     type ScalarField = <Bn254 as Pairing>::ScalarField;
     type G1Affine = <Bn254 as Pairing>::G1Affine;
@@ -95,11 +94,11 @@ mod tests {
         let lagrange_basis: Vec<DensePolynomial<P::ScalarField>> = (0..domain.size())
             .into_par_iter()
             .map(|i| {
-                let mut poly_base: DensePolynomial<P::ScalarField> =
-                    vanishing_poly.div(&DensePolynomial::from_coefficients_vec(vec![
+                let mut poly_base: DensePolynomial<P::ScalarField> = &vanishing_poly
+                    / &DensePolynomial::from_coefficients_vec(vec![
                         -roots_of_unity[i],
                         P::ScalarField::one(),
-                    ]));
+                    ]);
                 poly_base = poly_base.mul(&DensePolynomial::from_coefficients_vec(vec![
                     roots_of_unity_div_domain_size[i],
                 ]));
