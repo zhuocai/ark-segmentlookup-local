@@ -2,12 +2,15 @@ use crate::error::Error;
 use crate::kzg::Kzg;
 use crate::public_parameters::PublicParameters;
 use crate::toeplitz::UpperToeplitz;
+use crate::COMPRESS_MOD;
 use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{DenseUVPolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain};
+use ark_serialize::CanonicalSerialize;
 use ark_std::{One, Zero};
+use blake2::{Blake2b512, Digest};
 use rayon::prelude::*;
 use std::ops::Mul;
 
@@ -20,9 +23,11 @@ pub struct Table<P: Pairing> {
 pub struct TablePreprocessedParameters<P: Pairing> {
     pub(crate) g1_affine_list_q1: Vec<P::G1Affine>,
     pub g1_affine_d: P::G1Affine,
-    pub(crate) g2_affine_t: P::G2Affine,
+    // pub(crate) g2_affine_t: P::G2Affine,
     pub(crate) g2_affine_adjusted_t: P::G2Affine,
     pub adjusted_table_values: Vec<P::ScalarField>,
+
+    pub(crate) hash_representation: Vec<u8>,
 }
 
 impl<P: Pairing> Table<P> {
@@ -109,6 +114,8 @@ impl<P: Pairing> Table<P> {
         let g2_adjusted_t = Kzg::<P::G2>::commit(&pp.g2_affine_srs, &poly_adjusted_t);
 
         let g2_affine_list = P::G2::normalize_batch(&[g2_t, g2_adjusted_t]);
+        let g2_affine_t = g2_affine_list[0];
+        let g2_affine_adjusted_t = g2_affine_list[1];
 
         let g1_affine_list_q1 = compute_quotients::<P>(&poly_adjusted_t, &domain, g1_affine_srs)?;
 
@@ -127,12 +134,29 @@ impl<P: Pairing> Table<P> {
         let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
         let g1_affine_d = Kzg::<P::G1>::commit(&pp.g1_affine_srs, &poly_d).into_affine();
 
+        let mut buffer = Vec::new();
+        let mut hasher = Blake2b512::new();
+
+        g1_affine_d
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        g2_affine_t
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+        g2_affine_adjusted_t
+            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+            .map_err(|_| Error::FailedToSerializeElement)?;
+
+        hasher.update(&buffer);
+        let hash_representation = hasher.finalize().to_vec();
+
         Ok(TablePreprocessedParameters {
             g1_affine_list_q1,
-            g2_affine_t: g2_affine_list[0],
-            g2_affine_adjusted_t: g2_affine_list[1],
+            // g2_affine_t,
+            g2_affine_adjusted_t,
             g1_affine_d,
             adjusted_table_values,
+            hash_representation,
         })
     }
 }
