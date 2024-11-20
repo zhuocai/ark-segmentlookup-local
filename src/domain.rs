@@ -89,9 +89,7 @@ pub(crate) fn divide_by_vanishing_poly_checked<P: Pairing>(
     domain: &Radix2EvaluationDomain<P::ScalarField>,
     poly: &DensePolynomial<P::ScalarField>,
 ) -> Result<DensePolynomial<P::ScalarField>, Error> {
-    let (quotient, remainder) = poly
-        .divide_by_vanishing_poly(*domain)
-        .ok_or(Error::FailedToDivideByVanishingPolynomial)?;
+    let (quotient, remainder) = poly.divide_by_vanishing_poly(*domain);
 
     if !remainder.is_zero() {
         return Err(Error::RemainderAfterDivisionIsNonZero);

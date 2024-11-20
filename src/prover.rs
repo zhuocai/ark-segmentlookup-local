@@ -10,14 +10,14 @@ use crate::transcript::{Label, Transcript};
 use crate::witness::Witness;
 use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::{FftField, Field};
+use ark_ff::Field;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{DenseUVPolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain};
 use ark_std::rand::Rng;
 use ark_std::{One, Zero};
 use dashmap::DashMap;
 use rayon::prelude::*;
-use std::ops::{AddAssign, Mul, Sub};
+use std::ops::{AddAssign, Mul};
 
 pub struct Proof<P: Pairing> {
     pub(crate) g1_affine_m: P::G1Affine,       // [M(tau)]_1
@@ -110,8 +110,10 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
     } = compute_index_polynomials_and_quotients::<P>(
         &pp.domain_k,
         &pp.domain_v,
+        &pp.domain_coset_v,
         &roots_of_unity_w,
         &roots_of_unity_v,
+        &pp.partial_inv_zk_at_coset_v_values,
         &pp.g1_affine_list_lv,
         &pp.g1_affine_srs,
         &witness.segment_indices,
@@ -187,6 +189,7 @@ pub fn prove<P: Pairing, R: Rng + ?Sized>(
         &witness,
         pp.witness_element_size,
         &pp.domain_v,
+        &pp.domain_coset_v,
         &poly_eval_list_l,
         &poly_l,
         &pp.g1_affine_srs,
@@ -412,8 +415,10 @@ struct IndexPolynomialsAndQuotients<P: Pairing> {
 fn compute_index_polynomials_and_quotients<P: Pairing>(
     domain_k: &Radix2EvaluationDomain<P::ScalarField>,
     domain_v: &Radix2EvaluationDomain<P::ScalarField>,
+    domain_coset_v: &Radix2EvaluationDomain<P::ScalarField>,
     roots_of_unity_w: &[P::ScalarField],
     roots_of_unity_v: &[P::ScalarField],
+    partial_inv_zk_at_coset_v_values: &[P::ScalarField],
     g1_affine_list_lv: &[P::G1Affine],
     g1_affine_srs: &[P::G1Affine],
     queried_segment_indices: &[usize],
@@ -504,14 +509,26 @@ fn compute_index_polynomials_and_quotients<P: Pairing>(
     // Compute y(X) = X^k - 1, which is the vanishing polynomial of Domain V.
     let poly_x_pow_k_sub_one = domain_k.vanishing_polynomial().into();
     let poly_l = DensePolynomial::from_coefficients_vec(poly_coeff_list_l);
-    let mut poly_ql = poly_l.sub(&poly_w_mul_l_div_v);
+    let mut poly_ql = &poly_l - &poly_w_mul_l_div_v;
     poly_ql = poly_ql.mul(&poly_x_pow_k_sub_one);
     let poly_ql = divide_by_vanishing_poly_checked::<P>(domain_v, &poly_ql)?;
     let g1_affine_ql = Kzg::<P::G1>::commit(&g1_affine_srs, &poly_ql).into_affine();
 
     // Compute Q_D s.t. L(X) - D(X) = Z_K(X) * Q_D(X).
-    let mut poly_qd = poly_l.sub(&poly_d);
-    poly_qd = divide_by_vanishing_poly_checked::<P>(domain_k, &poly_qd)?;
+    let mut poly_qd = &poly_l - &poly_d;
+    domain_coset_v.fft_in_place(&mut poly_qd.coeffs);
+    let partial_size = partial_inv_zk_at_coset_v_values.len();
+    let poly_coset_eval_list_qd = poly_qd.coeffs;
+    let poly_coset_eval_list_qd = poly_coset_eval_list_qd
+        .par_iter()
+        .enumerate()
+        .map(|(i, &c)| {
+            let inv_zk_at_coset_v = partial_inv_zk_at_coset_v_values[i % partial_size];
+            c * inv_zk_at_coset_v
+        })
+        .collect::<Vec<_>>();
+    let poly_coeff_list_qd = domain_coset_v.ifft(&poly_coset_eval_list_qd);
+    let poly_qd = DensePolynomial::from_coefficients_vec(poly_coeff_list_qd);
     let g1_affine_qd = Kzg::<P::G1>::commit(&g1_affine_srs, &poly_qd).into_affine();
 
     Ok(IndexPolynomialsAndQuotients {
@@ -626,6 +643,7 @@ fn compute_polynomial_b_and_quotient<P: Pairing>(
     witness: &Witness<P>,
     witness_element_size: usize,
     domain_v: &Radix2EvaluationDomain<P::ScalarField>,
+    domain_coset_v: &Radix2EvaluationDomain<P::ScalarField>,
     poly_eval_list_l: &[P::ScalarField],
     poly_l: &DensePolynomial<P::ScalarField>,
     g1_affine_srs: &[P::G1Affine],
@@ -644,10 +662,6 @@ fn compute_polynomial_b_and_quotient<P: Pairing>(
     let poly_b = DensePolynomial::from_coefficients_vec(poly_coeff_list_b);
 
     // Round 10-4: The prover computes [Q_B(tau)]_1 using the SRS and Lemma 4.
-    let domain_coset_v = domain_v
-        .get_coset(P::ScalarField::GENERATOR)
-        .ok_or(Error::FailedToCreateCosetOfEvaluationDomain)?;
-
     let poly_coset_eval_list_l = domain_coset_v.fft(&poly_l);
     let poly_coset_eval_list_b = domain_coset_v.fft(&poly_b);
     let poly_coset_eval_list_f = domain_coset_v.fft(&witness.poly);
@@ -727,14 +741,13 @@ fn compute_degree_check_g1_affine<P: Pairing>(
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Neg;
-
     use super::*;
     use crate::table::{rand_segments, Table};
     use ark_bn254::Bn254;
-    use ark_ec::Group;
+    use ark_ec::PrimeGroup;
     use ark_std::rand::RngCore;
     use ark_std::{test_rng, UniformRand};
+    use std::ops::{Neg, Sub};
 
     type Fr = <Bn254 as Pairing>::ScalarField;
     type G1 = <Bn254 as Pairing>::G1;

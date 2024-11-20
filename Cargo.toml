@@ -8,14 +8,14 @@ repository = "https://github.com/txaty/ark-segmentlookup"
 keywords = ["arkworks", "cryptography", "parallel"]
 
 [dependencies] # TODO: Sort out the features
-ark-ff = { version = "0.4.2", features = ["parallel"] }
-ark-poly = { version = "0.4.2", features = ["parallel"] }
-ark-ec = { version = "0.4.2", features = ["parallel"] }
-ark-std = { version = "0.4.0", features = ["parallel"] }
-ark-serialize = { version = "0.4.2", default-features = false, features = ["derive"] }
+ark-ff = { version = "0.5.0", features = ["parallel"] }
+ark-poly = { version = "0.5.0", features = ["parallel"] }
+ark-ec = { version = "0.5.0", features = ["parallel"] }
+ark-std = { version = "0.5.0", features = ["parallel"] }
+ark-serialize = { version = "0.5.0", default-features = false, features = ["derive"] }
 merlin = { version = "3.0.0" }
 rayon = "1.10"
 dashmap = { version = "6.1.0", features = ["rayon"] }
 
 [dev-dependencies]
-ark-bn254 = "0.4.0"
+ark-bn254 = "0.5.0"

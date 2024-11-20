@@ -6,12 +6,12 @@ use crate::error::Error;
 use crate::kzg::unsafe_setup_from_tau;
 use crate::lagrange_basis::{lagrange_basis_g1, zero_opening_proofs};
 use ark_ec::{pairing::Pairing, CurveGroup};
-use ark_ff::Field;
+use ark_ff::{FftField, Field};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use ark_std::rand::rngs::StdRng;
 use ark_std::rand::Rng;
-use ark_std::{UniformRand, Zero};
+use ark_std::{One, UniformRand, Zero};
 use rayon::prelude::*;
 use std::cmp::max;
 use std::ops::{Mul, MulAssign};
@@ -55,6 +55,10 @@ pub struct PublicParameters<P: Pairing> {
     pub domain_w: Radix2EvaluationDomain<P::ScalarField>,
     pub domain_v: Radix2EvaluationDomain<P::ScalarField>,
     pub domain_k: Radix2EvaluationDomain<P::ScalarField>,
+
+    pub(crate) domain_coset_v: Radix2EvaluationDomain<P::ScalarField>,
+
+    pub(crate) partial_inv_zk_at_coset_v_values: Vec<P::ScalarField>,
 
     // Caulk Sub-protocol parameters.
     pub(crate) g1_affine_srs_caulk: Vec<P::G1Affine>,
@@ -179,6 +183,28 @@ impl<P: Pairing> PublicParametersBuilder<P> {
         let domain_k = create_sub_domain::<P>(&domain_v, order_k, segment_size)?;
         let g2_affine_zk = vanishing_poly_commitment_affine::<P::G2>(&g2_affine_srs, &domain_k);
 
+        let domain_coset_v = domain_v
+            .get_coset(P::ScalarField::GENERATOR)
+            .ok_or(Error::FailedToCreateEvaluationDomain)?;
+
+        let partial_roots_of_unity_coset_v: Vec<P::ScalarField> = (0..segment_size)
+            .into_par_iter()
+            .map(|i| domain_coset_v.element(i))
+            .collect();
+
+        let fr_one = P::ScalarField::one();
+        let partial_inv_zk_at_coset_v_values: Result<Vec<P::ScalarField>, Error> =
+            partial_roots_of_unity_coset_v
+                .par_iter()
+                .map(|&x| {
+                    let val = x.pow([order_k as u64]) - fr_one;
+                    let inv = val.inverse().ok_or(Error::FailedToInverseFieldElement)?;
+
+                    Ok(inv)
+                })
+                .collect();
+        let partial_inv_zk_at_coset_v_values = partial_inv_zk_at_coset_v_values?;
+
         // Step 4-a: Compute q_{i, 2} = [Q_{i,2}(tau)]_1 for i in 1..n*s.
         // Q_{i,2}(X) = w^i / (ns).
         let roots_of_unity_w: Vec<P::ScalarField> = roots_of_unity::<P>(&domain_w);
@@ -245,6 +271,7 @@ impl<P: Pairing> PublicParametersBuilder<P> {
             segment_size,
             table_element_size,
             witness_element_size,
+
             g1_affine_srs,
             g2_affine_srs,
             g2_affine_zw,
@@ -255,9 +282,13 @@ impl<P: Pairing> PublicParametersBuilder<P> {
             g1_affine_list_lw,
             g1_affine_lw_opening_proofs_at_zero,
             g1_affine_list_lv,
+
             domain_w,
             domain_v,
             domain_k,
+            domain_coset_v,
+
+            partial_inv_zk_at_coset_v_values,
 
             g1_affine_srs_caulk,
             g2_affine_srs_caulk,
