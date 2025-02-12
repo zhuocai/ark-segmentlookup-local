@@ -1,3 +1,5 @@
+mod parameters;
+
 use ark_bn254::Bn254;
 use ark_ec::pairing::Pairing;
 use ark_segmentlookup::prover::prove;
