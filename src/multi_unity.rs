@@ -442,7 +442,7 @@ fn multi_unity_verify_defer_pairing<P: Pairing>(
 mod tests {
     use crate::domain::roots_of_unity;
     use crate::kzg::Kzg;
-    use ark_bn254::Bn254;
+    use ark_bls12_381::Bls12_381;
     use ark_std::rand::RngCore;
     use ark_std::test_rng;
 
@@ -457,7 +457,7 @@ mod tests {
     #[test]
     fn test_multi_unity_prove() {
         let mut rng = test_rng();
-        let pp = PublicParameters::<Bn254>::builder()
+        let pp = PublicParameters::<Bls12_381>::builder()
             .num_table_segments(8)
             .num_witness_segments(4)
             .segment_size(4)
@@ -468,9 +468,9 @@ mod tests {
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)
             .collect();
 
-        let roots_of_unity_w: Vec<<Bn254 as Pairing>::ScalarField> =
-            roots_of_unity::<Bn254>(&pp.domain_w);
-        let mut poly_eval_list_d: Vec<<Bn254 as Pairing>::ScalarField> =
+        let roots_of_unity_w: Vec<<Bls12_381 as Pairing>::ScalarField> =
+            roots_of_unity::<Bls12_381>(&pp.domain_w);
+        let mut poly_eval_list_d: Vec<<Bls12_381 as Pairing>::ScalarField> =
             Vec::with_capacity(pp.num_witness_segments);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
@@ -480,7 +480,7 @@ mod tests {
         let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
         let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
         let g1_d =
-            Kzg::<<Bn254 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &poly_d).into_affine();
+            Kzg::<<Bls12_381 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &poly_d).into_affine();
 
         let mut transcript = Transcript::new();
 
@@ -498,7 +498,7 @@ mod tests {
     #[test]
     fn test_multi_unity_verify() {
         let mut rng = test_rng();
-        let pp = PublicParameters::<Bn254>::builder()
+        let pp = PublicParameters::<Bls12_381>::builder()
             .num_table_segments(8)
             .num_witness_segments(4)
             .segment_size(4)
@@ -507,9 +507,9 @@ mod tests {
         let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)
             .collect();
-        let roots_of_unity_w: Vec<<Bn254 as Pairing>::ScalarField> =
-            roots_of_unity::<Bn254>(&pp.domain_w);
-        let mut poly_eval_list_d: Vec<<Bn254 as Pairing>::ScalarField> =
+        let roots_of_unity_w: Vec<<Bls12_381 as Pairing>::ScalarField> =
+            roots_of_unity::<Bls12_381>(&pp.domain_w);
+        let mut poly_eval_list_d: Vec<<Bls12_381 as Pairing>::ScalarField> =
             Vec::with_capacity(pp.num_witness_segments);
         for &seg_index in queried_segment_indices.iter() {
             let root_of_unity_w = roots_of_unity_w[seg_index * pp.segment_size];
@@ -518,7 +518,7 @@ mod tests {
         let poly_coeff_list_d = pp.domain_k.ifft(&poly_eval_list_d);
         let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
         let g1_affine_d =
-            Kzg::<<Bn254 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &poly_d).into_affine();
+            Kzg::<<Bls12_381 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &poly_d).into_affine();
 
         let mut transcript = Transcript::new();
         let multi_unity_proof = multi_unity_prove(
@@ -554,11 +554,11 @@ mod tests {
         );
 
         let mut incorrect_poly_eval_list_d = poly_eval_list_d.clone();
-        incorrect_poly_eval_list_d[0] = <Bn254 as Pairing>::ScalarField::from(456);
+        incorrect_poly_eval_list_d[0] = <Bls12_381 as Pairing>::ScalarField::from(456);
         let incorrect_poly_coeff_list_d = pp.domain_k.ifft(&incorrect_poly_eval_list_d);
         let incorrect_poly_d = DensePolynomial::from_coefficients_vec(incorrect_poly_coeff_list_d);
         let incorrect_g1_d =
-            Kzg::<<Bn254 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &incorrect_poly_d)
+            Kzg::<<Bls12_381 as Pairing>::G1>::commit(&pp.g1_affine_srs_caulk, &incorrect_poly_d)
                 .into_affine();
 
         let mut transcript = Transcript::new();

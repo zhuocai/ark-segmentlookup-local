@@ -9,7 +9,9 @@ use ark_ff::Field;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{DenseUVPolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain};
 use ark_serialize::CanonicalSerialize;
-use ark_std::{One, Zero};
+use ark_std::rand::rngs::StdRng;
+use ark_std::rand::Rng;
+use ark_std::{One, UniformRand, Zero};
 use blake2::{Blake2b512, Digest};
 use rayon::prelude::*;
 use std::ops::Mul;
@@ -60,6 +62,7 @@ impl<P: Pairing> Table<P> {
     pub fn preprocess(
         &self,
         pp: &PublicParameters<P>,
+        dummy: &bool,
     ) -> Result<TablePreprocessedParameters<P>, Error> {
         if self.num_segments != pp.num_table_segments {
             return Err(Error::InvalidNumberOfSegments(self.num_segments));
@@ -68,96 +71,120 @@ impl<P: Pairing> Table<P> {
         if self.segment_size != pp.segment_size {
             return Err(Error::InvalidSegmentSize(self.segment_size));
         }
+        if (!dummy) {
+            let domain = pp.domain_w;
+            let g1_affine_srs = &pp.g1_affine_srs;
+            let g2_affine_srs = &pp.g2_affine_srs;
 
-        let domain = pp.domain_w;
-        let g1_affine_srs = &pp.g1_affine_srs;
-        let g2_affine_srs = &pp.g2_affine_srs;
+            let table_poly = DensePolynomial::from_coefficients_slice(&domain.ifft(&self.values));
+            let g2_t = Kzg::<P::G2>::commit(g2_affine_srs, &table_poly);
 
-        let table_poly = DensePolynomial::from_coefficients_slice(&domain.ifft(&self.values));
-        let g2_t = Kzg::<P::G2>::commit(g2_affine_srs, &table_poly);
+            // TODO: Make this a feature.
+            // Make-Unique process.
+            // Find T_{max}.
+            let max_absolute_value = self
+                .values
+                .par_iter()
+                .map(|&value| {
+                    let abs_value = if value < P::ScalarField::zero() {
+                        -value
+                    } else {
+                        value
+                    };
+                    abs_value
+                })
+                .max()
+                .unwrap_or(P::ScalarField::zero());
+            // T'(X) = T(X) + E(X)
+            let fr_two = P::ScalarField::from(2u128);
+            let fr_max_abs_add_one = max_absolute_value + P::ScalarField::one(); // T_{max} + 1
+            let num_table_segments = pp.num_table_segments;
+            let segment_size = pp.segment_size;
+            let adjusted_table_values = self
+                .values
+                .par_iter()
+                .zip(0..num_table_segments * segment_size)
+                .map(|(&t_i, i)| {
+                    let fr_j = P::ScalarField::from((i % segment_size) as u128);
+                    let e_i = fr_two * fr_j * fr_max_abs_add_one;
+                    let adjusted_t_i = t_i + e_i;
 
-        // TODO: Make this a feature.
-        // Make-Unique process.
-        // Find T_{max}.
-        let max_absolute_value = self
-            .values
-            .par_iter()
-            .map(|&value| {
-                let abs_value = if value < P::ScalarField::zero() {
-                    -value
-                } else {
-                    value
-                };
-                abs_value
+                    adjusted_t_i
+                })
+                .collect::<Vec<_>>();
+            let poly_coeff_list_adjusted_t = pp.domain_w.ifft(&adjusted_table_values);
+            let poly_adjusted_t =
+                DensePolynomial::from_coefficients_vec(poly_coeff_list_adjusted_t);
+            let g2_adjusted_t = Kzg::<P::G2>::commit(&pp.g2_affine_srs, &poly_adjusted_t);
+
+            let g2_affine_list = P::G2::normalize_batch(&[g2_t, g2_adjusted_t]);
+            let g2_affine_t = g2_affine_list[0];
+            let g2_affine_adjusted_t = g2_affine_list[1];
+
+            let g1_affine_list_q1 =
+                compute_quotients::<P>(&poly_adjusted_t, &domain, g1_affine_srs)?;
+
+            let num_witness_segments = pp.num_witness_segments;
+            let mut poly_eval_list_d = (0..num_witness_segments * segment_size)
+                .into_par_iter()
+                .map(|i| {
+                    let fr_j = P::ScalarField::from((i % segment_size) as u128);
+                    let d_i = fr_two * fr_j * fr_max_abs_add_one;
+
+                    d_i
+                })
+                .collect::<Vec<_>>();
+            pp.domain_v.ifft_in_place(&mut poly_eval_list_d);
+            let poly_coeff_list_d = poly_eval_list_d;
+            let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
+            let g1_affine_d = Kzg::<P::G1>::commit(&pp.g1_affine_srs, &poly_d).into_affine();
+
+            let mut buffer = Vec::new();
+            let mut hasher = Blake2b512::new();
+
+            g1_affine_d
+                .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+                .map_err(|_| Error::FailedToSerializeElement)?;
+            g2_affine_t
+                .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+                .map_err(|_| Error::FailedToSerializeElement)?;
+            g2_affine_adjusted_t
+                .serialize_with_mode(&mut buffer, COMPRESS_MOD)
+                .map_err(|_| Error::FailedToSerializeElement)?;
+
+            hasher.update(&buffer);
+            let hash_representation = hasher.finalize().to_vec();
+
+            Ok(TablePreprocessedParameters {
+                g1_affine_list_q1,
+                // g2_affine_t,
+                g2_affine_adjusted_t,
+                g1_affine_d,
+                adjusted_table_values,
+                hash_representation,
             })
-            .max()
-            .unwrap_or(P::ScalarField::zero());
-        // T'(X) = T(X) + E(X)
-        let fr_two = P::ScalarField::from(2u128);
-        let fr_max_abs_add_one = max_absolute_value + P::ScalarField::one(); // T_{max} + 1
-        let num_table_segments = pp.num_table_segments;
-        let segment_size = pp.segment_size;
-        let adjusted_table_values = self
-            .values
-            .par_iter()
-            .zip(0..num_table_segments * segment_size)
-            .map(|(&t_i, i)| {
-                let fr_j = P::ScalarField::from((i % segment_size) as u128);
-                let e_i = fr_two * fr_j * fr_max_abs_add_one;
-                let adjusted_t_i = t_i + e_i;
+        } else {
+            // Dummy preprocessing
+            let mut rng = ark_std::test_rng();
+            let g1r = P::G1Affine::rand(&mut rng);
+            let g2r = P::G2Affine::rand(&mut rng);
+            let fr = P::ScalarField::rand(&mut rng);
+            let g1_affine_list_q1 = vec![g1r; pp.domain_w.size()];
+            let g2_affine_adjusted_t = g2r.clone();
+            let g1_affine_d = g1r.clone();
+            let adjusted_table_values = vec![fr; pp.num_table_segments*pp.segment_size];
+            let hash_representation = "dummy".as_bytes().to_vec();
 
-                adjusted_t_i
+
+            Ok(TablePreprocessedParameters {
+                g1_affine_list_q1,
+                // g2_affine_t,
+                g2_affine_adjusted_t,
+                g1_affine_d,
+                adjusted_table_values,
+                hash_representation,
             })
-            .collect::<Vec<_>>();
-        let poly_coeff_list_adjusted_t = pp.domain_w.ifft(&adjusted_table_values);
-        let poly_adjusted_t = DensePolynomial::from_coefficients_vec(poly_coeff_list_adjusted_t);
-        let g2_adjusted_t = Kzg::<P::G2>::commit(&pp.g2_affine_srs, &poly_adjusted_t);
-
-        let g2_affine_list = P::G2::normalize_batch(&[g2_t, g2_adjusted_t]);
-        let g2_affine_t = g2_affine_list[0];
-        let g2_affine_adjusted_t = g2_affine_list[1];
-
-        let g1_affine_list_q1 = compute_quotients::<P>(&poly_adjusted_t, &domain, g1_affine_srs)?;
-
-        let num_witness_segments = pp.num_witness_segments;
-        let mut poly_eval_list_d = (0..num_witness_segments * segment_size)
-            .into_par_iter()
-            .map(|i| {
-                let fr_j = P::ScalarField::from((i % segment_size) as u128);
-                let d_i = fr_two * fr_j * fr_max_abs_add_one;
-
-                d_i
-            })
-            .collect::<Vec<_>>();
-        pp.domain_v.ifft_in_place(&mut poly_eval_list_d);
-        let poly_coeff_list_d = poly_eval_list_d;
-        let poly_d = DensePolynomial::from_coefficients_vec(poly_coeff_list_d);
-        let g1_affine_d = Kzg::<P::G1>::commit(&pp.g1_affine_srs, &poly_d).into_affine();
-
-        let mut buffer = Vec::new();
-        let mut hasher = Blake2b512::new();
-
-        g1_affine_d
-            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
-            .map_err(|_| Error::FailedToSerializeElement)?;
-        g2_affine_t
-            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
-            .map_err(|_| Error::FailedToSerializeElement)?;
-        g2_affine_adjusted_t
-            .serialize_with_mode(&mut buffer, COMPRESS_MOD)
-            .map_err(|_| Error::FailedToSerializeElement)?;
-
-        hasher.update(&buffer);
-        let hash_representation = hasher.finalize().to_vec();
-
-        Ok(TablePreprocessedParameters {
-            g1_affine_list_q1,
-            // g2_affine_t,
-            g2_affine_adjusted_t,
-            g1_affine_d,
-            adjusted_table_values,
-            hash_representation,
-        })
+        }
     }
 }
 
@@ -240,7 +267,7 @@ pub mod rand_segments {
 
 #[cfg(test)]
 mod tests {
-    use ark_bn254::Bn254;
+    use ark_bls12_381::Bls12_381;
     use ark_std::test_rng;
 
     use super::*;
@@ -254,9 +281,9 @@ mod tests {
             .segment_size(4)
             .build(&mut rng)
             .expect("Failed to setup public parameters");
-        let segments = rand_segments::generate::<Bn254>(&pp);
+        let segments = rand_segments::generate::<Bls12_381>(&pp);
 
-        Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
+        Table::<Bls12_381>::new(&pp, segments).expect("Failed to create table");
     }
 
     #[test]
@@ -270,7 +297,7 @@ mod tests {
             .expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
 
-        let t = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
+        let t = Table::<Bls12_381>::new(&pp, segments).expect("Failed to create table");
 
         t.preprocess(&pp).expect("Failed to preprocess table");
     }

@@ -136,7 +136,7 @@ impl<P: Pairing> PublicParametersBuilder<P> {
         self
     }
 
-    pub fn build<R: Rng + ?Sized>(self, rng: &mut R) -> Result<PublicParameters<P>, Error> {
+    pub fn build<R: Rng + ?Sized>(self, rng: &mut R, dummy: &bool) -> Result<PublicParameters<P>, Error> {
         // Extract parameters or set defaults.
         let num_table_segments = self
             .num_table_segments
@@ -158,6 +158,8 @@ impl<P: Pairing> PublicParametersBuilder<P> {
         let max_pow_of_tau_g1 = max(num_table_segments, num_witness_segments) * segment_size - 1;
         let caulk_max_pow_of_tau_g1 =
             (num_witness_segments + 1) * log_num_table_segments.next_power_of_two();
+        if (!dummy)
+        {
         let (g1_affine_srs, g2_affine_srs, g1_affine_srs_caulk, g2_affine_srs_caulk) =
             unsafe_setup_from_tau::<P, StdRng>(max_pow_of_tau_g1, caulk_max_pow_of_tau_g1, tau);
 
@@ -361,6 +363,123 @@ impl<P: Pairing> PublicParametersBuilder<P> {
 
             hash_representation,
         })
+    } else {
+        // Dummy setup
+        // for every required parameter, set it to rand value
+        let g1r = P::G1Affine::rand(rng);
+        let g2r = P::G2Affine::rand(rng);
+        let fr: P::ScalarField = P::ScalarField::rand(rng);
+        let mut g1_affine_srs = vec![];
+        let mut g2_affine_srs = vec![];
+        let mut g1_affine_srs_caulk = vec![];
+        let mut g2_affine_srs_caulk = vec![];
+        for _ in 0..(max_pow_of_tau_g1 + 1) {
+            g1_affine_srs.push(g1r.clone());
+            g2_affine_srs.push(g2r.clone());
+        }
+        g2_affine_srs.push(g2r.clone());
+        for _ in 0..(caulk_max_pow_of_tau_g1+1) {
+            g1_affine_srs_caulk.push(g1r.clone());
+            g2_affine_srs_caulk.push(g2r.clone());
+        }
+        g2_affine_srs_caulk.push(g2r.clone());
+
+
+        // step 2: define domains | not sure about runtime 
+
+        let order_w = num_table_segments * segment_size;
+        let domain_w = if let Some(domain_generator_w) = self.domain_generator_w {
+            create_domain_with_generator::<P::ScalarField>(domain_generator_w, order_w)?
+        } else {
+            Radix2EvaluationDomain::<P::ScalarField>::new(order_w)
+                .ok_or(Error::FailedToCreateEvaluationDomain)?
+        };
+
+        let g2_affine_zw = g2r.clone();
+        let order_v = num_witness_segments * segment_size;
+        let domain_v = if let Some(domain_generator_v) = self.domain_generator_v {
+            create_domain_with_generator::<P::ScalarField>(domain_generator_v, order_v)?
+        } else {
+            Radix2EvaluationDomain::<P::ScalarField>::new(order_v)
+                .ok_or(Error::FailedToCreateEvaluationDomain)?
+        };
+        let g2_affine_zv = g2r.clone();
+        let order_k = num_witness_segments;
+        let domain_k = create_sub_domain::<P>(&domain_v, order_k, segment_size)?;
+        let g2_affine_zk = g2r.clone();
+        
+        let domain_coset_v = domain_v
+            .get_coset(P::ScalarField::GENERATOR)
+            .ok_or(Error::FailedToCreateEvaluationDomain)?;
+        
+        // assign random scalarfield values to partial_roots_of_unity_coset_v
+        
+
+        let mut partial_inv_zk_at_coset_v_values = vec![];
+        for _ in 0..segment_size {
+            partial_inv_zk_at_coset_v_values.push(fr.clone());
+        }
+
+        let mut g1_affine_list_q2 = vec![];
+        for _ in 0..num_table_segments * segment_size {
+            g1_affine_list_q2.push(g1r.clone());
+        }
+        let mut g1_affine_list_lw = vec![];
+        for _ in 0..num_table_segments * segment_size {
+            g1_affine_list_lw.push(g1r.clone());
+        }
+        let mut g1_affine_lw_opening_proofs_at_zero = vec![];
+        for _ in 0..num_table_segments * segment_size {
+            g1_affine_lw_opening_proofs_at_zero.push(g1r.clone());
+        }
+        let mut g1_affine_list_lv = vec![];
+        for _ in 0..num_witness_segments * segment_size {
+            g1_affine_list_lv.push(g1r.clone());
+        }
+        let mut g1_affine_list_q3 = vec![];
+        for _ in 0..num_table_segments * segment_size {
+            g1_affine_list_q3.push(g1r.clone());
+        }
+        let domain_log_n = Radix2EvaluationDomain::<P::ScalarField>::new(log_num_table_segments)
+            .ok_or(Error::FailedToCreateEvaluationDomain)?;
+        let identity_poly_k = identity_poly::<P>(&domain_k);
+        
+        let hash_representation = "dummy".as_bytes().to_vec();
+
+        Ok(PublicParameters {
+            num_table_segments,
+            num_witness_segments,
+            segment_size,
+            table_element_size,
+            witness_element_size,
+
+            g1_affine_srs,
+            g2_affine_srs,
+            g2_affine_zw,
+            g2_affine_zv,
+            g2_affine_zk,
+            g1_affine_list_q2,
+            g1_affine_list_q3,
+            g1_affine_list_lw,
+            g1_affine_lw_opening_proofs_at_zero,
+            g1_affine_list_lv,
+
+            domain_w,
+            domain_v,
+            domain_k,
+            domain_coset_v,
+
+            partial_inv_zk_at_coset_v_values,
+
+            g1_affine_srs_caulk,
+            g2_affine_srs_caulk,
+            log_num_table_segments,
+            domain_log_n,
+            identity_poly_k,
+
+            hash_representation,
+        })
+    }
     }
 }
 
@@ -370,7 +489,7 @@ fn serialize_usize(input: usize, buf: &mut Vec<u8>) {
 
 #[cfg(test)]
 mod test {
-    use ark_bn254::Bn254;
+    use ark_bls12_381::Bls12_381;
     use ark_std::test_rng;
 
     use super::*;
@@ -378,11 +497,11 @@ mod test {
     #[test]
     fn test_public_parameters_builder() {
         let mut rng = test_rng();
-        PublicParameters::<Bn254>::builder()
+        PublicParameters::<Bls12_381>::builder()
             .num_table_segments(8)
             .num_witness_segments(4)
             .segment_size(4)
-            .build(&mut rng)
+            .build(&mut rng, &false)
             .unwrap();
     }
 }

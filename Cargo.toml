@@ -20,4 +20,4 @@ blake2 = "0.10.6"
 
 
 [dev-dependencies]
-ark-bn254 = "0.5.0"
+ark-bls12-381 = "0.5.0"

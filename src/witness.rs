@@ -22,6 +22,10 @@ impl<P: Pairing> Witness<P> {
         queried_segment_indices: &[usize],
     ) -> Result<Self, Error> {
         if queried_segment_indices.len() != pp.num_witness_segments {
+            println!(
+                "queried_segment_indices.len() != pp.num_witness_segments \n===> Queried segment indices: {:?}",
+                queried_segment_indices
+            );
             return Err(Error::InvalidNumberOfQueries(queried_segment_indices.len()));
         }
 
@@ -31,6 +35,11 @@ impl<P: Pairing> Witness<P> {
             for j in 0..pp.segment_size {
                 let index = segment_index * pp.segment_size + j;
                 if index >= table_values.len() {
+                    println!(
+                        "index >= table_values.len() \n===> index: {:?}, table_values.len(): {:?}",
+                        index,
+                        table_values.len()
+                    );
                     return Err(Error::InvalidSegmentElementIndex(index));
                 }
 
@@ -61,7 +70,7 @@ impl<P: Pairing> Witness<P> {
 
 #[cfg(test)]
 mod tests {
-    use ark_bn254::Bn254;
+    use ark_bls12_381::Bls12_381;
     use ark_std::rand::RngCore;
     use ark_std::test_rng;
 
@@ -80,7 +89,7 @@ mod tests {
             .expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
 
-        let t = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
+        let t = Table::<Bls12_381>::new(&pp, segments).expect("Failed to create table");
 
         let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)
