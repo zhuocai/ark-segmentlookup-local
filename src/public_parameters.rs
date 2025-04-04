@@ -369,20 +369,10 @@ impl<P: Pairing> PublicParametersBuilder<P> {
         let g1r = P::G1Affine::rand(rng);
         let g2r = P::G2Affine::rand(rng);
         let fr: P::ScalarField = P::ScalarField::rand(rng);
-        let mut g1_affine_srs = vec![];
-        let mut g2_affine_srs = vec![];
-        let mut g1_affine_srs_caulk = vec![];
-        let mut g2_affine_srs_caulk = vec![];
-        for _ in 0..(max_pow_of_tau_g1 + 1) {
-            g1_affine_srs.push(g1r.clone());
-            g2_affine_srs.push(g2r.clone());
-        }
-        g2_affine_srs.push(g2r.clone());
-        for _ in 0..(caulk_max_pow_of_tau_g1+1) {
-            g1_affine_srs_caulk.push(g1r.clone());
-            g2_affine_srs_caulk.push(g2r.clone());
-        }
-        g2_affine_srs_caulk.push(g2r.clone());
+        let g1_affine_srs = vec![g1r; max_pow_of_tau_g1 + 1];
+        let g2_affine_srs = vec![g2r; max_pow_of_tau_g1 + 2];
+        let g1_affine_srs_caulk = vec![g1r; caulk_max_pow_of_tau_g1 + 1];
+        let g2_affine_srs_caulk = vec![g2r; caulk_max_pow_of_tau_g1 + 2];
 
 
         // step 2: define domains | not sure about runtime 
@@ -395,7 +385,7 @@ impl<P: Pairing> PublicParametersBuilder<P> {
                 .ok_or(Error::FailedToCreateEvaluationDomain)?
         };
 
-        let g2_affine_zw = g2r.clone();
+        let g2_affine_zw = g2r;
         let order_v = num_witness_segments * segment_size;
         let domain_v = if let Some(domain_generator_v) = self.domain_generator_v {
             create_domain_with_generator::<P::ScalarField>(domain_generator_v, order_v)?
@@ -403,10 +393,10 @@ impl<P: Pairing> PublicParametersBuilder<P> {
             Radix2EvaluationDomain::<P::ScalarField>::new(order_v)
                 .ok_or(Error::FailedToCreateEvaluationDomain)?
         };
-        let g2_affine_zv = g2r.clone();
+        let g2_affine_zv = g2r;
         let order_k = num_witness_segments;
         let domain_k = create_sub_domain::<P>(&domain_v, order_k, segment_size)?;
-        let g2_affine_zk = g2r.clone();
+        let g2_affine_zk = g2r;
         
         let domain_coset_v = domain_v
             .get_coset(P::ScalarField::GENERATOR)
@@ -417,28 +407,28 @@ impl<P: Pairing> PublicParametersBuilder<P> {
 
         let mut partial_inv_zk_at_coset_v_values = vec![];
         for _ in 0..segment_size {
-            partial_inv_zk_at_coset_v_values.push(fr.clone());
+            partial_inv_zk_at_coset_v_values.push(fr);
         }
 
         let mut g1_affine_list_q2 = vec![];
         for _ in 0..num_table_segments * segment_size {
-            g1_affine_list_q2.push(g1r.clone());
+            g1_affine_list_q2.push(g1r);
         }
         let mut g1_affine_list_lw = vec![];
         for _ in 0..num_table_segments * segment_size {
-            g1_affine_list_lw.push(g1r.clone());
+            g1_affine_list_lw.push(g1r);
         }
         let mut g1_affine_lw_opening_proofs_at_zero = vec![];
         for _ in 0..num_table_segments * segment_size {
-            g1_affine_lw_opening_proofs_at_zero.push(g1r.clone());
+            g1_affine_lw_opening_proofs_at_zero.push(g1r);
         }
         let mut g1_affine_list_lv = vec![];
         for _ in 0..num_witness_segments * segment_size {
-            g1_affine_list_lv.push(g1r.clone());
+            g1_affine_list_lv.push(g1r);
         }
         let mut g1_affine_list_q3 = vec![];
         for _ in 0..num_table_segments * segment_size {
-            g1_affine_list_q3.push(g1r.clone());
+            g1_affine_list_q3.push(g1r);
         }
         let domain_log_n = Radix2EvaluationDomain::<P::ScalarField>::new(log_num_table_segments)
             .ok_or(Error::FailedToCreateEvaluationDomain)?;

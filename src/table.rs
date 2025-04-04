@@ -170,8 +170,8 @@ impl<P: Pairing> Table<P> {
             let g2r = P::G2Affine::rand(&mut rng);
             let fr = P::ScalarField::rand(&mut rng);
             let g1_affine_list_q1 = vec![g1r; pp.domain_w.size()];
-            let g2_affine_adjusted_t = g2r.clone();
-            let g1_affine_d = g1r.clone();
+            let g2_affine_adjusted_t = g2r;
+            let g1_affine_d = g1r;
             let adjusted_table_values = vec![fr; pp.num_table_segments*pp.segment_size];
             let hash_representation = "dummy".as_bytes().to_vec();
 
