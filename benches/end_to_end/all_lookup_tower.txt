@@ -1,0 +1,3393 @@
+   Compiling ark-segmentlookup v0.1.0 (/home/caizhuo/code/ark-segmentlookup-local)
+warning: unnecessary parentheses around `if` condition
+   --> /home/caizhuo/code/ark-segmentlookup-local/src/public_parameters.rs:161:12
+    |
+161 |         if (!dummy)
+    |            ^      ^
+    |
+    = note: `#[warn(unused_parens)]` on by default
+help: remove these parentheses
+    |
+161 -         if (!dummy)
+161 +         if !dummy
+    |
+
+warning: unused import: `ark_std::rand::rngs::StdRng`
+  --> /home/caizhuo/code/ark-segmentlookup-local/src/table.rs:12:5
+   |
+12 | use ark_std::rand::rngs::StdRng;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `ark_std::rand::Rng`
+  --> /home/caizhuo/code/ark-segmentlookup-local/src/table.rs:13:5
+   |
+13 | use ark_std::rand::Rng;
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: unnecessary parentheses around `if` condition
+  --> /home/caizhuo/code/ark-segmentlookup-local/src/table.rs:74:12
+   |
+74 |         if (!dummy) {
+   |            ^      ^
+   |
+help: remove these parentheses
+   |
+74 -         if (!dummy) {
+74 +         if !dummy {
+   |
+
+warning: `ark-segmentlookup` (lib) generated 4 warnings (run `cargo fix --lib -p ark-segmentlookup` to apply 4 suggestions)
+   Compiling e2e-test v0.1.0 (/home/caizhuo/code/ark-segmentlookup-local/benches/end_to_end)
+warning: unused variable: `res`
+  --> src/main.rs:86:9
+   |
+86 |     let res = verify(&pp, &tpp, statement, &proof, rng);
+   |         ^^^ help: if this is intentional, prefix it with an underscore: `_res`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: constant `N_VEC` is never used
+ --> src/parameters.rs:2:11
+  |
+2 | pub const N_VEC: [usize; 19] = [
+  |           ^^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: constant `S_VEC` is never used
+  --> src/parameters.rs:24:11
+   |
+24 | pub const S_VEC: [usize; 10] = [
+   |           ^^^^^
+
+warning: constant `K_VEC` is never used
+  --> src/parameters.rs:37:11
+   |
+37 | pub const K_VEC: [usize; 11] = [
+   |           ^^^^^
+
+warning: constant `N_MID` is never used
+  --> src/parameters.rs:51:11
+   |
+51 | pub const N_MID: usize = 1 << 14;
+   |           ^^^^^
+
+warning: constant `S_MID` is never used
+  --> src/parameters.rs:52:11
+   |
+52 | pub const S_MID: usize = 1 << 6;
+   |           ^^^^^
+
+warning: constant `K_MID` is never used
+  --> src/parameters.rs:53:11
+   |
+53 | pub const K_MID: usize = 1 << 4;
+   |           ^^^^^
+
+warning: `e2e-test` (bin "e2e-test") generated 7 warnings
+    Finished `release` profile [optimized] target(s) in 11.22s
+     Running `target/release/e2e-test`
+n=65536, s=1, k=1
+Setup time for n=65536 s=1 k=1 is [19] ms
+Table preprocess time for n=65536 s=1 k=1 is [4] ms
+Prove time for n=65536 s=1 k=1 is [20] ms
+Verify time for n=65536 s=1 k=1 is [24] ms
+n=65536, s=1, k=2
+Setup time for n=65536 s=1 k=2 is [19] ms
+Table preprocess time for n=65536 s=1 k=2 is [4] ms
+Prove time for n=65536 s=1 k=2 is [27] ms
+Verify time for n=65536 s=1 k=2 is [26] ms
+n=65536, s=1, k=4
+Setup time for n=65536 s=1 k=4 is [5] ms
+Table preprocess time for n=65536 s=1 k=4 is [3] ms
+Prove time for n=65536 s=1 k=4 is [38] ms
+Verify time for n=65536 s=1 k=4 is [27] ms
+n=65536, s=1, k=8
+Setup time for n=65536 s=1 k=8 is [13] ms
+Table preprocess time for n=65536 s=1 k=8 is [4] ms
+Prove time for n=65536 s=1 k=8 is [61] ms
+Verify time for n=65536 s=1 k=8 is [28] ms
+n=65536, s=1, k=16
+Setup time for n=65536 s=1 k=16 is [5] ms
+Table preprocess time for n=65536 s=1 k=16 is [2] ms
+Prove time for n=65536 s=1 k=16 is [105] ms
+Verify time for n=65536 s=1 k=16 is [28] ms
+n=65536, s=1, k=32
+Setup time for n=65536 s=1 k=32 is [5] ms
+Table preprocess time for n=65536 s=1 k=32 is [2] ms
+Prove time for n=65536 s=1 k=32 is [195] ms
+Verify time for n=65536 s=1 k=32 is [28] ms
+n=65536, s=1, k=64
+Setup time for n=65536 s=1 k=64 is [5] ms
+Table preprocess time for n=65536 s=1 k=64 is [2] ms
+Prove time for n=65536 s=1 k=64 is [375] ms
+Verify time for n=65536 s=1 k=64 is [28] ms
+n=65536, s=1, k=128
+Setup time for n=65536 s=1 k=128 is [5] ms
+Table preprocess time for n=65536 s=1 k=128 is [2] ms
+Prove time for n=65536 s=1 k=128 is [726] ms
+Verify time for n=65536 s=1 k=128 is [28] ms
+n=65536, s=1, k=256
+Setup time for n=65536 s=1 k=256 is [5] ms
+Table preprocess time for n=65536 s=1 k=256 is [2] ms
+Prove time for n=65536 s=1 k=256 is [1426] ms
+Verify time for n=65536 s=1 k=256 is [30] ms
+n=65536, s=1, k=512
+Setup time for n=65536 s=1 k=512 is [5] ms
+Table preprocess time for n=65536 s=1 k=512 is [2] ms
+Prove time for n=65536 s=1 k=512 is [2831] ms
+Verify time for n=65536 s=1 k=512 is [29] ms
+n=65536, s=1, k=1024
+Setup time for n=65536 s=1 k=1024 is [6] ms
+Table preprocess time for n=65536 s=1 k=1024 is [2] ms
+Prove time for n=65536 s=1 k=1024 is [5621] ms
+Verify time for n=65536 s=1 k=1024 is [30] ms
+n=65536, s=2, k=1
+Setup time for n=65536 s=2 k=1 is [28] ms
+Table preprocess time for n=65536 s=2 k=1 is [7] ms
+Prove time for n=65536 s=2 k=1 is [24] ms
+Verify time for n=65536 s=2 k=1 is [28] ms
+n=65536, s=2, k=2
+Setup time for n=65536 s=2 k=2 is [25] ms
+Table preprocess time for n=65536 s=2 k=2 is [7] ms
+Prove time for n=65536 s=2 k=2 is [33] ms
+Verify time for n=65536 s=2 k=2 is [26] ms
+n=65536, s=2, k=4
+Setup time for n=65536 s=2 k=4 is [33] ms
+Table preprocess time for n=65536 s=2 k=4 is [7] ms
+Prove time for n=65536 s=2 k=4 is [48] ms
+Verify time for n=65536 s=2 k=4 is [30] ms
+n=65536, s=2, k=8
+Setup time for n=65536 s=2 k=8 is [34] ms
+Table preprocess time for n=65536 s=2 k=8 is [8] ms
+Prove time for n=65536 s=2 k=8 is [76] ms
+Verify time for n=65536 s=2 k=8 is [29] ms
+n=65536, s=2, k=16
+Setup time for n=65536 s=2 k=16 is [33] ms
+Table preprocess time for n=65536 s=2 k=16 is [8] ms
+Prove time for n=65536 s=2 k=16 is [143] ms
+Verify time for n=65536 s=2 k=16 is [28] ms
+n=65536, s=2, k=32
+Setup time for n=65536 s=2 k=32 is [33] ms
+Table preprocess time for n=65536 s=2 k=32 is [8] ms
+Prove time for n=65536 s=2 k=32 is [265] ms
+Verify time for n=65536 s=2 k=32 is [28] ms
+n=65536, s=2, k=64
+Setup time for n=65536 s=2 k=64 is [33] ms
+Table preprocess time for n=65536 s=2 k=64 is [8] ms
+Prove time for n=65536 s=2 k=64 is [504] ms
+Verify time for n=65536 s=2 k=64 is [28] ms
+n=65536, s=2, k=128
+Setup time for n=65536 s=2 k=128 is [30] ms
+Table preprocess time for n=65536 s=2 k=128 is [8] ms
+Prove time for n=65536 s=2 k=128 is [961] ms
+Verify time for n=65536 s=2 k=128 is [28] ms
+n=65536, s=2, k=256
+Setup time for n=65536 s=2 k=256 is [30] ms
+Table preprocess time for n=65536 s=2 k=256 is [8] ms
+Prove time for n=65536 s=2 k=256 is [1947] ms
+Verify time for n=65536 s=2 k=256 is [29] ms
+n=65536, s=2, k=512
+Setup time for n=65536 s=2 k=512 is [31] ms
+Table preprocess time for n=65536 s=2 k=512 is [8] ms
+Prove time for n=65536 s=2 k=512 is [3814] ms
+Verify time for n=65536 s=2 k=512 is [28] ms
+n=65536, s=2, k=1024
+Setup time for n=65536 s=2 k=1024 is [31] ms
+Table preprocess time for n=65536 s=2 k=1024 is [8] ms
+Prove time for n=65536 s=2 k=1024 is [7346] ms
+Verify time for n=65536 s=2 k=1024 is [28] ms
+n=131072, s=1, k=1
+Setup time for n=131072 s=1 k=1 is [32] ms
+Table preprocess time for n=131072 s=1 k=1 is [8] ms
+Prove time for n=131072 s=1 k=1 is [30] ms
+Verify time for n=131072 s=1 k=1 is [24] ms
+n=131072, s=1, k=2
+Setup time for n=131072 s=1 k=2 is [32] ms
+Table preprocess time for n=131072 s=1 k=2 is [6] ms
+Prove time for n=131072 s=1 k=2 is [41] ms
+Verify time for n=131072 s=1 k=2 is [27] ms
+n=131072, s=1, k=4
+Setup time for n=131072 s=1 k=4 is [32] ms
+Table preprocess time for n=131072 s=1 k=4 is [8] ms
+Prove time for n=131072 s=1 k=4 is [57] ms
+Verify time for n=131072 s=1 k=4 is [28] ms
+n=131072, s=1, k=8
+Setup time for n=131072 s=1 k=8 is [32] ms
+Table preprocess time for n=131072 s=1 k=8 is [8] ms
+Prove time for n=131072 s=1 k=8 is [91] ms
+Verify time for n=131072 s=1 k=8 is [27] ms
+n=131072, s=1, k=16
+Setup time for n=131072 s=1 k=16 is [32] ms
+Table preprocess time for n=131072 s=1 k=16 is [8] ms
+Prove time for n=131072 s=1 k=16 is [159] ms
+Verify time for n=131072 s=1 k=16 is [28] ms
+n=131072, s=1, k=32
+Setup time for n=131072 s=1 k=32 is [32] ms
+Table preprocess time for n=131072 s=1 k=32 is [8] ms
+Prove time for n=131072 s=1 k=32 is [294] ms
+Verify time for n=131072 s=1 k=32 is [28] ms
+n=131072, s=1, k=64
+Setup time for n=131072 s=1 k=64 is [32] ms
+Table preprocess time for n=131072 s=1 k=64 is [8] ms
+Prove time for n=131072 s=1 k=64 is [558] ms
+Verify time for n=131072 s=1 k=64 is [28] ms
+n=131072, s=1, k=128
+Setup time for n=131072 s=1 k=128 is [32] ms
+Table preprocess time for n=131072 s=1 k=128 is [8] ms
+Prove time for n=131072 s=1 k=128 is [1077] ms
+Verify time for n=131072 s=1 k=128 is [28] ms
+n=131072, s=1, k=256
+Setup time for n=131072 s=1 k=256 is [31] ms
+Table preprocess time for n=131072 s=1 k=256 is [8] ms
+Prove time for n=131072 s=1 k=256 is [2134] ms
+Verify time for n=131072 s=1 k=256 is [28] ms
+n=131072, s=1, k=512
+Setup time for n=131072 s=1 k=512 is [30] ms
+Table preprocess time for n=131072 s=1 k=512 is [8] ms
+Prove time for n=131072 s=1 k=512 is [4125] ms
+Verify time for n=131072 s=1 k=512 is [29] ms
+n=131072, s=1, k=1024
+Setup time for n=131072 s=1 k=1024 is [40] ms
+Table preprocess time for n=131072 s=1 k=1024 is [7] ms
+Prove time for n=131072 s=1 k=1024 is [8208] ms
+Verify time for n=131072 s=1 k=1024 is [28] ms
+n=65536, s=4, k=1
+Setup time for n=65536 s=4 k=1 is [81] ms
+Table preprocess time for n=65536 s=4 k=1 is [13] ms
+Prove time for n=65536 s=4 k=1 is [32] ms
+Verify time for n=65536 s=4 k=1 is [27] ms
+n=65536, s=4, k=2
+Setup time for n=65536 s=4 k=2 is [64] ms
+Table preprocess time for n=65536 s=4 k=2 is [15] ms
+Prove time for n=65536 s=4 k=2 is [46] ms
+Verify time for n=65536 s=4 k=2 is [27] ms
+n=65536, s=4, k=4
+Setup time for n=65536 s=4 k=4 is [66] ms
+Table preprocess time for n=65536 s=4 k=4 is [15] ms
+Prove time for n=65536 s=4 k=4 is [63] ms
+Verify time for n=65536 s=4 k=4 is [28] ms
+n=65536, s=4, k=8
+Setup time for n=65536 s=4 k=8 is [67] ms
+Table preprocess time for n=65536 s=4 k=8 is [14] ms
+Prove time for n=65536 s=4 k=8 is [105] ms
+Verify time for n=65536 s=4 k=8 is [29] ms
+n=65536, s=4, k=16
+Setup time for n=65536 s=4 k=16 is [67] ms
+Table preprocess time for n=65536 s=4 k=16 is [15] ms
+Prove time for n=65536 s=4 k=16 is [201] ms
+Verify time for n=65536 s=4 k=16 is [28] ms
+n=65536, s=4, k=32
+Setup time for n=65536 s=4 k=32 is [67] ms
+Table preprocess time for n=65536 s=4 k=32 is [15] ms
+Prove time for n=65536 s=4 k=32 is [370] ms
+Verify time for n=65536 s=4 k=32 is [29] ms
+n=65536, s=4, k=64
+Setup time for n=65536 s=4 k=64 is [67] ms
+Table preprocess time for n=65536 s=4 k=64 is [14] ms
+Prove time for n=65536 s=4 k=64 is [712] ms
+Verify time for n=65536 s=4 k=64 is [28] ms
+n=65536, s=4, k=128
+Setup time for n=65536 s=4 k=128 is [67] ms
+Table preprocess time for n=65536 s=4 k=128 is [15] ms
+Prove time for n=65536 s=4 k=128 is [1387] ms
+Verify time for n=65536 s=4 k=128 is [28] ms
+n=65536, s=4, k=256
+Setup time for n=65536 s=4 k=256 is [67] ms
+Table preprocess time for n=65536 s=4 k=256 is [15] ms
+Prove time for n=65536 s=4 k=256 is [2732] ms
+Verify time for n=65536 s=4 k=256 is [28] ms
+n=65536, s=4, k=512
+Setup time for n=65536 s=4 k=512 is [67] ms
+Table preprocess time for n=65536 s=4 k=512 is [15] ms
+Prove time for n=65536 s=4 k=512 is [5135] ms
+Verify time for n=65536 s=4 k=512 is [29] ms
+n=65536, s=4, k=1024
+Setup time for n=65536 s=4 k=1024 is [68] ms
+Table preprocess time for n=65536 s=4 k=1024 is [15] ms
+Prove time for n=65536 s=4 k=1024 is [10159] ms
+Verify time for n=65536 s=4 k=1024 is [28] ms
+n=131072, s=2, k=1
+Setup time for n=131072 s=2 k=1 is [66] ms
+Table preprocess time for n=131072 s=2 k=1 is [14] ms
+Prove time for n=131072 s=2 k=1 is [36] ms
+Verify time for n=131072 s=2 k=1 is [26] ms
+n=131072, s=2, k=2
+Setup time for n=131072 s=2 k=2 is [67] ms
+Table preprocess time for n=131072 s=2 k=2 is [15] ms
+Prove time for n=131072 s=2 k=2 is [47] ms
+Verify time for n=131072 s=2 k=2 is [27] ms
+n=131072, s=2, k=4
+Setup time for n=131072 s=2 k=4 is [67] ms
+Table preprocess time for n=131072 s=2 k=4 is [14] ms
+Prove time for n=131072 s=2 k=4 is [67] ms
+Verify time for n=131072 s=2 k=4 is [28] ms
+n=131072, s=2, k=8
+Setup time for n=131072 s=2 k=8 is [67] ms
+Table preprocess time for n=131072 s=2 k=8 is [14] ms
+Prove time for n=131072 s=2 k=8 is [108] ms
+Verify time for n=131072 s=2 k=8 is [29] ms
+n=131072, s=2, k=16
+Setup time for n=131072 s=2 k=16 is [70] ms
+Table preprocess time for n=131072 s=2 k=16 is [15] ms
+Prove time for n=131072 s=2 k=16 is [187] ms
+Verify time for n=131072 s=2 k=16 is [28] ms
+n=131072, s=2, k=32
+Setup time for n=131072 s=2 k=32 is [67] ms
+Table preprocess time for n=131072 s=2 k=32 is [14] ms
+Prove time for n=131072 s=2 k=32 is [346] ms
+Verify time for n=131072 s=2 k=32 is [28] ms
+n=131072, s=2, k=64
+Setup time for n=131072 s=2 k=64 is [67] ms
+Table preprocess time for n=131072 s=2 k=64 is [14] ms
+Prove time for n=131072 s=2 k=64 is [646] ms
+Verify time for n=131072 s=2 k=64 is [29] ms
+n=131072, s=2, k=128
+Setup time for n=131072 s=2 k=128 is [69] ms
+Table preprocess time for n=131072 s=2 k=128 is [16] ms
+Prove time for n=131072 s=2 k=128 is [1258] ms
+Verify time for n=131072 s=2 k=128 is [28] ms
+n=131072, s=2, k=256
+Setup time for n=131072 s=2 k=256 is [67] ms
+Table preprocess time for n=131072 s=2 k=256 is [15] ms
+Prove time for n=131072 s=2 k=256 is [2615] ms
+Verify time for n=131072 s=2 k=256 is [28] ms
+n=131072, s=2, k=512
+Setup time for n=131072 s=2 k=512 is [67] ms
+Table preprocess time for n=131072 s=2 k=512 is [15] ms
+Prove time for n=131072 s=2 k=512 is [5096] ms
+Verify time for n=131072 s=2 k=512 is [28] ms
+n=131072, s=2, k=1024
+Setup time for n=131072 s=2 k=1024 is [67] ms
+Table preprocess time for n=131072 s=2 k=1024 is [14] ms
+Prove time for n=131072 s=2 k=1024 is [9961] ms
+Verify time for n=131072 s=2 k=1024 is [29] ms
+n=262144, s=1, k=1
+Setup time for n=262144 s=1 k=1 is [85] ms
+Table preprocess time for n=262144 s=1 k=1 is [12] ms
+Prove time for n=262144 s=1 k=1 is [37] ms
+Verify time for n=262144 s=1 k=1 is [23] ms
+n=262144, s=1, k=2
+Setup time for n=262144 s=1 k=2 is [85] ms
+Table preprocess time for n=262144 s=1 k=2 is [13] ms
+Prove time for n=262144 s=1 k=2 is [43] ms
+Verify time for n=262144 s=1 k=2 is [28] ms
+n=262144, s=1, k=4
+Setup time for n=262144 s=1 k=4 is [87] ms
+Table preprocess time for n=262144 s=1 k=4 is [12] ms
+Prove time for n=262144 s=1 k=4 is [64] ms
+Verify time for n=262144 s=1 k=4 is [30] ms
+n=262144, s=1, k=8
+Setup time for n=262144 s=1 k=8 is [87] ms
+Table preprocess time for n=262144 s=1 k=8 is [12] ms
+Prove time for n=262144 s=1 k=8 is [96] ms
+Verify time for n=262144 s=1 k=8 is [28] ms
+n=262144, s=1, k=16
+Setup time for n=262144 s=1 k=16 is [84] ms
+Table preprocess time for n=262144 s=1 k=16 is [12] ms
+Prove time for n=262144 s=1 k=16 is [161] ms
+Verify time for n=262144 s=1 k=16 is [30] ms
+n=262144, s=1, k=32
+Setup time for n=262144 s=1 k=32 is [85] ms
+Table preprocess time for n=262144 s=1 k=32 is [12] ms
+Prove time for n=262144 s=1 k=32 is [292] ms
+Verify time for n=262144 s=1 k=32 is [29] ms
+n=262144, s=1, k=64
+Setup time for n=262144 s=1 k=64 is [85] ms
+Table preprocess time for n=262144 s=1 k=64 is [12] ms
+Prove time for n=262144 s=1 k=64 is [555] ms
+Verify time for n=262144 s=1 k=64 is [27] ms
+n=262144, s=1, k=128
+Setup time for n=262144 s=1 k=128 is [83] ms
+Table preprocess time for n=262144 s=1 k=128 is [12] ms
+Prove time for n=262144 s=1 k=128 is [1083] ms
+Verify time for n=262144 s=1 k=128 is [27] ms
+n=262144, s=1, k=256
+Setup time for n=262144 s=1 k=256 is [83] ms
+Table preprocess time for n=262144 s=1 k=256 is [12] ms
+Prove time for n=262144 s=1 k=256 is [2082] ms
+Verify time for n=262144 s=1 k=256 is [27] ms
+n=262144, s=1, k=512
+Setup time for n=262144 s=1 k=512 is [84] ms
+Table preprocess time for n=262144 s=1 k=512 is [12] ms
+Prove time for n=262144 s=1 k=512 is [4131] ms
+Verify time for n=262144 s=1 k=512 is [29] ms
+n=262144, s=1, k=1024
+Setup time for n=262144 s=1 k=1024 is [84] ms
+Table preprocess time for n=262144 s=1 k=1024 is [15] ms
+Prove time for n=262144 s=1 k=1024 is [8685] ms
+Verify time for n=262144 s=1 k=1024 is [28] ms
+n=65536, s=8, k=1
+Setup time for n=65536 s=8 k=1 is [180] ms
+Table preprocess time for n=65536 s=8 k=1 is [23] ms
+Prove time for n=65536 s=8 k=1 is [54] ms
+Verify time for n=65536 s=8 k=1 is [27] ms
+n=65536, s=8, k=2
+Setup time for n=65536 s=8 k=2 is [169] ms
+Table preprocess time for n=65536 s=8 k=2 is [23] ms
+Prove time for n=65536 s=8 k=2 is [66] ms
+Verify time for n=65536 s=8 k=2 is [27] ms
+n=65536, s=8, k=4
+Setup time for n=65536 s=8 k=4 is [170] ms
+Table preprocess time for n=65536 s=8 k=4 is [23] ms
+Prove time for n=65536 s=8 k=4 is [103] ms
+Verify time for n=65536 s=8 k=4 is [29] ms
+n=65536, s=8, k=8
+Setup time for n=65536 s=8 k=8 is [170] ms
+Table preprocess time for n=65536 s=8 k=8 is [23] ms
+Prove time for n=65536 s=8 k=8 is [170] ms
+Verify time for n=65536 s=8 k=8 is [29] ms
+n=65536, s=8, k=16
+Setup time for n=65536 s=8 k=16 is [170] ms
+Table preprocess time for n=65536 s=8 k=16 is [23] ms
+Prove time for n=65536 s=8 k=16 is [306] ms
+Verify time for n=65536 s=8 k=16 is [29] ms
+n=65536, s=8, k=32
+Setup time for n=65536 s=8 k=32 is [170] ms
+Table preprocess time for n=65536 s=8 k=32 is [23] ms
+Prove time for n=65536 s=8 k=32 is [584] ms
+Verify time for n=65536 s=8 k=32 is [29] ms
+n=65536, s=8, k=64
+Setup time for n=65536 s=8 k=64 is [170] ms
+Table preprocess time for n=65536 s=8 k=64 is [23] ms
+Prove time for n=65536 s=8 k=64 is [1124] ms
+Verify time for n=65536 s=8 k=64 is [29] ms
+n=65536, s=8, k=128
+Setup time for n=65536 s=8 k=128 is [169] ms
+Table preprocess time for n=65536 s=8 k=128 is [23] ms
+Prove time for n=65536 s=8 k=128 is [2199] ms
+Verify time for n=65536 s=8 k=128 is [29] ms
+n=65536, s=8, k=256
+Setup time for n=65536 s=8 k=256 is [170] ms
+Table preprocess time for n=65536 s=8 k=256 is [23] ms
+Prove time for n=65536 s=8 k=256 is [4213] ms
+Verify time for n=65536 s=8 k=256 is [28] ms
+n=65536, s=8, k=512
+Setup time for n=65536 s=8 k=512 is [168] ms
+Table preprocess time for n=65536 s=8 k=512 is [23] ms
+Prove time for n=65536 s=8 k=512 is [8224] ms
+Verify time for n=65536 s=8 k=512 is [28] ms
+n=65536, s=8, k=1024
+Setup time for n=65536 s=8 k=1024 is [170] ms
+Table preprocess time for n=65536 s=8 k=1024 is [23] ms
+Prove time for n=65536 s=8 k=1024 is [16147] ms
+Verify time for n=65536 s=8 k=1024 is [28] ms
+n=131072, s=4, k=1
+Setup time for n=131072 s=4 k=1 is [167] ms
+Table preprocess time for n=131072 s=4 k=1 is [23] ms
+Prove time for n=131072 s=4 k=1 is [46] ms
+Verify time for n=131072 s=4 k=1 is [26] ms
+n=131072, s=4, k=2
+Setup time for n=131072 s=4 k=2 is [167] ms
+Table preprocess time for n=131072 s=4 k=2 is [23] ms
+Prove time for n=131072 s=4 k=2 is [61] ms
+Verify time for n=131072 s=4 k=2 is [27] ms
+n=131072, s=4, k=4
+Setup time for n=131072 s=4 k=4 is [167] ms
+Table preprocess time for n=131072 s=4 k=4 is [23] ms
+Prove time for n=131072 s=4 k=4 is [88] ms
+Verify time for n=131072 s=4 k=4 is [29] ms
+n=131072, s=4, k=8
+Setup time for n=131072 s=4 k=8 is [167] ms
+Table preprocess time for n=131072 s=4 k=8 is [23] ms
+Prove time for n=131072 s=4 k=8 is [141] ms
+Verify time for n=131072 s=4 k=8 is [28] ms
+n=131072, s=4, k=16
+Setup time for n=131072 s=4 k=16 is [167] ms
+Table preprocess time for n=131072 s=4 k=16 is [23] ms
+Prove time for n=131072 s=4 k=16 is [247] ms
+Verify time for n=131072 s=4 k=16 is [28] ms
+n=131072, s=4, k=32
+Setup time for n=131072 s=4 k=32 is [167] ms
+Table preprocess time for n=131072 s=4 k=32 is [23] ms
+Prove time for n=131072 s=4 k=32 is [454] ms
+Verify time for n=131072 s=4 k=32 is [28] ms
+n=131072, s=4, k=64
+Setup time for n=131072 s=4 k=64 is [167] ms
+Table preprocess time for n=131072 s=4 k=64 is [23] ms
+Prove time for n=131072 s=4 k=64 is [862] ms
+Verify time for n=131072 s=4 k=64 is [28] ms
+n=131072, s=4, k=128
+Setup time for n=131072 s=4 k=128 is [167] ms
+Table preprocess time for n=131072 s=4 k=128 is [23] ms
+Prove time for n=131072 s=4 k=128 is [1647] ms
+Verify time for n=131072 s=4 k=128 is [28] ms
+n=131072, s=4, k=256
+Setup time for n=131072 s=4 k=256 is [167] ms
+Table preprocess time for n=131072 s=4 k=256 is [23] ms
+Prove time for n=131072 s=4 k=256 is [3327] ms
+Verify time for n=131072 s=4 k=256 is [28] ms
+n=131072, s=4, k=512
+Setup time for n=131072 s=4 k=512 is [168] ms
+Table preprocess time for n=131072 s=4 k=512 is [23] ms
+Prove time for n=131072 s=4 k=512 is [6574] ms
+Verify time for n=131072 s=4 k=512 is [28] ms
+n=131072, s=4, k=1024
+Setup time for n=131072 s=4 k=1024 is [166] ms
+Table preprocess time for n=131072 s=4 k=1024 is [23] ms
+Prove time for n=131072 s=4 k=1024 is [12805] ms
+Verify time for n=131072 s=4 k=1024 is [28] ms
+n=262144, s=2, k=1
+Setup time for n=262144 s=2 k=1 is [166] ms
+Table preprocess time for n=262144 s=2 k=1 is [23] ms
+Prove time for n=262144 s=2 k=1 is [43] ms
+Verify time for n=262144 s=2 k=1 is [27] ms
+n=262144, s=2, k=2
+Setup time for n=262144 s=2 k=2 is [166] ms
+Table preprocess time for n=262144 s=2 k=2 is [23] ms
+Prove time for n=262144 s=2 k=2 is [54] ms
+Verify time for n=262144 s=2 k=2 is [26] ms
+n=262144, s=2, k=4
+Setup time for n=262144 s=2 k=4 is [167] ms
+Table preprocess time for n=262144 s=2 k=4 is [23] ms
+Prove time for n=262144 s=2 k=4 is [73] ms
+Verify time for n=262144 s=2 k=4 is [28] ms
+n=262144, s=2, k=8
+Setup time for n=262144 s=2 k=8 is [169] ms
+Table preprocess time for n=262144 s=2 k=8 is [23] ms
+Prove time for n=262144 s=2 k=8 is [113] ms
+Verify time for n=262144 s=2 k=8 is [28] ms
+n=262144, s=2, k=16
+Setup time for n=262144 s=2 k=16 is [167] ms
+Table preprocess time for n=262144 s=2 k=16 is [23] ms
+Prove time for n=262144 s=2 k=16 is [191] ms
+Verify time for n=262144 s=2 k=16 is [29] ms
+n=262144, s=2, k=32
+Setup time for n=262144 s=2 k=32 is [168] ms
+Table preprocess time for n=262144 s=2 k=32 is [23] ms
+Prove time for n=262144 s=2 k=32 is [345] ms
+Verify time for n=262144 s=2 k=32 is [28] ms
+n=262144, s=2, k=64
+Setup time for n=262144 s=2 k=64 is [167] ms
+Table preprocess time for n=262144 s=2 k=64 is [23] ms
+Prove time for n=262144 s=2 k=64 is [692] ms
+Verify time for n=262144 s=2 k=64 is [28] ms
+n=262144, s=2, k=128
+Setup time for n=262144 s=2 k=128 is [167] ms
+Table preprocess time for n=262144 s=2 k=128 is [23] ms
+Prove time for n=262144 s=2 k=128 is [1330] ms
+Verify time for n=262144 s=2 k=128 is [28] ms
+n=262144, s=2, k=256
+Setup time for n=262144 s=2 k=256 is [167] ms
+Table preprocess time for n=262144 s=2 k=256 is [23] ms
+Prove time for n=262144 s=2 k=256 is [2533] ms
+Verify time for n=262144 s=2 k=256 is [29] ms
+n=262144, s=2, k=512
+Setup time for n=262144 s=2 k=512 is [168] ms
+Table preprocess time for n=262144 s=2 k=512 is [23] ms
+Prove time for n=262144 s=2 k=512 is [5014] ms
+Verify time for n=262144 s=2 k=512 is [29] ms
+n=262144, s=2, k=1024
+Setup time for n=262144 s=2 k=1024 is [166] ms
+Table preprocess time for n=262144 s=2 k=1024 is [23] ms
+Prove time for n=262144 s=2 k=1024 is [9903] ms
+Verify time for n=262144 s=2 k=1024 is [29] ms
+n=524288, s=1, k=1
+Setup time for n=524288 s=1 k=1 is [167] ms
+Table preprocess time for n=524288 s=1 k=1 is [23] ms
+Prove time for n=524288 s=1 k=1 is [41] ms
+Verify time for n=524288 s=1 k=1 is [23] ms
+n=524288, s=1, k=2
+Setup time for n=524288 s=1 k=2 is [168] ms
+Table preprocess time for n=524288 s=1 k=2 is [23] ms
+Prove time for n=524288 s=1 k=2 is [51] ms
+Verify time for n=524288 s=1 k=2 is [28] ms
+n=524288, s=1, k=4
+Setup time for n=524288 s=1 k=4 is [167] ms
+Table preprocess time for n=524288 s=1 k=4 is [23] ms
+Prove time for n=524288 s=1 k=4 is [69] ms
+Verify time for n=524288 s=1 k=4 is [28] ms
+n=524288, s=1, k=8
+Setup time for n=524288 s=1 k=8 is [165] ms
+Table preprocess time for n=524288 s=1 k=8 is [23] ms
+Prove time for n=524288 s=1 k=8 is [103] ms
+Verify time for n=524288 s=1 k=8 is [28] ms
+n=524288, s=1, k=16
+Setup time for n=524288 s=1 k=16 is [165] ms
+Table preprocess time for n=524288 s=1 k=16 is [23] ms
+Prove time for n=524288 s=1 k=16 is [174] ms
+Verify time for n=524288 s=1 k=16 is [28] ms
+n=524288, s=1, k=32
+Setup time for n=524288 s=1 k=32 is [166] ms
+Table preprocess time for n=524288 s=1 k=32 is [23] ms
+Prove time for n=524288 s=1 k=32 is [312] ms
+Verify time for n=524288 s=1 k=32 is [28] ms
+n=524288, s=1, k=64
+Setup time for n=524288 s=1 k=64 is [165] ms
+Table preprocess time for n=524288 s=1 k=64 is [23] ms
+Prove time for n=524288 s=1 k=64 is [589] ms
+Verify time for n=524288 s=1 k=64 is [28] ms
+n=524288, s=1, k=128
+Setup time for n=524288 s=1 k=128 is [166] ms
+Table preprocess time for n=524288 s=1 k=128 is [24] ms
+Prove time for n=524288 s=1 k=128 is [1127] ms
+Verify time for n=524288 s=1 k=128 is [28] ms
+n=524288, s=1, k=256
+Setup time for n=524288 s=1 k=256 is [164] ms
+Table preprocess time for n=524288 s=1 k=256 is [23] ms
+Prove time for n=524288 s=1 k=256 is [2123] ms
+Verify time for n=524288 s=1 k=256 is [28] ms
+n=524288, s=1, k=512
+Setup time for n=524288 s=1 k=512 is [165] ms
+Table preprocess time for n=524288 s=1 k=512 is [23] ms
+Prove time for n=524288 s=1 k=512 is [4171] ms
+Verify time for n=524288 s=1 k=512 is [28] ms
+n=524288, s=1, k=1024
+Setup time for n=524288 s=1 k=1024 is [166] ms
+Table preprocess time for n=524288 s=1 k=1024 is [23] ms
+Prove time for n=524288 s=1 k=1024 is [8482] ms
+Verify time for n=524288 s=1 k=1024 is [28] ms
+n=65536, s=16, k=1
+Setup time for n=65536 s=16 k=1 is [309] ms
+Table preprocess time for n=65536 s=16 k=1 is [55] ms
+Prove time for n=65536 s=16 k=1 is [88] ms
+Verify time for n=65536 s=16 k=1 is [26] ms
+n=65536, s=16, k=2
+Setup time for n=65536 s=16 k=2 is [309] ms
+Table preprocess time for n=65536 s=16 k=2 is [55] ms
+Prove time for n=65536 s=16 k=2 is [119] ms
+Verify time for n=65536 s=16 k=2 is [27] ms
+n=65536, s=16, k=4
+Setup time for n=65536 s=16 k=4 is [309] ms
+Table preprocess time for n=65536 s=16 k=4 is [55] ms
+Prove time for n=65536 s=16 k=4 is [176] ms
+Verify time for n=65536 s=16 k=4 is [28] ms
+n=65536, s=16, k=8
+Setup time for n=65536 s=16 k=8 is [309] ms
+Table preprocess time for n=65536 s=16 k=8 is [55] ms
+Prove time for n=65536 s=16 k=8 is [296] ms
+Verify time for n=65536 s=16 k=8 is [28] ms
+n=65536, s=16, k=16
+Setup time for n=65536 s=16 k=16 is [309] ms
+Table preprocess time for n=65536 s=16 k=16 is [55] ms
+Prove time for n=65536 s=16 k=16 is [515] ms
+Verify time for n=65536 s=16 k=16 is [28] ms
+n=65536, s=16, k=32
+Setup time for n=65536 s=16 k=32 is [309] ms
+Table preprocess time for n=65536 s=16 k=32 is [55] ms
+Prove time for n=65536 s=16 k=32 is [968] ms
+Verify time for n=65536 s=16 k=32 is [28] ms
+n=65536, s=16, k=64
+Setup time for n=65536 s=16 k=64 is [310] ms
+Table preprocess time for n=65536 s=16 k=64 is [55] ms
+Prove time for n=65536 s=16 k=64 is [1850] ms
+Verify time for n=65536 s=16 k=64 is [29] ms
+n=65536, s=16, k=128
+Setup time for n=65536 s=16 k=128 is [311] ms
+Table preprocess time for n=65536 s=16 k=128 is [55] ms
+Prove time for n=65536 s=16 k=128 is [3624] ms
+Verify time for n=65536 s=16 k=128 is [28] ms
+n=65536, s=16, k=256
+Setup time for n=65536 s=16 k=256 is [316] ms
+Table preprocess time for n=65536 s=16 k=256 is [58] ms
+Prove time for n=65536 s=16 k=256 is [7313] ms
+Verify time for n=65536 s=16 k=256 is [28] ms
+n=65536, s=16, k=512
+Setup time for n=65536 s=16 k=512 is [309] ms
+Table preprocess time for n=65536 s=16 k=512 is [55] ms
+Prove time for n=65536 s=16 k=512 is [14260] ms
+Verify time for n=65536 s=16 k=512 is [28] ms
+n=65536, s=16, k=1024
+Setup time for n=65536 s=16 k=1024 is [310] ms
+Table preprocess time for n=65536 s=16 k=1024 is [55] ms
+Prove time for n=65536 s=16 k=1024 is [28842] ms
+Verify time for n=65536 s=16 k=1024 is [28] ms
+n=131072, s=8, k=1
+Setup time for n=131072 s=8 k=1 is [308] ms
+Table preprocess time for n=131072 s=8 k=1 is [55] ms
+Prove time for n=131072 s=8 k=1 is [82] ms
+Verify time for n=131072 s=8 k=1 is [27] ms
+n=131072, s=8, k=2
+Setup time for n=131072 s=8 k=2 is [308] ms
+Table preprocess time for n=131072 s=8 k=2 is [55] ms
+Prove time for n=131072 s=8 k=2 is [103] ms
+Verify time for n=131072 s=8 k=2 is [26] ms
+n=131072, s=8, k=4
+Setup time for n=131072 s=8 k=4 is [308] ms
+Table preprocess time for n=131072 s=8 k=4 is [55] ms
+Prove time for n=131072 s=8 k=4 is [141] ms
+Verify time for n=131072 s=8 k=4 is [28] ms
+n=131072, s=8, k=8
+Setup time for n=131072 s=8 k=8 is [308] ms
+Table preprocess time for n=131072 s=8 k=8 is [55] ms
+Prove time for n=131072 s=8 k=8 is [218] ms
+Verify time for n=131072 s=8 k=8 is [28] ms
+n=131072, s=8, k=16
+Setup time for n=131072 s=8 k=16 is [310] ms
+Table preprocess time for n=131072 s=8 k=16 is [55] ms
+Prove time for n=131072 s=8 k=16 is [367] ms
+Verify time for n=131072 s=8 k=16 is [28] ms
+n=131072, s=8, k=32
+Setup time for n=131072 s=8 k=32 is [311] ms
+Table preprocess time for n=131072 s=8 k=32 is [55] ms
+Prove time for n=131072 s=8 k=32 is [666] ms
+Verify time for n=131072 s=8 k=32 is [29] ms
+n=131072, s=8, k=64
+Setup time for n=131072 s=8 k=64 is [314] ms
+Table preprocess time for n=131072 s=8 k=64 is [55] ms
+Prove time for n=131072 s=8 k=64 is [1263] ms
+Verify time for n=131072 s=8 k=64 is [28] ms
+n=131072, s=8, k=128
+Setup time for n=131072 s=8 k=128 is [315] ms
+Table preprocess time for n=131072 s=8 k=128 is [56] ms
+Prove time for n=131072 s=8 k=128 is [2448] ms
+Verify time for n=131072 s=8 k=128 is [28] ms
+n=131072, s=8, k=256
+Setup time for n=131072 s=8 k=256 is [310] ms
+Table preprocess time for n=131072 s=8 k=256 is [55] ms
+Prove time for n=131072 s=8 k=256 is [4907] ms
+Verify time for n=131072 s=8 k=256 is [28] ms
+n=131072, s=8, k=512
+Setup time for n=131072 s=8 k=512 is [312] ms
+Table preprocess time for n=131072 s=8 k=512 is [56] ms
+Prove time for n=131072 s=8 k=512 is [9682] ms
+Verify time for n=131072 s=8 k=512 is [28] ms
+n=131072, s=8, k=1024
+Setup time for n=131072 s=8 k=1024 is [310] ms
+Table preprocess time for n=131072 s=8 k=1024 is [55] ms
+Prove time for n=131072 s=8 k=1024 is [19129] ms
+Verify time for n=131072 s=8 k=1024 is [28] ms
+n=262144, s=4, k=1
+Setup time for n=262144 s=4 k=1 is [308] ms
+Table preprocess time for n=262144 s=4 k=1 is [55] ms
+Prove time for n=262144 s=4 k=1 is [76] ms
+Verify time for n=262144 s=4 k=1 is [26] ms
+n=262144, s=4, k=2
+Setup time for n=262144 s=4 k=2 is [308] ms
+Table preprocess time for n=262144 s=4 k=2 is [55] ms
+Prove time for n=262144 s=4 k=2 is [90] ms
+Verify time for n=262144 s=4 k=2 is [28] ms
+n=262144, s=4, k=4
+Setup time for n=262144 s=4 k=4 is [308] ms
+Table preprocess time for n=262144 s=4 k=4 is [55] ms
+Prove time for n=262144 s=4 k=4 is [116] ms
+Verify time for n=262144 s=4 k=4 is [30] ms
+n=262144, s=4, k=8
+Setup time for n=262144 s=4 k=8 is [319] ms
+Table preprocess time for n=262144 s=4 k=8 is [55] ms
+Prove time for n=262144 s=4 k=8 is [167] ms
+Verify time for n=262144 s=4 k=8 is [28] ms
+n=262144, s=4, k=16
+Setup time for n=262144 s=4 k=16 is [307] ms
+Table preprocess time for n=262144 s=4 k=16 is [55] ms
+Prove time for n=262144 s=4 k=16 is [273] ms
+Verify time for n=262144 s=4 k=16 is [27] ms
+n=262144, s=4, k=32
+Setup time for n=262144 s=4 k=32 is [307] ms
+Table preprocess time for n=262144 s=4 k=32 is [55] ms
+Prove time for n=262144 s=4 k=32 is [475] ms
+Verify time for n=262144 s=4 k=32 is [28] ms
+n=262144, s=4, k=64
+Setup time for n=262144 s=4 k=64 is [308] ms
+Table preprocess time for n=262144 s=4 k=64 is [55] ms
+Prove time for n=262144 s=4 k=64 is [894] ms
+Verify time for n=262144 s=4 k=64 is [28] ms
+n=262144, s=4, k=128
+Setup time for n=262144 s=4 k=128 is [309] ms
+Table preprocess time for n=262144 s=4 k=128 is [55] ms
+Prove time for n=262144 s=4 k=128 is [1688] ms
+Verify time for n=262144 s=4 k=128 is [28] ms
+n=262144, s=4, k=256
+Setup time for n=262144 s=4 k=256 is [309] ms
+Table preprocess time for n=262144 s=4 k=256 is [55] ms
+Prove time for n=262144 s=4 k=256 is [3303] ms
+Verify time for n=262144 s=4 k=256 is [28] ms
+n=262144, s=4, k=512
+Setup time for n=262144 s=4 k=512 is [313] ms
+Table preprocess time for n=262144 s=4 k=512 is [56] ms
+Prove time for n=262144 s=4 k=512 is [6616] ms
+Verify time for n=262144 s=4 k=512 is [28] ms
+n=262144, s=4, k=1024
+Setup time for n=262144 s=4 k=1024 is [311] ms
+Table preprocess time for n=262144 s=4 k=1024 is [55] ms
+Prove time for n=262144 s=4 k=1024 is [13128] ms
+Verify time for n=262144 s=4 k=1024 is [28] ms
+n=524288, s=2, k=1
+Setup time for n=524288 s=2 k=1 is [308] ms
+Table preprocess time for n=524288 s=2 k=1 is [55] ms
+Prove time for n=524288 s=2 k=1 is [73] ms
+Verify time for n=524288 s=2 k=1 is [26] ms
+n=524288, s=2, k=2
+Setup time for n=524288 s=2 k=2 is [309] ms
+Table preprocess time for n=524288 s=2 k=2 is [55] ms
+Prove time for n=524288 s=2 k=2 is [82] ms
+Verify time for n=524288 s=2 k=2 is [27] ms
+n=524288, s=2, k=4
+Setup time for n=524288 s=2 k=4 is [309] ms
+Table preprocess time for n=524288 s=2 k=4 is [55] ms
+Prove time for n=524288 s=2 k=4 is [104] ms
+Verify time for n=524288 s=2 k=4 is [28] ms
+n=524288, s=2, k=8
+Setup time for n=524288 s=2 k=8 is [309] ms
+Table preprocess time for n=524288 s=2 k=8 is [55] ms
+Prove time for n=524288 s=2 k=8 is [145] ms
+Verify time for n=524288 s=2 k=8 is [28] ms
+n=524288, s=2, k=16
+Setup time for n=524288 s=2 k=16 is [309] ms
+Table preprocess time for n=524288 s=2 k=16 is [55] ms
+Prove time for n=524288 s=2 k=16 is [219] ms
+Verify time for n=524288 s=2 k=16 is [28] ms
+n=524288, s=2, k=32
+Setup time for n=524288 s=2 k=32 is [309] ms
+Table preprocess time for n=524288 s=2 k=32 is [55] ms
+Prove time for n=524288 s=2 k=32 is [376] ms
+Verify time for n=524288 s=2 k=32 is [28] ms
+n=524288, s=2, k=64
+Setup time for n=524288 s=2 k=64 is [309] ms
+Table preprocess time for n=524288 s=2 k=64 is [55] ms
+Prove time for n=524288 s=2 k=64 is [683] ms
+Verify time for n=524288 s=2 k=64 is [28] ms
+n=524288, s=2, k=128
+Setup time for n=524288 s=2 k=128 is [310] ms
+Table preprocess time for n=524288 s=2 k=128 is [56] ms
+Prove time for n=524288 s=2 k=128 is [1330] ms
+Verify time for n=524288 s=2 k=128 is [28] ms
+n=524288, s=2, k=256
+Setup time for n=524288 s=2 k=256 is [309] ms
+Table preprocess time for n=524288 s=2 k=256 is [55] ms
+Prove time for n=524288 s=2 k=256 is [2575] ms
+Verify time for n=524288 s=2 k=256 is [28] ms
+n=524288, s=2, k=512
+Setup time for n=524288 s=2 k=512 is [310] ms
+Table preprocess time for n=524288 s=2 k=512 is [55] ms
+Prove time for n=524288 s=2 k=512 is [4948] ms
+Verify time for n=524288 s=2 k=512 is [28] ms
+n=524288, s=2, k=1024
+Setup time for n=524288 s=2 k=1024 is [310] ms
+Table preprocess time for n=524288 s=2 k=1024 is [55] ms
+Prove time for n=524288 s=2 k=1024 is [10064] ms
+Verify time for n=524288 s=2 k=1024 is [28] ms
+n=1048576, s=1, k=1
+Setup time for n=1048576 s=1 k=1 is [326] ms
+Table preprocess time for n=1048576 s=1 k=1 is [57] ms
+Prove time for n=1048576 s=1 k=1 is [71] ms
+Verify time for n=1048576 s=1 k=1 is [24] ms
+n=1048576, s=1, k=2
+Setup time for n=1048576 s=1 k=2 is [325] ms
+Table preprocess time for n=1048576 s=1 k=2 is [55] ms
+Prove time for n=1048576 s=1 k=2 is [81] ms
+Verify time for n=1048576 s=1 k=2 is [27] ms
+n=1048576, s=1, k=4
+Setup time for n=1048576 s=1 k=4 is [319] ms
+Table preprocess time for n=1048576 s=1 k=4 is [55] ms
+Prove time for n=1048576 s=1 k=4 is [98] ms
+Verify time for n=1048576 s=1 k=4 is [28] ms
+n=1048576, s=1, k=8
+Setup time for n=1048576 s=1 k=8 is [308] ms
+Table preprocess time for n=1048576 s=1 k=8 is [55] ms
+Prove time for n=1048576 s=1 k=8 is [133] ms
+Verify time for n=1048576 s=1 k=8 is [28] ms
+n=1048576, s=1, k=16
+Setup time for n=1048576 s=1 k=16 is [321] ms
+Table preprocess time for n=1048576 s=1 k=16 is [55] ms
+Prove time for n=1048576 s=1 k=16 is [201] ms
+Verify time for n=1048576 s=1 k=16 is [29] ms
+n=1048576, s=1, k=32
+Setup time for n=1048576 s=1 k=32 is [316] ms
+Table preprocess time for n=1048576 s=1 k=32 is [55] ms
+Prove time for n=1048576 s=1 k=32 is [340] ms
+Verify time for n=1048576 s=1 k=32 is [28] ms
+n=1048576, s=1, k=64
+Setup time for n=1048576 s=1 k=64 is [317] ms
+Table preprocess time for n=1048576 s=1 k=64 is [55] ms
+Prove time for n=1048576 s=1 k=64 is [626] ms
+Verify time for n=1048576 s=1 k=64 is [29] ms
+n=1048576, s=1, k=128
+Setup time for n=1048576 s=1 k=128 is [331] ms
+Table preprocess time for n=1048576 s=1 k=128 is [58] ms
+Prove time for n=1048576 s=1 k=128 is [1103] ms
+Verify time for n=1048576 s=1 k=128 is [27] ms
+n=1048576, s=1, k=256
+Setup time for n=1048576 s=1 k=256 is [318] ms
+Table preprocess time for n=1048576 s=1 k=256 is [55] ms
+Prove time for n=1048576 s=1 k=256 is [2123] ms
+Verify time for n=1048576 s=1 k=256 is [28] ms
+n=1048576, s=1, k=512
+Setup time for n=1048576 s=1 k=512 is [319] ms
+Table preprocess time for n=1048576 s=1 k=512 is [55] ms
+Prove time for n=1048576 s=1 k=512 is [4187] ms
+Verify time for n=1048576 s=1 k=512 is [29] ms
+n=1048576, s=1, k=1024
+Setup time for n=1048576 s=1 k=1024 is [335] ms
+Table preprocess time for n=1048576 s=1 k=1024 is [55] ms
+Prove time for n=1048576 s=1 k=1024 is [8328] ms
+Verify time for n=1048576 s=1 k=1024 is [28] ms
+n=65536, s=32, k=1
+Setup time for n=65536 s=32 k=1 is [615] ms
+Table preprocess time for n=65536 s=32 k=1 is [108] ms
+Prove time for n=65536 s=32 k=1 is [160] ms
+Verify time for n=65536 s=32 k=1 is [26] ms
+n=65536, s=32, k=2
+Setup time for n=65536 s=32 k=2 is [629] ms
+Table preprocess time for n=65536 s=32 k=2 is [108] ms
+Prove time for n=65536 s=32 k=2 is [217] ms
+Verify time for n=65536 s=32 k=2 is [27] ms
+n=65536, s=32, k=4
+Setup time for n=65536 s=32 k=4 is [609] ms
+Table preprocess time for n=65536 s=32 k=4 is [107] ms
+Prove time for n=65536 s=32 k=4 is [328] ms
+Verify time for n=65536 s=32 k=4 is [28] ms
+n=65536, s=32, k=8
+Setup time for n=65536 s=32 k=8 is [604] ms
+Table preprocess time for n=65536 s=32 k=8 is [106] ms
+Prove time for n=65536 s=32 k=8 is [539] ms
+Verify time for n=65536 s=32 k=8 is [28] ms
+n=65536, s=32, k=16
+Setup time for n=65536 s=32 k=16 is [605] ms
+Table preprocess time for n=65536 s=32 k=16 is [106] ms
+Prove time for n=65536 s=32 k=16 is [941] ms
+Verify time for n=65536 s=32 k=16 is [28] ms
+n=65536, s=32, k=32
+Setup time for n=65536 s=32 k=32 is [616] ms
+Table preprocess time for n=65536 s=32 k=32 is [108] ms
+Prove time for n=65536 s=32 k=32 is [1772] ms
+Verify time for n=65536 s=32 k=32 is [29] ms
+n=65536, s=32, k=64
+Setup time for n=65536 s=32 k=64 is [611] ms
+Table preprocess time for n=65536 s=32 k=64 is [107] ms
+Prove time for n=65536 s=32 k=64 is [3418] ms
+Verify time for n=65536 s=32 k=64 is [28] ms
+n=65536, s=32, k=128
+Setup time for n=65536 s=32 k=128 is [607] ms
+Table preprocess time for n=65536 s=32 k=128 is [108] ms
+Prove time for n=65536 s=32 k=128 is [6684] ms
+Verify time for n=65536 s=32 k=128 is [28] ms
+n=65536, s=32, k=256
+Setup time for n=65536 s=32 k=256 is [632] ms
+Table preprocess time for n=65536 s=32 k=256 is [111] ms
+Prove time for n=65536 s=32 k=256 is [13314] ms
+Verify time for n=65536 s=32 k=256 is [28] ms
+n=65536, s=32, k=512
+Setup time for n=65536 s=32 k=512 is [619] ms
+Table preprocess time for n=65536 s=32 k=512 is [108] ms
+Prove time for n=65536 s=32 k=512 is [26393] ms
+Verify time for n=65536 s=32 k=512 is [29] ms
+n=65536, s=32, k=1024
+Setup time for n=65536 s=32 k=1024 is [620] ms
+Table preprocess time for n=65536 s=32 k=1024 is [108] ms
+Prove time for n=65536 s=32 k=1024 is [53014] ms
+Verify time for n=65536 s=32 k=1024 is [28] ms
+n=131072, s=16, k=1
+Setup time for n=131072 s=16 k=1 is [599] ms
+Table preprocess time for n=131072 s=16 k=1 is [107] ms
+Prove time for n=131072 s=16 k=1 is [143] ms
+Verify time for n=131072 s=16 k=1 is [28] ms
+n=131072, s=16, k=2
+Setup time for n=131072 s=16 k=2 is [598] ms
+Table preprocess time for n=131072 s=16 k=2 is [107] ms
+Prove time for n=131072 s=16 k=2 is [170] ms
+Verify time for n=131072 s=16 k=2 is [27] ms
+n=131072, s=16, k=4
+Setup time for n=131072 s=16 k=4 is [608] ms
+Table preprocess time for n=131072 s=16 k=4 is [107] ms
+Prove time for n=131072 s=16 k=4 is [237] ms
+Verify time for n=131072 s=16 k=4 is [28] ms
+n=131072, s=16, k=8
+Setup time for n=131072 s=16 k=8 is [611] ms
+Table preprocess time for n=131072 s=16 k=8 is [107] ms
+Prove time for n=131072 s=16 k=8 is [357] ms
+Verify time for n=131072 s=16 k=8 is [28] ms
+n=131072, s=16, k=16
+Setup time for n=131072 s=16 k=16 is [609] ms
+Table preprocess time for n=131072 s=16 k=16 is [107] ms
+Prove time for n=131072 s=16 k=16 is [618] ms
+Verify time for n=131072 s=16 k=16 is [28] ms
+n=131072, s=16, k=32
+Setup time for n=131072 s=16 k=32 is [606] ms
+Table preprocess time for n=131072 s=16 k=32 is [107] ms
+Prove time for n=131072 s=16 k=32 is [1154] ms
+Verify time for n=131072 s=16 k=32 is [28] ms
+n=131072, s=16, k=64
+Setup time for n=131072 s=16 k=64 is [598] ms
+Table preprocess time for n=131072 s=16 k=64 is [107] ms
+Prove time for n=131072 s=16 k=64 is [2065] ms
+Verify time for n=131072 s=16 k=64 is [28] ms
+n=131072, s=16, k=128
+Setup time for n=131072 s=16 k=128 is [608] ms
+Table preprocess time for n=131072 s=16 k=128 is [107] ms
+Prove time for n=131072 s=16 k=128 is [3999] ms
+Verify time for n=131072 s=16 k=128 is [30] ms
+n=131072, s=16, k=256
+Setup time for n=131072 s=16 k=256 is [622] ms
+Table preprocess time for n=131072 s=16 k=256 is [106] ms
+Prove time for n=131072 s=16 k=256 is [7851] ms
+Verify time for n=131072 s=16 k=256 is [28] ms
+n=131072, s=16, k=512
+Setup time for n=131072 s=16 k=512 is [616] ms
+Table preprocess time for n=131072 s=16 k=512 is [107] ms
+Prove time for n=131072 s=16 k=512 is [15655] ms
+Verify time for n=131072 s=16 k=512 is [27] ms
+n=131072, s=16, k=1024
+Setup time for n=131072 s=16 k=1024 is [608] ms
+Table preprocess time for n=131072 s=16 k=1024 is [106] ms
+Prove time for n=131072 s=16 k=1024 is [31183] ms
+Verify time for n=131072 s=16 k=1024 is [29] ms
+n=262144, s=8, k=1
+Setup time for n=262144 s=8 k=1 is [610] ms
+Table preprocess time for n=262144 s=8 k=1 is [108] ms
+Prove time for n=262144 s=8 k=1 is [130] ms
+Verify time for n=262144 s=8 k=1 is [26] ms
+n=262144, s=8, k=2
+Setup time for n=262144 s=8 k=2 is [605] ms
+Table preprocess time for n=262144 s=8 k=2 is [106] ms
+Prove time for n=262144 s=8 k=2 is [145] ms
+Verify time for n=262144 s=8 k=2 is [26] ms
+n=262144, s=8, k=4
+Setup time for n=262144 s=8 k=4 is [605] ms
+Table preprocess time for n=262144 s=8 k=4 is [107] ms
+Prove time for n=262144 s=8 k=4 is [185] ms
+Verify time for n=262144 s=8 k=4 is [29] ms
+n=262144, s=8, k=8
+Setup time for n=262144 s=8 k=8 is [614] ms
+Table preprocess time for n=262144 s=8 k=8 is [108] ms
+Prove time for n=262144 s=8 k=8 is [264] ms
+Verify time for n=262144 s=8 k=8 is [29] ms
+n=262144, s=8, k=16
+Setup time for n=262144 s=8 k=16 is [628] ms
+Table preprocess time for n=262144 s=8 k=16 is [108] ms
+Prove time for n=262144 s=8 k=16 is [428] ms
+Verify time for n=262144 s=8 k=16 is [29] ms
+n=262144, s=8, k=32
+Setup time for n=262144 s=8 k=32 is [604] ms
+Table preprocess time for n=262144 s=8 k=32 is [106] ms
+Prove time for n=262144 s=8 k=32 is [721] ms
+Verify time for n=262144 s=8 k=32 is [28] ms
+n=262144, s=8, k=64
+Setup time for n=262144 s=8 k=64 is [604] ms
+Table preprocess time for n=262144 s=8 k=64 is [106] ms
+Prove time for n=262144 s=8 k=64 is [1333] ms
+Verify time for n=262144 s=8 k=64 is [28] ms
+n=262144, s=8, k=128
+Setup time for n=262144 s=8 k=128 is [615] ms
+Table preprocess time for n=262144 s=8 k=128 is [107] ms
+Prove time for n=262144 s=8 k=128 is [2484] ms
+Verify time for n=262144 s=8 k=128 is [28] ms
+n=262144, s=8, k=256
+Setup time for n=262144 s=8 k=256 is [606] ms
+Table preprocess time for n=262144 s=8 k=256 is [106] ms
+Prove time for n=262144 s=8 k=256 is [4841] ms
+Verify time for n=262144 s=8 k=256 is [28] ms
+n=262144, s=8, k=512
+Setup time for n=262144 s=8 k=512 is [609] ms
+Table preprocess time for n=262144 s=8 k=512 is [107] ms
+Prove time for n=262144 s=8 k=512 is [9900] ms
+Verify time for n=262144 s=8 k=512 is [28] ms
+n=262144, s=8, k=1024
+Setup time for n=262144 s=8 k=1024 is [599] ms
+Table preprocess time for n=262144 s=8 k=1024 is [106] ms
+Prove time for n=262144 s=8 k=1024 is [18875] ms
+Verify time for n=262144 s=8 k=1024 is [28] ms
+n=524288, s=4, k=1
+Setup time for n=524288 s=4 k=1 is [596] ms
+Table preprocess time for n=524288 s=4 k=1 is [106] ms
+Prove time for n=524288 s=4 k=1 is [118] ms
+Verify time for n=524288 s=4 k=1 is [26] ms
+n=524288, s=4, k=2
+Setup time for n=524288 s=4 k=2 is [594] ms
+Table preprocess time for n=524288 s=4 k=2 is [106] ms
+Prove time for n=524288 s=4 k=2 is [135] ms
+Verify time for n=524288 s=4 k=2 is [27] ms
+n=524288, s=4, k=4
+Setup time for n=524288 s=4 k=4 is [604] ms
+Table preprocess time for n=524288 s=4 k=4 is [106] ms
+Prove time for n=524288 s=4 k=4 is [157] ms
+Verify time for n=524288 s=4 k=4 is [28] ms
+n=524288, s=4, k=8
+Setup time for n=524288 s=4 k=8 is [604] ms
+Table preprocess time for n=524288 s=4 k=8 is [106] ms
+Prove time for n=524288 s=4 k=8 is [213] ms
+Verify time for n=524288 s=4 k=8 is [28] ms
+n=524288, s=4, k=16
+Setup time for n=524288 s=4 k=16 is [596] ms
+Table preprocess time for n=524288 s=4 k=16 is [108] ms
+Prove time for n=524288 s=4 k=16 is [321] ms
+Verify time for n=524288 s=4 k=16 is [29] ms
+n=524288, s=4, k=32
+Setup time for n=524288 s=4 k=32 is [630] ms
+Table preprocess time for n=524288 s=4 k=32 is [111] ms
+Prove time for n=524288 s=4 k=32 is [541] ms
+Verify time for n=524288 s=4 k=32 is [28] ms
+n=524288, s=4, k=64
+Setup time for n=524288 s=4 k=64 is [607] ms
+Table preprocess time for n=524288 s=4 k=64 is [108] ms
+Prove time for n=524288 s=4 k=64 is [960] ms
+Verify time for n=524288 s=4 k=64 is [29] ms
+n=524288, s=4, k=128
+Setup time for n=524288 s=4 k=128 is [614] ms
+Table preprocess time for n=524288 s=4 k=128 is [108] ms
+Prove time for n=524288 s=4 k=128 is [1737] ms
+Verify time for n=524288 s=4 k=128 is [28] ms
+n=524288, s=4, k=256
+Setup time for n=524288 s=4 k=256 is [610] ms
+Table preprocess time for n=524288 s=4 k=256 is [106] ms
+Prove time for n=524288 s=4 k=256 is [3394] ms
+Verify time for n=524288 s=4 k=256 is [29] ms
+n=524288, s=4, k=512
+Setup time for n=524288 s=4 k=512 is [611] ms
+Table preprocess time for n=524288 s=4 k=512 is [108] ms
+Prove time for n=524288 s=4 k=512 is [6645] ms
+Verify time for n=524288 s=4 k=512 is [28] ms
+n=524288, s=4, k=1024
+Setup time for n=524288 s=4 k=1024 is [618] ms
+Table preprocess time for n=524288 s=4 k=1024 is [108] ms
+Prove time for n=524288 s=4 k=1024 is [12852] ms
+Verify time for n=524288 s=4 k=1024 is [30] ms
+n=1048576, s=2, k=1
+Setup time for n=1048576 s=2 k=1 is [624] ms
+Table preprocess time for n=1048576 s=2 k=1 is [107] ms
+Prove time for n=1048576 s=2 k=1 is [117] ms
+Verify time for n=1048576 s=2 k=1 is [26] ms
+n=1048576, s=2, k=2
+Setup time for n=1048576 s=2 k=2 is [605] ms
+Table preprocess time for n=1048576 s=2 k=2 is [107] ms
+Prove time for n=1048576 s=2 k=2 is [125] ms
+Verify time for n=1048576 s=2 k=2 is [27] ms
+n=1048576, s=2, k=4
+Setup time for n=1048576 s=2 k=4 is [595] ms
+Table preprocess time for n=1048576 s=2 k=4 is [107] ms
+Prove time for n=1048576 s=2 k=4 is [144] ms
+Verify time for n=1048576 s=2 k=4 is [28] ms
+n=1048576, s=2, k=8
+Setup time for n=1048576 s=2 k=8 is [596] ms
+Table preprocess time for n=1048576 s=2 k=8 is [106] ms
+Prove time for n=1048576 s=2 k=8 is [187] ms
+Verify time for n=1048576 s=2 k=8 is [28] ms
+n=1048576, s=2, k=16
+Setup time for n=1048576 s=2 k=16 is [606] ms
+Table preprocess time for n=1048576 s=2 k=16 is [106] ms
+Prove time for n=1048576 s=2 k=16 is [264] ms
+Verify time for n=1048576 s=2 k=16 is [28] ms
+n=1048576, s=2, k=32
+Setup time for n=1048576 s=2 k=32 is [604] ms
+Table preprocess time for n=1048576 s=2 k=32 is [106] ms
+Prove time for n=1048576 s=2 k=32 is [419] ms
+Verify time for n=1048576 s=2 k=32 is [28] ms
+n=1048576, s=2, k=64
+Setup time for n=1048576 s=2 k=64 is [604] ms
+Table preprocess time for n=1048576 s=2 k=64 is [106] ms
+Prove time for n=1048576 s=2 k=64 is [729] ms
+Verify time for n=1048576 s=2 k=64 is [28] ms
+n=1048576, s=2, k=128
+Setup time for n=1048576 s=2 k=128 is [604] ms
+Table preprocess time for n=1048576 s=2 k=128 is [106] ms
+Prove time for n=1048576 s=2 k=128 is [1335] ms
+Verify time for n=1048576 s=2 k=128 is [28] ms
+n=1048576, s=2, k=256
+Setup time for n=1048576 s=2 k=256 is [604] ms
+Table preprocess time for n=1048576 s=2 k=256 is [107] ms
+Prove time for n=1048576 s=2 k=256 is [2623] ms
+Verify time for n=1048576 s=2 k=256 is [28] ms
+n=1048576, s=2, k=512
+Setup time for n=1048576 s=2 k=512 is [606] ms
+Table preprocess time for n=1048576 s=2 k=512 is [106] ms
+Prove time for n=1048576 s=2 k=512 is [5128] ms
+Verify time for n=1048576 s=2 k=512 is [28] ms
+n=1048576, s=2, k=1024
+Setup time for n=1048576 s=2 k=1024 is [599] ms
+Table preprocess time for n=1048576 s=2 k=1024 is [107] ms
+Prove time for n=1048576 s=2 k=1024 is [9851] ms
+Verify time for n=1048576 s=2 k=1024 is [28] ms
+n=2097152, s=1, k=1
+Setup time for n=2097152 s=1 k=1 is [604] ms
+Table preprocess time for n=2097152 s=1 k=1 is [86] ms
+Prove time for n=2097152 s=1 k=1 is [114] ms
+Verify time for n=2097152 s=1 k=1 is [24] ms
+n=2097152, s=1, k=2
+Setup time for n=2097152 s=1 k=2 is [595] ms
+Table preprocess time for n=2097152 s=1 k=2 is [87] ms
+Prove time for n=2097152 s=1 k=2 is [122] ms
+Verify time for n=2097152 s=1 k=2 is [26] ms
+n=2097152, s=1, k=4
+Setup time for n=2097152 s=1 k=4 is [604] ms
+Table preprocess time for n=2097152 s=1 k=4 is [119] ms
+Prove time for n=2097152 s=1 k=4 is [137] ms
+Verify time for n=2097152 s=1 k=4 is [28] ms
+n=2097152, s=1, k=8
+Setup time for n=2097152 s=1 k=8 is [604] ms
+Table preprocess time for n=2097152 s=1 k=8 is [119] ms
+Prove time for n=2097152 s=1 k=8 is [170] ms
+Verify time for n=2097152 s=1 k=8 is [27] ms
+n=2097152, s=1, k=16
+Setup time for n=2097152 s=1 k=16 is [603] ms
+Table preprocess time for n=2097152 s=1 k=16 is [119] ms
+Prove time for n=2097152 s=1 k=16 is [236] ms
+Verify time for n=2097152 s=1 k=16 is [28] ms
+n=2097152, s=1, k=32
+Setup time for n=2097152 s=1 k=32 is [604] ms
+Table preprocess time for n=2097152 s=1 k=32 is [120] ms
+Prove time for n=2097152 s=1 k=32 is [366] ms
+Verify time for n=2097152 s=1 k=32 is [27] ms
+n=2097152, s=1, k=64
+Setup time for n=2097152 s=1 k=64 is [603] ms
+Table preprocess time for n=2097152 s=1 k=64 is [119] ms
+Prove time for n=2097152 s=1 k=64 is [628] ms
+Verify time for n=2097152 s=1 k=64 is [27] ms
+n=2097152, s=1, k=128
+Setup time for n=2097152 s=1 k=128 is [603] ms
+Table preprocess time for n=2097152 s=1 k=128 is [119] ms
+Prove time for n=2097152 s=1 k=128 is [1145] ms
+Verify time for n=2097152 s=1 k=128 is [27] ms
+n=2097152, s=1, k=256
+Setup time for n=2097152 s=1 k=256 is [606] ms
+Table preprocess time for n=2097152 s=1 k=256 is [119] ms
+Prove time for n=2097152 s=1 k=256 is [2177] ms
+Verify time for n=2097152 s=1 k=256 is [27] ms
+n=2097152, s=1, k=512
+Setup time for n=2097152 s=1 k=512 is [606] ms
+Table preprocess time for n=2097152 s=1 k=512 is [119] ms
+Prove time for n=2097152 s=1 k=512 is [4246] ms
+Verify time for n=2097152 s=1 k=512 is [28] ms
+n=2097152, s=1, k=1024
+Setup time for n=2097152 s=1 k=1024 is [607] ms
+Table preprocess time for n=2097152 s=1 k=1024 is [119] ms
+Prove time for n=2097152 s=1 k=1024 is [8309] ms
+Verify time for n=2097152 s=1 k=1024 is [28] ms
+n=65536, s=64, k=1
+Setup time for n=65536 s=64 k=1 is [1164] ms
+Table preprocess time for n=65536 s=64 k=1 is [210] ms
+Prove time for n=65536 s=64 k=1 is [300] ms
+Verify time for n=65536 s=64 k=1 is [27] ms
+n=65536, s=64, k=2
+Setup time for n=65536 s=64 k=2 is [1164] ms
+Table preprocess time for n=65536 s=64 k=2 is [210] ms
+Prove time for n=65536 s=64 k=2 is [399] ms
+Verify time for n=65536 s=64 k=2 is [27] ms
+n=65536, s=64, k=4
+Setup time for n=65536 s=64 k=4 is [1164] ms
+Table preprocess time for n=65536 s=64 k=4 is [210] ms
+Prove time for n=65536 s=64 k=4 is [592] ms
+Verify time for n=65536 s=64 k=4 is [28] ms
+n=65536, s=64, k=8
+Setup time for n=65536 s=64 k=8 is [1163] ms
+Table preprocess time for n=65536 s=64 k=8 is [210] ms
+Prove time for n=65536 s=64 k=8 is [994] ms
+Verify time for n=65536 s=64 k=8 is [28] ms
+n=65536, s=64, k=16
+Setup time for n=65536 s=64 k=16 is [1164] ms
+Table preprocess time for n=65536 s=64 k=16 is [210] ms
+Prove time for n=65536 s=64 k=16 is [1793] ms
+Verify time for n=65536 s=64 k=16 is [29] ms
+n=65536, s=64, k=32
+Setup time for n=65536 s=64 k=32 is [1215] ms
+Table preprocess time for n=65536 s=64 k=32 is [210] ms
+Prove time for n=65536 s=64 k=32 is [3418] ms
+Verify time for n=65536 s=64 k=32 is [28] ms
+n=65536, s=64, k=64
+Setup time for n=65536 s=64 k=64 is [1174] ms
+Table preprocess time for n=65536 s=64 k=64 is [211] ms
+Prove time for n=65536 s=64 k=64 is [6543] ms
+Verify time for n=65536 s=64 k=64 is [29] ms
+n=65536, s=64, k=128
+Setup time for n=65536 s=64 k=128 is [1181] ms
+Table preprocess time for n=65536 s=64 k=128 is [214] ms
+Prove time for n=65536 s=64 k=128 is [13105] ms
+Verify time for n=65536 s=64 k=128 is [29] ms
+n=65536, s=64, k=256
+Setup time for n=65536 s=64 k=256 is [1172] ms
+Table preprocess time for n=65536 s=64 k=256 is [211] ms
+Prove time for n=65536 s=64 k=256 is [25498] ms
+Verify time for n=65536 s=64 k=256 is [28] ms
+n=65536, s=64, k=512
+Setup time for n=65536 s=64 k=512 is [1169] ms
+Table preprocess time for n=65536 s=64 k=512 is [211] ms
+Prove time for n=65536 s=64 k=512 is [50609] ms
+Verify time for n=65536 s=64 k=512 is [28] ms
+n=65536, s=64, k=1024
+Setup time for n=65536 s=64 k=1024 is [1174] ms
+Table preprocess time for n=65536 s=64 k=1024 is [211] ms
+Prove time for n=65536 s=64 k=1024 is [101785] ms
+Verify time for n=65536 s=64 k=1024 is [28] ms
+n=131072, s=32, k=1
+Setup time for n=131072 s=32 k=1 is [1174] ms
+Table preprocess time for n=131072 s=32 k=1 is [211] ms
+Prove time for n=131072 s=32 k=1 is [259] ms
+Verify time for n=131072 s=32 k=1 is [27] ms
+n=131072, s=32, k=2
+Setup time for n=131072 s=32 k=2 is [1166] ms
+Table preprocess time for n=131072 s=32 k=2 is [211] ms
+Prove time for n=131072 s=32 k=2 is [312] ms
+Verify time for n=131072 s=32 k=2 is [27] ms
+n=131072, s=32, k=4
+Setup time for n=131072 s=32 k=4 is [1169] ms
+Table preprocess time for n=131072 s=32 k=4 is [211] ms
+Prove time for n=131072 s=32 k=4 is [421] ms
+Verify time for n=131072 s=32 k=4 is [30] ms
+n=131072, s=32, k=8
+Setup time for n=131072 s=32 k=8 is [1170] ms
+Table preprocess time for n=131072 s=32 k=8 is [210] ms
+Prove time for n=131072 s=32 k=8 is [644] ms
+Verify time for n=131072 s=32 k=8 is [28] ms
+n=131072, s=32, k=16
+Setup time for n=131072 s=32 k=16 is [1176] ms
+Table preprocess time for n=131072 s=32 k=16 is [213] ms
+Prove time for n=131072 s=32 k=16 is [1099] ms
+Verify time for n=131072 s=32 k=16 is [28] ms
+n=131072, s=32, k=32
+Setup time for n=131072 s=32 k=32 is [1187] ms
+Table preprocess time for n=131072 s=32 k=32 is [210] ms
+Prove time for n=131072 s=32 k=32 is [1985] ms
+Verify time for n=131072 s=32 k=32 is [28] ms
+n=131072, s=32, k=64
+Setup time for n=131072 s=32 k=64 is [1182] ms
+Table preprocess time for n=131072 s=32 k=64 is [212] ms
+Prove time for n=131072 s=32 k=64 is [3834] ms
+Verify time for n=131072 s=32 k=64 is [28] ms
+n=131072, s=32, k=128
+Setup time for n=131072 s=32 k=128 is [1169] ms
+Table preprocess time for n=131072 s=32 k=128 is [211] ms
+Prove time for n=131072 s=32 k=128 is [7481] ms
+Verify time for n=131072 s=32 k=128 is [29] ms
+n=131072, s=32, k=256
+Setup time for n=131072 s=32 k=256 is [1166] ms
+Table preprocess time for n=131072 s=32 k=256 is [210] ms
+Prove time for n=131072 s=32 k=256 is [14705] ms
+Verify time for n=131072 s=32 k=256 is [28] ms
+n=131072, s=32, k=512
+Setup time for n=131072 s=32 k=512 is [1167] ms
+Table preprocess time for n=131072 s=32 k=512 is [210] ms
+Prove time for n=131072 s=32 k=512 is [28080] ms
+Verify time for n=131072 s=32 k=512 is [29] ms
+n=131072, s=32, k=1024
+Setup time for n=131072 s=32 k=1024 is [1182] ms
+Table preprocess time for n=131072 s=32 k=1024 is [211] ms
+Prove time for n=131072 s=32 k=1024 is [55907] ms
+Verify time for n=131072 s=32 k=1024 is [28] ms
+n=262144, s=16, k=1
+Setup time for n=262144 s=16 k=1 is [1190] ms
+Table preprocess time for n=262144 s=16 k=1 is [211] ms
+Prove time for n=262144 s=16 k=1 is [230] ms
+Verify time for n=262144 s=16 k=1 is [26] ms
+n=262144, s=16, k=2
+Setup time for n=262144 s=16 k=2 is [1160] ms
+Table preprocess time for n=262144 s=16 k=2 is [211] ms
+Prove time for n=262144 s=16 k=2 is [261] ms
+Verify time for n=262144 s=16 k=2 is [26] ms
+n=262144, s=16, k=4
+Setup time for n=262144 s=16 k=4 is [1166] ms
+Table preprocess time for n=262144 s=16 k=4 is [210] ms
+Prove time for n=262144 s=16 k=4 is [317] ms
+Verify time for n=262144 s=16 k=4 is [28] ms
+n=262144, s=16, k=8
+Setup time for n=262144 s=16 k=8 is [1170] ms
+Table preprocess time for n=262144 s=16 k=8 is [211] ms
+Prove time for n=262144 s=16 k=8 is [441] ms
+Verify time for n=262144 s=16 k=8 is [28] ms
+n=262144, s=16, k=16
+Setup time for n=262144 s=16 k=16 is [1177] ms
+Table preprocess time for n=262144 s=16 k=16 is [211] ms
+Prove time for n=262144 s=16 k=16 is [726] ms
+Verify time for n=262144 s=16 k=16 is [28] ms
+n=262144, s=16, k=32
+Setup time for n=262144 s=16 k=32 is [1168] ms
+Table preprocess time for n=262144 s=16 k=32 is [211] ms
+Prove time for n=262144 s=16 k=32 is [1199] ms
+Verify time for n=262144 s=16 k=32 is [28] ms
+n=262144, s=16, k=64
+Setup time for n=262144 s=16 k=64 is [1213] ms
+Table preprocess time for n=262144 s=16 k=64 is [214] ms
+Prove time for n=262144 s=16 k=64 is [2158] ms
+Verify time for n=262144 s=16 k=64 is [29] ms
+n=262144, s=16, k=128
+Setup time for n=262144 s=16 k=128 is [1216] ms
+Table preprocess time for n=262144 s=16 k=128 is [219] ms
+Prove time for n=262144 s=16 k=128 is [4162] ms
+Verify time for n=262144 s=16 k=128 is [29] ms
+n=262144, s=16, k=256
+Setup time for n=262144 s=16 k=256 is [1220] ms
+Table preprocess time for n=262144 s=16 k=256 is [218] ms
+Prove time for n=262144 s=16 k=256 is [7964] ms
+Verify time for n=262144 s=16 k=256 is [28] ms
+n=262144, s=16, k=512
+Setup time for n=262144 s=16 k=512 is [1165] ms
+Table preprocess time for n=262144 s=16 k=512 is [210] ms
+Prove time for n=262144 s=16 k=512 is [15832] ms
+Verify time for n=262144 s=16 k=512 is [30] ms
+n=262144, s=16, k=1024
+Setup time for n=262144 s=16 k=1024 is [1166] ms
+Table preprocess time for n=262144 s=16 k=1024 is [211] ms
+Prove time for n=262144 s=16 k=1024 is [31637] ms
+Verify time for n=262144 s=16 k=1024 is [28] ms
+n=524288, s=8, k=1
+Setup time for n=524288 s=8 k=1 is [1160] ms
+Table preprocess time for n=524288 s=8 k=1 is [211] ms
+Prove time for n=524288 s=8 k=1 is [216] ms
+Verify time for n=524288 s=8 k=1 is [26] ms
+n=524288, s=8, k=2
+Setup time for n=524288 s=8 k=2 is [1159] ms
+Table preprocess time for n=524288 s=8 k=2 is [211] ms
+Prove time for n=524288 s=8 k=2 is [229] ms
+Verify time for n=524288 s=8 k=2 is [27] ms
+n=524288, s=8, k=4
+Setup time for n=524288 s=8 k=4 is [1199] ms
+Table preprocess time for n=524288 s=8 k=4 is [214] ms
+Prove time for n=524288 s=8 k=4 is [271] ms
+Verify time for n=524288 s=8 k=4 is [28] ms
+n=524288, s=8, k=8
+Setup time for n=524288 s=8 k=8 is [1186] ms
+Table preprocess time for n=524288 s=8 k=8 is [214] ms
+Prove time for n=524288 s=8 k=8 is [358] ms
+Verify time for n=524288 s=8 k=8 is [29] ms
+n=524288, s=8, k=16
+Setup time for n=524288 s=8 k=16 is [1185] ms
+Table preprocess time for n=524288 s=8 k=16 is [215] ms
+Prove time for n=524288 s=8 k=16 is [512] ms
+Verify time for n=524288 s=8 k=16 is [28] ms
+n=524288, s=8, k=32
+Setup time for n=524288 s=8 k=32 is [1169] ms
+Table preprocess time for n=524288 s=8 k=32 is [210] ms
+Prove time for n=524288 s=8 k=32 is [792] ms
+Verify time for n=524288 s=8 k=32 is [29] ms
+n=524288, s=8, k=64
+Setup time for n=524288 s=8 k=64 is [1168] ms
+Table preprocess time for n=524288 s=8 k=64 is [211] ms
+Prove time for n=524288 s=8 k=64 is [1450] ms
+Verify time for n=524288 s=8 k=64 is [27] ms
+n=524288, s=8, k=128
+Setup time for n=524288 s=8 k=128 is [1168] ms
+Table preprocess time for n=524288 s=8 k=128 is [211] ms
+Prove time for n=524288 s=8 k=128 is [2569] ms
+Verify time for n=524288 s=8 k=128 is [28] ms
+n=524288, s=8, k=256
+Setup time for n=524288 s=8 k=256 is [1164] ms
+Table preprocess time for n=524288 s=8 k=256 is [210] ms
+Prove time for n=524288 s=8 k=256 is [5068] ms
+Verify time for n=524288 s=8 k=256 is [28] ms
+n=524288, s=8, k=512
+Setup time for n=524288 s=8 k=512 is [1185] ms
+Table preprocess time for n=524288 s=8 k=512 is [213] ms
+Prove time for n=524288 s=8 k=512 is [9793] ms
+Verify time for n=524288 s=8 k=512 is [31] ms
+n=524288, s=8, k=1024
+Setup time for n=524288 s=8 k=1024 is [1209] ms
+Table preprocess time for n=524288 s=8 k=1024 is [219] ms
+Prove time for n=524288 s=8 k=1024 is [19446] ms
+Verify time for n=524288 s=8 k=1024 is [29] ms
+n=1048576, s=4, k=1
+Setup time for n=1048576 s=4 k=1 is [1180] ms
+Table preprocess time for n=1048576 s=4 k=1 is [214] ms
+Prove time for n=1048576 s=4 k=1 is [207] ms
+Verify time for n=1048576 s=4 k=1 is [27] ms
+n=1048576, s=4, k=2
+Setup time for n=1048576 s=4 k=2 is [1186] ms
+Table preprocess time for n=1048576 s=4 k=2 is [213] ms
+Prove time for n=1048576 s=4 k=2 is [227] ms
+Verify time for n=1048576 s=4 k=2 is [27] ms
+n=1048576, s=4, k=4
+Setup time for n=1048576 s=4 k=4 is [1187] ms
+Table preprocess time for n=1048576 s=4 k=4 is [214] ms
+Prove time for n=1048576 s=4 k=4 is [249] ms
+Verify time for n=1048576 s=4 k=4 is [29] ms
+n=1048576, s=4, k=8
+Setup time for n=1048576 s=4 k=8 is [1182] ms
+Table preprocess time for n=1048576 s=4 k=8 is [214] ms
+Prove time for n=1048576 s=4 k=8 is [305] ms
+Verify time for n=1048576 s=4 k=8 is [29] ms
+n=1048576, s=4, k=16
+Setup time for n=1048576 s=4 k=16 is [1176] ms
+Table preprocess time for n=1048576 s=4 k=16 is [213] ms
+Prove time for n=1048576 s=4 k=16 is [408] ms
+Verify time for n=1048576 s=4 k=16 is [28] ms
+n=1048576, s=4, k=32
+Setup time for n=1048576 s=4 k=32 is [1167] ms
+Table preprocess time for n=1048576 s=4 k=32 is [215] ms
+Prove time for n=1048576 s=4 k=32 is [618] ms
+Verify time for n=1048576 s=4 k=32 is [30] ms
+n=1048576, s=4, k=64
+Setup time for n=1048576 s=4 k=64 is [1218] ms
+Table preprocess time for n=1048576 s=4 k=64 is [220] ms
+Prove time for n=1048576 s=4 k=64 is [1036] ms
+Verify time for n=1048576 s=4 k=64 is [29] ms
+n=1048576, s=4, k=128
+Setup time for n=1048576 s=4 k=128 is [1220] ms
+Table preprocess time for n=1048576 s=4 k=128 is [217] ms
+Prove time for n=1048576 s=4 k=128 is [1807] ms
+Verify time for n=1048576 s=4 k=128 is [29] ms
+n=1048576, s=4, k=256
+Setup time for n=1048576 s=4 k=256 is [1180] ms
+Table preprocess time for n=1048576 s=4 k=256 is [214] ms
+Prove time for n=1048576 s=4 k=256 is [3412] ms
+Verify time for n=1048576 s=4 k=256 is [28] ms
+n=1048576, s=4, k=512
+Setup time for n=1048576 s=4 k=512 is [1190] ms
+Table preprocess time for n=1048576 s=4 k=512 is [214] ms
+Prove time for n=1048576 s=4 k=512 is [6663] ms
+Verify time for n=1048576 s=4 k=512 is [28] ms
+n=1048576, s=4, k=1024
+Setup time for n=1048576 s=4 k=1024 is [1222] ms
+Table preprocess time for n=1048576 s=4 k=1024 is [219] ms
+Prove time for n=1048576 s=4 k=1024 is [13229] ms
+Verify time for n=1048576 s=4 k=1024 is [28] ms
+n=2097152, s=2, k=1
+Setup time for n=2097152 s=2 k=1 is [1210] ms
+Table preprocess time for n=2097152 s=2 k=1 is [178] ms
+Prove time for n=2097152 s=2 k=1 is [213] ms
+Verify time for n=2097152 s=2 k=1 is [28] ms
+n=2097152, s=2, k=2
+Setup time for n=2097152 s=2 k=2 is [1210] ms
+Table preprocess time for n=2097152 s=2 k=2 is [179] ms
+Prove time for n=2097152 s=2 k=2 is [224] ms
+Verify time for n=2097152 s=2 k=2 is [28] ms
+n=2097152, s=2, k=4
+Setup time for n=2097152 s=2 k=4 is [1191] ms
+Table preprocess time for n=2097152 s=2 k=4 is [178] ms
+Prove time for n=2097152 s=2 k=4 is [241] ms
+Verify time for n=2097152 s=2 k=4 is [29] ms
+n=2097152, s=2, k=8
+Setup time for n=2097152 s=2 k=8 is [1206] ms
+Table preprocess time for n=2097152 s=2 k=8 is [178] ms
+Prove time for n=2097152 s=2 k=8 is [281] ms
+Verify time for n=2097152 s=2 k=8 is [28] ms
+n=2097152, s=2, k=16
+Setup time for n=2097152 s=2 k=16 is [1164] ms
+Table preprocess time for n=2097152 s=2 k=16 is [228] ms
+Prove time for n=2097152 s=2 k=16 is [353] ms
+Verify time for n=2097152 s=2 k=16 is [28] ms
+n=2097152, s=2, k=32
+Setup time for n=2097152 s=2 k=32 is [1165] ms
+Table preprocess time for n=2097152 s=2 k=32 is [228] ms
+Prove time for n=2097152 s=2 k=32 is [521] ms
+Verify time for n=2097152 s=2 k=32 is [29] ms
+n=2097152, s=2, k=64
+Setup time for n=2097152 s=2 k=64 is [1162] ms
+Table preprocess time for n=2097152 s=2 k=64 is [228] ms
+Prove time for n=2097152 s=2 k=64 is [841] ms
+Verify time for n=2097152 s=2 k=64 is [28] ms
+n=2097152, s=2, k=128
+Setup time for n=2097152 s=2 k=128 is [1181] ms
+Table preprocess time for n=2097152 s=2 k=128 is [231] ms
+Prove time for n=2097152 s=2 k=128 is [1481] ms
+Verify time for n=2097152 s=2 k=128 is [29] ms
+n=2097152, s=2, k=256
+Setup time for n=2097152 s=2 k=256 is [1174] ms
+Table preprocess time for n=2097152 s=2 k=256 is [231] ms
+Prove time for n=2097152 s=2 k=256 is [2722] ms
+Verify time for n=2097152 s=2 k=256 is [29] ms
+n=2097152, s=2, k=512
+Setup time for n=2097152 s=2 k=512 is [1173] ms
+Table preprocess time for n=2097152 s=2 k=512 is [229] ms
+Prove time for n=2097152 s=2 k=512 is [5353] ms
+Verify time for n=2097152 s=2 k=512 is [28] ms
+n=2097152, s=2, k=1024
+Setup time for n=2097152 s=2 k=1024 is [1167] ms
+Table preprocess time for n=2097152 s=2 k=1024 is [210] ms
+Prove time for n=2097152 s=2 k=1024 is [10028] ms
+Verify time for n=2097152 s=2 k=1024 is [29] ms
+n=4194304, s=1, k=1
+Setup time for n=4194304 s=1 k=1 is [1162] ms
+Table preprocess time for n=4194304 s=1 k=1 is [210] ms
+Prove time for n=4194304 s=1 k=1 is [204] ms
+Verify time for n=4194304 s=1 k=1 is [23] ms
+n=4194304, s=1, k=2
+Setup time for n=4194304 s=1 k=2 is [1151] ms
+Table preprocess time for n=4194304 s=1 k=2 is [171] ms
+Prove time for n=4194304 s=1 k=2 is [206] ms
+Verify time for n=4194304 s=1 k=2 is [27] ms
+n=4194304, s=1, k=4
+Setup time for n=4194304 s=1 k=4 is [1163] ms
+Table preprocess time for n=4194304 s=1 k=4 is [197] ms
+Prove time for n=4194304 s=1 k=4 is [221] ms
+Verify time for n=4194304 s=1 k=4 is [28] ms
+n=4194304, s=1, k=8
+Setup time for n=4194304 s=1 k=8 is [1164] ms
+Table preprocess time for n=4194304 s=1 k=8 is [197] ms
+Prove time for n=4194304 s=1 k=8 is [255] ms
+Verify time for n=4194304 s=1 k=8 is [32] ms
+n=4194304, s=1, k=16
+Setup time for n=4194304 s=1 k=16 is [1195] ms
+Table preprocess time for n=4194304 s=1 k=16 is [197] ms
+Prove time for n=4194304 s=1 k=16 is [326] ms
+Verify time for n=4194304 s=1 k=16 is [29] ms
+n=4194304, s=1, k=32
+Setup time for n=4194304 s=1 k=32 is [1194] ms
+Table preprocess time for n=4194304 s=1 k=32 is [200] ms
+Prove time for n=4194304 s=1 k=32 is [460] ms
+Verify time for n=4194304 s=1 k=32 is [29] ms
+n=4194304, s=1, k=64
+Setup time for n=4194304 s=1 k=64 is [1160] ms
+Table preprocess time for n=4194304 s=1 k=64 is [197] ms
+Prove time for n=4194304 s=1 k=64 is [710] ms
+Verify time for n=4194304 s=1 k=64 is [27] ms
+n=4194304, s=1, k=128
+Setup time for n=4194304 s=1 k=128 is [1161] ms
+Table preprocess time for n=4194304 s=1 k=128 is [197] ms
+Prove time for n=4194304 s=1 k=128 is [1249] ms
+Verify time for n=4194304 s=1 k=128 is [30] ms
+n=4194304, s=1, k=256
+Setup time for n=4194304 s=1 k=256 is [1207] ms
+Table preprocess time for n=4194304 s=1 k=256 is [206] ms
+Prove time for n=4194304 s=1 k=256 is [2286] ms
+Verify time for n=4194304 s=1 k=256 is [28] ms
+n=4194304, s=1, k=512
+Setup time for n=4194304 s=1 k=512 is [1167] ms
+Table preprocess time for n=4194304 s=1 k=512 is [201] ms
+Prove time for n=4194304 s=1 k=512 is [4318] ms
+Verify time for n=4194304 s=1 k=512 is [28] ms
+n=4194304, s=1, k=1024
+Setup time for n=4194304 s=1 k=1024 is [1185] ms
+Table preprocess time for n=4194304 s=1 k=1024 is [198] ms
+Prove time for n=4194304 s=1 k=1024 is [8412] ms
+Verify time for n=4194304 s=1 k=1024 is [28] ms
+n=65536, s=128, k=1
+Setup time for n=65536 s=128 k=1 is [2286] ms
+Table preprocess time for n=65536 s=128 k=1 is [418] ms
+Prove time for n=65536 s=128 k=1 is [585] ms
+Verify time for n=65536 s=128 k=1 is [28] ms
+n=65536, s=128, k=2
+Setup time for n=65536 s=128 k=2 is [2380] ms
+Table preprocess time for n=65536 s=128 k=2 is [437] ms
+Prove time for n=65536 s=128 k=2 is [764] ms
+Verify time for n=65536 s=128 k=2 is [28] ms
+n=65536, s=128, k=4
+Setup time for n=65536 s=128 k=4 is [2298] ms
+Table preprocess time for n=65536 s=128 k=4 is [424] ms
+Prove time for n=65536 s=128 k=4 is [1149] ms
+Verify time for n=65536 s=128 k=4 is [28] ms
+n=65536, s=128, k=8
+Setup time for n=65536 s=128 k=8 is [2314] ms
+Table preprocess time for n=65536 s=128 k=8 is [423] ms
+Prove time for n=65536 s=128 k=8 is [1955] ms
+Verify time for n=65536 s=128 k=8 is [28] ms
+n=65536, s=128, k=16
+Setup time for n=65536 s=128 k=16 is [2297] ms
+Table preprocess time for n=65536 s=128 k=16 is [425] ms
+Prove time for n=65536 s=128 k=16 is [3552] ms
+Verify time for n=65536 s=128 k=16 is [28] ms
+n=65536, s=128, k=32
+Setup time for n=65536 s=128 k=32 is [2280] ms
+Table preprocess time for n=65536 s=128 k=32 is [418] ms
+Prove time for n=65536 s=128 k=32 is [6634] ms
+Verify time for n=65536 s=128 k=32 is [28] ms
+n=65536, s=128, k=64
+Setup time for n=65536 s=128 k=64 is [2323] ms
+Table preprocess time for n=65536 s=128 k=64 is [417] ms
+Prove time for n=65536 s=128 k=64 is [13211] ms
+Verify time for n=65536 s=128 k=64 is [28] ms
+n=65536, s=128, k=128
+Setup time for n=65536 s=128 k=128 is [2304] ms
+Table preprocess time for n=65536 s=128 k=128 is [427] ms
+Prove time for n=65536 s=128 k=128 is [25574] ms
+Verify time for n=65536 s=128 k=128 is [28] ms
+n=65536, s=128, k=256
+Setup time for n=65536 s=128 k=256 is [2288] ms
+Table preprocess time for n=65536 s=128 k=256 is [418] ms
+Prove time for n=65536 s=128 k=256 is [50362] ms
+Verify time for n=65536 s=128 k=256 is [28] ms
+n=65536, s=128, k=512
+Setup time for n=65536 s=128 k=512 is [2286] ms
+Table preprocess time for n=65536 s=128 k=512 is [419] ms
+Prove time for n=65536 s=128 k=512 is [99220] ms
+Verify time for n=65536 s=128 k=512 is [28] ms
+n=65536, s=128, k=1024
+Setup time for n=65536 s=128 k=1024 is [2295] ms
+Table preprocess time for n=65536 s=128 k=1024 is [418] ms
+Prove time for n=65536 s=128 k=1024 is [197360] ms
+Verify time for n=65536 s=128 k=1024 is [29] ms
+n=131072, s=64, k=1
+Setup time for n=131072 s=64 k=1 is [2282] ms
+Table preprocess time for n=131072 s=64 k=1 is [418] ms
+Prove time for n=131072 s=64 k=1 is [485] ms
+Verify time for n=131072 s=64 k=1 is [26] ms
+n=131072, s=64, k=2
+Setup time for n=131072 s=64 k=2 is [2287] ms
+Table preprocess time for n=131072 s=64 k=2 is [418] ms
+Prove time for n=131072 s=64 k=2 is [599] ms
+Verify time for n=131072 s=64 k=2 is [28] ms
+n=131072, s=64, k=4
+Setup time for n=131072 s=64 k=4 is [2319] ms
+Table preprocess time for n=131072 s=64 k=4 is [431] ms
+Prove time for n=131072 s=64 k=4 is [789] ms
+Verify time for n=131072 s=64 k=4 is [29] ms
+n=131072, s=64, k=8
+Setup time for n=131072 s=64 k=8 is [2300] ms
+Table preprocess time for n=131072 s=64 k=8 is [434] ms
+Prove time for n=131072 s=64 k=8 is [1225] ms
+Verify time for n=131072 s=64 k=8 is [30] ms
+n=131072, s=64, k=16
+Setup time for n=131072 s=64 k=16 is [2319] ms
+Table preprocess time for n=131072 s=64 k=16 is [418] ms
+Prove time for n=131072 s=64 k=16 is [2031] ms
+Verify time for n=131072 s=64 k=16 is [28] ms
+n=131072, s=64, k=32
+Setup time for n=131072 s=64 k=32 is [2357] ms
+Table preprocess time for n=131072 s=64 k=32 is [436] ms
+Prove time for n=131072 s=64 k=32 is [3644] ms
+Verify time for n=131072 s=64 k=32 is [29] ms
+n=131072, s=64, k=64
+Setup time for n=131072 s=64 k=64 is [2336] ms
+Table preprocess time for n=131072 s=64 k=64 is [436] ms
+Prove time for n=131072 s=64 k=64 is [6938] ms
+Verify time for n=131072 s=64 k=64 is [30] ms
+n=131072, s=64, k=128
+Setup time for n=131072 s=64 k=128 is [2358] ms
+Table preprocess time for n=131072 s=64 k=128 is [423] ms
+Prove time for n=131072 s=64 k=128 is [13730] ms
+Verify time for n=131072 s=64 k=128 is [28] ms
+n=131072, s=64, k=256
+Setup time for n=131072 s=64 k=256 is [2319] ms
+Table preprocess time for n=131072 s=64 k=256 is [424] ms
+Prove time for n=131072 s=64 k=256 is [26904] ms
+Verify time for n=131072 s=64 k=256 is [29] ms
+n=131072, s=64, k=512
+Setup time for n=131072 s=64 k=512 is [2284] ms
+Table preprocess time for n=131072 s=64 k=512 is [418] ms
+Prove time for n=131072 s=64 k=512 is [52472] ms
+Verify time for n=131072 s=64 k=512 is [28] ms
+n=131072, s=64, k=1024
+Setup time for n=131072 s=64 k=1024 is [2362] ms
+Table preprocess time for n=131072 s=64 k=1024 is [436] ms
+Prove time for n=131072 s=64 k=1024 is [105714] ms
+Verify time for n=131072 s=64 k=1024 is [28] ms
+n=262144, s=32, k=1
+Setup time for n=262144 s=32 k=1 is [2281] ms
+Table preprocess time for n=262144 s=32 k=1 is [418] ms
+Prove time for n=262144 s=32 k=1 is [428] ms
+Verify time for n=262144 s=32 k=1 is [26] ms
+n=262144, s=32, k=2
+Setup time for n=262144 s=32 k=2 is [2282] ms
+Table preprocess time for n=262144 s=32 k=2 is [418] ms
+Prove time for n=262144 s=32 k=2 is [472] ms
+Verify time for n=262144 s=32 k=2 is [27] ms
+n=262144, s=32, k=4
+Setup time for n=262144 s=32 k=4 is [2296] ms
+Table preprocess time for n=262144 s=32 k=4 is [424] ms
+Prove time for n=262144 s=32 k=4 is [588] ms
+Verify time for n=262144 s=32 k=4 is [28] ms
+n=262144, s=32, k=8
+Setup time for n=262144 s=32 k=8 is [2303] ms
+Table preprocess time for n=262144 s=32 k=8 is [425] ms
+Prove time for n=262144 s=32 k=8 is [799] ms
+Verify time for n=262144 s=32 k=8 is [28] ms
+n=262144, s=32, k=16
+Setup time for n=262144 s=32 k=16 is [2285] ms
+Table preprocess time for n=262144 s=32 k=16 is [418] ms
+Prove time for n=262144 s=32 k=16 is [1250] ms
+Verify time for n=262144 s=32 k=16 is [30] ms
+n=262144, s=32, k=32
+Setup time for n=262144 s=32 k=32 is [2281] ms
+Table preprocess time for n=262144 s=32 k=32 is [418] ms
+Prove time for n=262144 s=32 k=32 is [2201] ms
+Verify time for n=262144 s=32 k=32 is [28] ms
+n=262144, s=32, k=64
+Setup time for n=262144 s=32 k=64 is [2282] ms
+Table preprocess time for n=262144 s=32 k=64 is [419] ms
+Prove time for n=262144 s=32 k=64 is [4000] ms
+Verify time for n=262144 s=32 k=64 is [29] ms
+n=262144, s=32, k=128
+Setup time for n=262144 s=32 k=128 is [2283] ms
+Table preprocess time for n=262144 s=32 k=128 is [418] ms
+Prove time for n=262144 s=32 k=128 is [7417] ms
+Verify time for n=262144 s=32 k=128 is [28] ms
+n=262144, s=32, k=256
+Setup time for n=262144 s=32 k=256 is [2287] ms
+Table preprocess time for n=262144 s=32 k=256 is [419] ms
+Prove time for n=262144 s=32 k=256 is [14849] ms
+Verify time for n=262144 s=32 k=256 is [28] ms
+n=262144, s=32, k=512
+Setup time for n=262144 s=32 k=512 is [2282] ms
+Table preprocess time for n=262144 s=32 k=512 is [418] ms
+Prove time for n=262144 s=32 k=512 is [28653] ms
+Verify time for n=262144 s=32 k=512 is [29] ms
+n=262144, s=32, k=1024
+Setup time for n=262144 s=32 k=1024 is [2315] ms
+Table preprocess time for n=262144 s=32 k=1024 is [425] ms
+Prove time for n=262144 s=32 k=1024 is [56315] ms
+Verify time for n=262144 s=32 k=1024 is [29] ms
+n=524288, s=16, k=1
+Setup time for n=524288 s=16 k=1 is [2378] ms
+Table preprocess time for n=524288 s=16 k=1 is [419] ms
+Prove time for n=524288 s=16 k=1 is [402] ms
+Verify time for n=524288 s=16 k=1 is [28] ms
+n=524288, s=16, k=2
+Setup time for n=524288 s=16 k=2 is [2320] ms
+Table preprocess time for n=524288 s=16 k=2 is [425] ms
+Prove time for n=524288 s=16 k=2 is [427] ms
+Verify time for n=524288 s=16 k=2 is [27] ms
+n=524288, s=16, k=4
+Setup time for n=524288 s=16 k=4 is [2283] ms
+Table preprocess time for n=524288 s=16 k=4 is [419] ms
+Prove time for n=524288 s=16 k=4 is [495] ms
+Verify time for n=524288 s=16 k=4 is [28] ms
+n=524288, s=16, k=8
+Setup time for n=524288 s=16 k=8 is [2306] ms
+Table preprocess time for n=524288 s=16 k=8 is [428] ms
+Prove time for n=524288 s=16 k=8 is [623] ms
+Verify time for n=524288 s=16 k=8 is [29] ms
+n=524288, s=16, k=16
+Setup time for n=524288 s=16 k=16 is [2281] ms
+Table preprocess time for n=524288 s=16 k=16 is [418] ms
+Prove time for n=524288 s=16 k=16 is [852] ms
+Verify time for n=524288 s=16 k=16 is [28] ms
+n=524288, s=16, k=32
+Setup time for n=524288 s=16 k=32 is [2276] ms
+Table preprocess time for n=524288 s=16 k=32 is [417] ms
+Prove time for n=524288 s=16 k=32 is [1355] ms
+Verify time for n=524288 s=16 k=32 is [28] ms
+n=524288, s=16, k=64
+Setup time for n=524288 s=16 k=64 is [2269] ms
+Table preprocess time for n=524288 s=16 k=64 is [418] ms
+Prove time for n=524288 s=16 k=64 is [2360] ms
+Verify time for n=524288 s=16 k=64 is [28] ms
+n=524288, s=16, k=128
+Setup time for n=524288 s=16 k=128 is [2278] ms
+Table preprocess time for n=524288 s=16 k=128 is [419] ms
+Prove time for n=524288 s=16 k=128 is [4352] ms
+Verify time for n=524288 s=16 k=128 is [28] ms
+n=524288, s=16, k=256
+Setup time for n=524288 s=16 k=256 is [2268] ms
+Table preprocess time for n=524288 s=16 k=256 is [417] ms
+Prove time for n=524288 s=16 k=256 is [8410] ms
+Verify time for n=524288 s=16 k=256 is [28] ms
+n=524288, s=16, k=512
+Setup time for n=524288 s=16 k=512 is [2320] ms
+Table preprocess time for n=524288 s=16 k=512 is [433] ms
+Prove time for n=524288 s=16 k=512 is [16167] ms
+Verify time for n=524288 s=16 k=512 is [28] ms
+n=524288, s=16, k=1024
+Setup time for n=524288 s=16 k=1024 is [2274] ms
+Table preprocess time for n=524288 s=16 k=1024 is [435] ms
+Prove time for n=524288 s=16 k=1024 is [31258] ms
+Verify time for n=524288 s=16 k=1024 is [28] ms
+n=1048576, s=8, k=1
+Setup time for n=1048576 s=8 k=1 is [2340] ms
+Table preprocess time for n=1048576 s=8 k=1 is [417] ms
+Prove time for n=1048576 s=8 k=1 is [406] ms
+Verify time for n=1048576 s=8 k=1 is [28] ms
+n=1048576, s=8, k=2
+Setup time for n=1048576 s=8 k=2 is [2329] ms
+Table preprocess time for n=1048576 s=8 k=2 is [420] ms
+Prove time for n=1048576 s=8 k=2 is [410] ms
+Verify time for n=1048576 s=8 k=2 is [28] ms
+n=1048576, s=8, k=4
+Setup time for n=1048576 s=8 k=4 is [2285] ms
+Table preprocess time for n=1048576 s=8 k=4 is [417] ms
+Prove time for n=1048576 s=8 k=4 is [432] ms
+Verify time for n=1048576 s=8 k=4 is [28] ms
+n=1048576, s=8, k=8
+Setup time for n=1048576 s=8 k=8 is [2273] ms
+Table preprocess time for n=1048576 s=8 k=8 is [417] ms
+Prove time for n=1048576 s=8 k=8 is [512] ms
+Verify time for n=1048576 s=8 k=8 is [28] ms
+n=1048576, s=8, k=16
+Setup time for n=1048576 s=8 k=16 is [2294] ms
+Table preprocess time for n=1048576 s=8 k=16 is [418] ms
+Prove time for n=1048576 s=8 k=16 is [659] ms
+Verify time for n=1048576 s=8 k=16 is [29] ms
+n=1048576, s=8, k=32
+Setup time for n=1048576 s=8 k=32 is [2380] ms
+Table preprocess time for n=1048576 s=8 k=32 is [418] ms
+Prove time for n=1048576 s=8 k=32 is [975] ms
+Verify time for n=1048576 s=8 k=32 is [28] ms
+n=1048576, s=8, k=64
+Setup time for n=1048576 s=8 k=64 is [2276] ms
+Table preprocess time for n=1048576 s=8 k=64 is [417] ms
+Prove time for n=1048576 s=8 k=64 is [1583] ms
+Verify time for n=1048576 s=8 k=64 is [29] ms
+n=1048576, s=8, k=128
+Setup time for n=1048576 s=8 k=128 is [2289] ms
+Table preprocess time for n=1048576 s=8 k=128 is [419] ms
+Prove time for n=1048576 s=8 k=128 is [2744] ms
+Verify time for n=1048576 s=8 k=128 is [28] ms
+n=1048576, s=8, k=256
+Setup time for n=1048576 s=8 k=256 is [2302] ms
+Table preprocess time for n=1048576 s=8 k=256 is [418] ms
+Prove time for n=1048576 s=8 k=256 is [5117] ms
+Verify time for n=1048576 s=8 k=256 is [30] ms
+n=1048576, s=8, k=512
+Setup time for n=1048576 s=8 k=512 is [2335] ms
+Table preprocess time for n=1048576 s=8 k=512 is [418] ms
+Prove time for n=1048576 s=8 k=512 is [9835] ms
+Verify time for n=1048576 s=8 k=512 is [28] ms
+n=1048576, s=8, k=1024
+Setup time for n=1048576 s=8 k=1024 is [2312] ms
+Table preprocess time for n=1048576 s=8 k=1024 is [418] ms
+Prove time for n=1048576 s=8 k=1024 is [19625] ms
+Verify time for n=1048576 s=8 k=1024 is [28] ms
+n=2097152, s=4, k=1
+Setup time for n=2097152 s=4 k=1 is [2322] ms
+Table preprocess time for n=2097152 s=4 k=1 is [433] ms
+Prove time for n=2097152 s=4 k=1 is [386] ms
+Verify time for n=2097152 s=4 k=1 is [27] ms
+n=2097152, s=4, k=2
+Setup time for n=2097152 s=4 k=2 is [2281] ms
+Table preprocess time for n=2097152 s=4 k=2 is [418] ms
+Prove time for n=2097152 s=4 k=2 is [396] ms
+Verify time for n=2097152 s=4 k=2 is [27] ms
+n=2097152, s=4, k=4
+Setup time for n=2097152 s=4 k=4 is [2280] ms
+Table preprocess time for n=2097152 s=4 k=4 is [420] ms
+Prove time for n=2097152 s=4 k=4 is [407] ms
+Verify time for n=2097152 s=4 k=4 is [28] ms
+n=2097152, s=4, k=8
+Setup time for n=2097152 s=4 k=8 is [2281] ms
+Table preprocess time for n=2097152 s=4 k=8 is [418] ms
+Prove time for n=2097152 s=4 k=8 is [460] ms
+Verify time for n=2097152 s=4 k=8 is [28] ms
+n=2097152, s=4, k=16
+Setup time for n=2097152 s=4 k=16 is [2288] ms
+Table preprocess time for n=2097152 s=4 k=16 is [417] ms
+Prove time for n=2097152 s=4 k=16 is [562] ms
+Verify time for n=2097152 s=4 k=16 is [28] ms
+n=2097152, s=4, k=32
+Setup time for n=2097152 s=4 k=32 is [2275] ms
+Table preprocess time for n=2097152 s=4 k=32 is [417] ms
+Prove time for n=2097152 s=4 k=32 is [773] ms
+Verify time for n=2097152 s=4 k=32 is [29] ms
+n=2097152, s=4, k=64
+Setup time for n=2097152 s=4 k=64 is [2287] ms
+Table preprocess time for n=2097152 s=4 k=64 is [420] ms
+Prove time for n=2097152 s=4 k=64 is [1168] ms
+Verify time for n=2097152 s=4 k=64 is [30] ms
+n=2097152, s=4, k=128
+Setup time for n=2097152 s=4 k=128 is [2366] ms
+Table preprocess time for n=2097152 s=4 k=128 is [430] ms
+Prove time for n=2097152 s=4 k=128 is [1993] ms
+Verify time for n=2097152 s=4 k=128 is [30] ms
+n=2097152, s=4, k=256
+Setup time for n=2097152 s=4 k=256 is [2335] ms
+Table preprocess time for n=2097152 s=4 k=256 is [422] ms
+Prove time for n=2097152 s=4 k=256 is [3573] ms
+Verify time for n=2097152 s=4 k=256 is [28] ms
+n=2097152, s=4, k=512
+Setup time for n=2097152 s=4 k=512 is [2283] ms
+Table preprocess time for n=2097152 s=4 k=512 is [418] ms
+Prove time for n=2097152 s=4 k=512 is [6901] ms
+Verify time for n=2097152 s=4 k=512 is [28] ms
+n=2097152, s=4, k=1024
+Setup time for n=2097152 s=4 k=1024 is [2308] ms
+Table preprocess time for n=2097152 s=4 k=1024 is [423] ms
+Prove time for n=2097152 s=4 k=1024 is [13176] ms
+Verify time for n=2097152 s=4 k=1024 is [28] ms
+n=4194304, s=2, k=1
+Setup time for n=4194304 s=2 k=1 is [2314] ms
+Table preprocess time for n=4194304 s=2 k=1 is [434] ms
+Prove time for n=4194304 s=2 k=1 is [385] ms
+Verify time for n=4194304 s=2 k=1 is [26] ms
+n=4194304, s=2, k=2
+Setup time for n=4194304 s=2 k=2 is [2280] ms
+Table preprocess time for n=4194304 s=2 k=2 is [419] ms
+Prove time for n=4194304 s=2 k=2 is [375] ms
+Verify time for n=4194304 s=2 k=2 is [27] ms
+n=4194304, s=2, k=4
+Setup time for n=4194304 s=2 k=4 is [2271] ms
+Table preprocess time for n=4194304 s=2 k=4 is [418] ms
+Prove time for n=4194304 s=2 k=4 is [394] ms
+Verify time for n=4194304 s=2 k=4 is [28] ms
+n=4194304, s=2, k=8
+Setup time for n=4194304 s=2 k=8 is [2299] ms
+Table preprocess time for n=4194304 s=2 k=8 is [429] ms
+Prove time for n=4194304 s=2 k=8 is [442] ms
+Verify time for n=4194304 s=2 k=8 is [30] ms
+n=4194304, s=2, k=16
+Setup time for n=4194304 s=2 k=16 is [2296] ms
+Table preprocess time for n=4194304 s=2 k=16 is [418] ms
+Prove time for n=4194304 s=2 k=16 is [512] ms
+Verify time for n=4194304 s=2 k=16 is [28] ms
+n=4194304, s=2, k=32
+Setup time for n=4194304 s=2 k=32 is [2280] ms
+Table preprocess time for n=4194304 s=2 k=32 is [418] ms
+Prove time for n=4194304 s=2 k=32 is [680] ms
+Verify time for n=4194304 s=2 k=32 is [29] ms
+n=4194304, s=2, k=64
+Setup time for n=4194304 s=2 k=64 is [2314] ms
+Table preprocess time for n=4194304 s=2 k=64 is [380] ms
+Prove time for n=4194304 s=2 k=64 is [980] ms
+Verify time for n=4194304 s=2 k=64 is [29] ms
+n=4194304, s=2, k=128
+Setup time for n=4194304 s=2 k=128 is [2312] ms
+Table preprocess time for n=4194304 s=2 k=128 is [381] ms
+Prove time for n=4194304 s=2 k=128 is [1595] ms
+Verify time for n=4194304 s=2 k=128 is [28] ms
+n=4194304, s=2, k=256
+Setup time for n=4194304 s=2 k=256 is [2272] ms
+Table preprocess time for n=4194304 s=2 k=256 is [381] ms
+Prove time for n=4194304 s=2 k=256 is [2832] ms
+Verify time for n=4194304 s=2 k=256 is [28] ms
+n=4194304, s=2, k=512
+Setup time for n=4194304 s=2 k=512 is [2275] ms
+Table preprocess time for n=4194304 s=2 k=512 is [375] ms
+Prove time for n=4194304 s=2 k=512 is [5353] ms
+Verify time for n=4194304 s=2 k=512 is [28] ms
+n=4194304, s=2, k=1024
+Setup time for n=4194304 s=2 k=1024 is [2278] ms
+Table preprocess time for n=4194304 s=2 k=1024 is [339] ms
+Prove time for n=4194304 s=2 k=1024 is [10188] ms
+Verify time for n=4194304 s=2 k=1024 is [28] ms
+n=65536, s=256, k=1
+Setup time for n=65536 s=256 k=1 is [4547] ms
+Table preprocess time for n=65536 s=256 k=1 is [846] ms
+Prove time for n=65536 s=256 k=1 is [1105] ms
+Verify time for n=65536 s=256 k=1 is [27] ms
+n=65536, s=256, k=2
+Setup time for n=65536 s=256 k=2 is [4501] ms
+Table preprocess time for n=65536 s=256 k=2 is [835] ms
+Prove time for n=65536 s=256 k=2 is [1475] ms
+Verify time for n=65536 s=256 k=2 is [27] ms
+n=65536, s=256, k=4
+Setup time for n=65536 s=256 k=4 is [4568] ms
+Table preprocess time for n=65536 s=256 k=4 is [847] ms
+Prove time for n=65536 s=256 k=4 is [2223] ms
+Verify time for n=65536 s=256 k=4 is [28] ms
+n=65536, s=256, k=8
+Setup time for n=65536 s=256 k=8 is [4575] ms
+Table preprocess time for n=65536 s=256 k=8 is [847] ms
+Prove time for n=65536 s=256 k=8 is [3750] ms
+Verify time for n=65536 s=256 k=8 is [28] ms
+n=65536, s=256, k=16
+Setup time for n=65536 s=256 k=16 is [4562] ms
+Table preprocess time for n=65536 s=256 k=16 is [846] ms
+Prove time for n=65536 s=256 k=16 is [6829] ms
+Verify time for n=65536 s=256 k=16 is [29] ms
+n=65536, s=256, k=32
+Setup time for n=65536 s=256 k=32 is [4510] ms
+Table preprocess time for n=65536 s=256 k=32 is [834] ms
+Prove time for n=65536 s=256 k=32 is [13121] ms
+Verify time for n=65536 s=256 k=32 is [28] ms
+n=65536, s=256, k=64
+Setup time for n=65536 s=256 k=64 is [4489] ms
+Table preprocess time for n=65536 s=256 k=64 is [833] ms
+Prove time for n=65536 s=256 k=64 is [25123] ms
+Verify time for n=65536 s=256 k=64 is [28] ms
+n=65536, s=256, k=128
+Setup time for n=65536 s=256 k=128 is [4494] ms
+Table preprocess time for n=65536 s=256 k=128 is [833] ms
+Prove time for n=65536 s=256 k=128 is [49532] ms
+Verify time for n=65536 s=256 k=128 is [28] ms
+n=65536, s=256, k=256
+Setup time for n=65536 s=256 k=256 is [4506] ms
+Table preprocess time for n=65536 s=256 k=256 is [836] ms
+Prove time for n=65536 s=256 k=256 is [99680] ms
+Verify time for n=65536 s=256 k=256 is [29] ms
+n=65536, s=256, k=512
+Setup time for n=65536 s=256 k=512 is [4511] ms
+Table preprocess time for n=65536 s=256 k=512 is [834] ms
+Prove time for n=65536 s=256 k=512 is [198616] ms
+Verify time for n=65536 s=256 k=512 is [28] ms
+n=65536, s=256, k=1024
+Setup time for n=65536 s=256 k=1024 is [4553] ms
+Table preprocess time for n=65536 s=256 k=1024 is [845] ms
+Prove time for n=65536 s=256 k=1024 is [391152] ms
+Verify time for n=65536 s=256 k=1024 is [29] ms
+n=131072, s=128, k=1
+Setup time for n=131072 s=128 k=1 is [4515] ms
+Table preprocess time for n=131072 s=128 k=1 is [836] ms
+Prove time for n=131072 s=128 k=1 is [874] ms
+Verify time for n=131072 s=128 k=1 is [26] ms
+n=131072, s=128, k=2
+Setup time for n=131072 s=128 k=2 is [4491] ms
+Table preprocess time for n=131072 s=128 k=2 is [833] ms
+Prove time for n=131072 s=128 k=2 is [1067] ms
+Verify time for n=131072 s=128 k=2 is [27] ms
+n=131072, s=128, k=4
+Setup time for n=131072 s=128 k=4 is [4489] ms
+Table preprocess time for n=131072 s=128 k=4 is [833] ms
+Prove time for n=131072 s=128 k=4 is [1505] ms
+Verify time for n=131072 s=128 k=4 is [29] ms
+n=131072, s=128, k=8
+Setup time for n=131072 s=128 k=8 is [4530] ms
+Table preprocess time for n=131072 s=128 k=8 is [832] ms
+Prove time for n=131072 s=128 k=8 is [2302] ms
+Verify time for n=131072 s=128 k=8 is [28] ms
+n=131072, s=128, k=16
+Setup time for n=131072 s=128 k=16 is [4499] ms
+Table preprocess time for n=131072 s=128 k=16 is [841] ms
+Prove time for n=131072 s=128 k=16 is [3817] ms
+Verify time for n=131072 s=128 k=16 is [28] ms
+n=131072, s=128, k=32
+Setup time for n=131072 s=128 k=32 is [4526] ms
+Table preprocess time for n=131072 s=128 k=32 is [836] ms
+Prove time for n=131072 s=128 k=32 is [6946] ms
+Verify time for n=131072 s=128 k=32 is [28] ms
+n=131072, s=128, k=64
+Setup time for n=131072 s=128 k=64 is [4495] ms
+Table preprocess time for n=131072 s=128 k=64 is [835] ms
+Prove time for n=131072 s=128 k=64 is [13196] ms
+Verify time for n=131072 s=128 k=64 is [29] ms
+n=131072, s=128, k=128
+Setup time for n=131072 s=128 k=128 is [4535] ms
+Table preprocess time for n=131072 s=128 k=128 is [869] ms
+Prove time for n=131072 s=128 k=128 is [25884] ms
+Verify time for n=131072 s=128 k=128 is [28] ms
+n=131072, s=128, k=256
+Setup time for n=131072 s=128 k=256 is [4513] ms
+Table preprocess time for n=131072 s=128 k=256 is [848] ms
+Prove time for n=131072 s=128 k=256 is [51804] ms
+Verify time for n=131072 s=128 k=256 is [29] ms
+n=131072, s=128, k=512
+Setup time for n=131072 s=128 k=512 is [4558] ms
+Table preprocess time for n=131072 s=128 k=512 is [848] ms
+Prove time for n=131072 s=128 k=512 is [102114] ms
+Verify time for n=131072 s=128 k=512 is [28] ms
+n=131072, s=128, k=1024
+Setup time for n=131072 s=128 k=1024 is [4568] ms
+Table preprocess time for n=131072 s=128 k=1024 is [836] ms
+Prove time for n=131072 s=128 k=1024 is [201637] ms
+Verify time for n=131072 s=128 k=1024 is [29] ms
+n=262144, s=64, k=1
+Setup time for n=262144 s=64 k=1 is [4502] ms
+Table preprocess time for n=262144 s=64 k=1 is [865] ms
+Prove time for n=262144 s=64 k=1 is [818] ms
+Verify time for n=262144 s=64 k=1 is [28] ms
+n=262144, s=64, k=2
+Setup time for n=262144 s=64 k=2 is [4492] ms
+Table preprocess time for n=262144 s=64 k=2 is [833] ms
+Prove time for n=262144 s=64 k=2 is [877] ms
+Verify time for n=262144 s=64 k=2 is [28] ms
+n=262144, s=64, k=4
+Setup time for n=262144 s=64 k=4 is [4689] ms
+Table preprocess time for n=262144 s=64 k=4 is [868] ms
+Prove time for n=262144 s=64 k=4 is [1131] ms
+Verify time for n=262144 s=64 k=4 is [29] ms
+n=262144, s=64, k=8
+Setup time for n=262144 s=64 k=8 is [4486] ms
+Table preprocess time for n=262144 s=64 k=8 is [833] ms
+Prove time for n=262144 s=64 k=8 is [1533] ms
+Verify time for n=262144 s=64 k=8 is [29] ms
+n=262144, s=64, k=16
+Setup time for n=262144 s=64 k=16 is [4554] ms
+Table preprocess time for n=262144 s=64 k=16 is [846] ms
+Prove time for n=262144 s=64 k=16 is [2397] ms
+Verify time for n=262144 s=64 k=16 is [28] ms
+n=262144, s=64, k=32
+Setup time for n=262144 s=64 k=32 is [4508] ms
+Table preprocess time for n=262144 s=64 k=32 is [836] ms
+Prove time for n=262144 s=64 k=32 is [4137] ms
+Verify time for n=262144 s=64 k=32 is [28] ms
+n=262144, s=64, k=64
+Setup time for n=262144 s=64 k=64 is [4506] ms
+Table preprocess time for n=262144 s=64 k=64 is [834] ms
+Prove time for n=262144 s=64 k=64 is [7191] ms
+Verify time for n=262144 s=64 k=64 is [29] ms
+n=262144, s=64, k=128
+Setup time for n=262144 s=64 k=128 is [4560] ms
+Table preprocess time for n=262144 s=64 k=128 is [842] ms
+Prove time for n=262144 s=64 k=128 is [13946] ms
+Verify time for n=262144 s=64 k=128 is [28] ms
+n=262144, s=64, k=256
+Setup time for n=262144 s=64 k=256 is [4493] ms
+Table preprocess time for n=262144 s=64 k=256 is [847] ms
+Prove time for n=262144 s=64 k=256 is [26549] ms
+Verify time for n=262144 s=64 k=256 is [29] ms
+n=262144, s=64, k=512
+Setup time for n=262144 s=64 k=512 is [4563] ms
+Table preprocess time for n=262144 s=64 k=512 is [839] ms
+Prove time for n=262144 s=64 k=512 is [53076] ms
+Verify time for n=262144 s=64 k=512 is [29] ms
+n=262144, s=64, k=1024
+Setup time for n=262144 s=64 k=1024 is [4538] ms
+Table preprocess time for n=262144 s=64 k=1024 is [832] ms
+Prove time for n=262144 s=64 k=1024 is [105648] ms
+Verify time for n=262144 s=64 k=1024 is [28] ms
+n=524288, s=32, k=1
+Setup time for n=524288 s=32 k=1 is [4542] ms
+Table preprocess time for n=524288 s=32 k=1 is [835] ms
+Prove time for n=524288 s=32 k=1 is [730] ms
+Verify time for n=524288 s=32 k=1 is [27] ms
+n=524288, s=32, k=2
+Setup time for n=524288 s=32 k=2 is [4543] ms
+Table preprocess time for n=524288 s=32 k=2 is [835] ms
+Prove time for n=524288 s=32 k=2 is [807] ms
+Verify time for n=524288 s=32 k=2 is [27] ms
+n=524288, s=32, k=4
+Setup time for n=524288 s=32 k=4 is [4602] ms
+Table preprocess time for n=524288 s=32 k=4 is [847] ms
+Prove time for n=524288 s=32 k=4 is [915] ms
+Verify time for n=524288 s=32 k=4 is [29] ms
+n=524288, s=32, k=8
+Setup time for n=524288 s=32 k=8 is [4561] ms
+Table preprocess time for n=524288 s=32 k=8 is [845] ms
+Prove time for n=524288 s=32 k=8 is [1124] ms
+Verify time for n=524288 s=32 k=8 is [28] ms
+n=524288, s=32, k=16
+Setup time for n=524288 s=32 k=16 is [4495] ms
+Table preprocess time for n=524288 s=32 k=16 is [843] ms
+Prove time for n=524288 s=32 k=16 is [1581] ms
+Verify time for n=524288 s=32 k=16 is [28] ms
+n=524288, s=32, k=32
+Setup time for n=524288 s=32 k=32 is [4486] ms
+Table preprocess time for n=524288 s=32 k=32 is [833] ms
+Prove time for n=524288 s=32 k=32 is [2511] ms
+Verify time for n=524288 s=32 k=32 is [29] ms
+n=524288, s=32, k=64
+Setup time for n=524288 s=32 k=64 is [4619] ms
+Table preprocess time for n=524288 s=32 k=64 is [866] ms
+Prove time for n=524288 s=32 k=64 is [4258] ms
+Verify time for n=524288 s=32 k=64 is [28] ms
+n=524288, s=32, k=128
+Setup time for n=524288 s=32 k=128 is [4482] ms
+Table preprocess time for n=524288 s=32 k=128 is [832] ms
+Prove time for n=524288 s=32 k=128 is [7599] ms
+Verify time for n=524288 s=32 k=128 is [29] ms
+n=524288, s=32, k=256
+Setup time for n=524288 s=32 k=256 is [4500] ms
+Table preprocess time for n=524288 s=32 k=256 is [835] ms
+Prove time for n=524288 s=32 k=256 is [14566] ms
+Verify time for n=524288 s=32 k=256 is [28] ms
+n=524288, s=32, k=512
+Setup time for n=524288 s=32 k=512 is [4524] ms
+Table preprocess time for n=524288 s=32 k=512 is [835] ms
+Prove time for n=524288 s=32 k=512 is [28597] ms
+Verify time for n=524288 s=32 k=512 is [28] ms
+n=524288, s=32, k=1024
+Setup time for n=524288 s=32 k=1024 is [4508] ms
+Table preprocess time for n=524288 s=32 k=1024 is [836] ms
+Prove time for n=524288 s=32 k=1024 is [56009] ms
+Verify time for n=524288 s=32 k=1024 is [28] ms
+n=1048576, s=16, k=1
+Setup time for n=1048576 s=16 k=1 is [4491] ms
+Table preprocess time for n=1048576 s=16 k=1 is [833] ms
+Prove time for n=1048576 s=16 k=1 is [724] ms
+Verify time for n=1048576 s=16 k=1 is [27] ms
+n=1048576, s=16, k=2
+Setup time for n=1048576 s=16 k=2 is [4627] ms
+Table preprocess time for n=1048576 s=16 k=2 is [874] ms
+Prove time for n=1048576 s=16 k=2 is [736] ms
+Verify time for n=1048576 s=16 k=2 is [27] ms
+n=1048576, s=16, k=4
+Setup time for n=1048576 s=16 k=4 is [4541] ms
+Table preprocess time for n=1048576 s=16 k=4 is [844] ms
+Prove time for n=1048576 s=16 k=4 is [834] ms
+Verify time for n=1048576 s=16 k=4 is [27] ms
+n=1048576, s=16, k=8
+Setup time for n=1048576 s=16 k=8 is [4545] ms
+Table preprocess time for n=1048576 s=16 k=8 is [867] ms
+Prove time for n=1048576 s=16 k=8 is [918] ms
+Verify time for n=1048576 s=16 k=8 is [28] ms
+n=1048576, s=16, k=16
+Setup time for n=1048576 s=16 k=16 is [4565] ms
+Table preprocess time for n=1048576 s=16 k=16 is [871] ms
+Prove time for n=1048576 s=16 k=16 is [1161] ms
+Verify time for n=1048576 s=16 k=16 is [27] ms
+n=1048576, s=16, k=32
+Setup time for n=1048576 s=16 k=32 is [4497] ms
+Table preprocess time for n=1048576 s=16 k=32 is [836] ms
+Prove time for n=1048576 s=16 k=32 is [1706] ms
+Verify time for n=1048576 s=16 k=32 is [28] ms
+n=1048576, s=16, k=64
+Setup time for n=1048576 s=16 k=64 is [4499] ms
+Table preprocess time for n=1048576 s=16 k=64 is [868] ms
+Prove time for n=1048576 s=16 k=64 is [2718] ms
+Verify time for n=1048576 s=16 k=64 is [30] ms
+n=1048576, s=16, k=128
+Setup time for n=1048576 s=16 k=128 is [4526] ms
+Table preprocess time for n=1048576 s=16 k=128 is [835] ms
+Prove time for n=1048576 s=16 k=128 is [4649] ms
+Verify time for n=1048576 s=16 k=128 is [28] ms
+n=1048576, s=16, k=256
+Setup time for n=1048576 s=16 k=256 is [4563] ms
+Table preprocess time for n=1048576 s=16 k=256 is [834] ms
+Prove time for n=1048576 s=16 k=256 is [8612] ms
+Verify time for n=1048576 s=16 k=256 is [28] ms
+n=1048576, s=16, k=512
+Setup time for n=1048576 s=16 k=512 is [4540] ms
+Table preprocess time for n=1048576 s=16 k=512 is [835] ms
+Prove time for n=1048576 s=16 k=512 is [16334] ms
+Verify time for n=1048576 s=16 k=512 is [28] ms
+n=1048576, s=16, k=1024
+Setup time for n=1048576 s=16 k=1024 is [4496] ms
+Table preprocess time for n=1048576 s=16 k=1024 is [832] ms
+Prove time for n=1048576 s=16 k=1024 is [32299] ms
+Verify time for n=1048576 s=16 k=1024 is [29] ms
+n=2097152, s=8, k=1
+Setup time for n=2097152 s=8 k=1 is [4596] ms
+Table preprocess time for n=2097152 s=8 k=1 is [705] ms
+Prove time for n=2097152 s=8 k=1 is [710] ms
+Verify time for n=2097152 s=8 k=1 is [26] ms
+n=2097152, s=8, k=2
+Setup time for n=2097152 s=8 k=2 is [4493] ms
+Table preprocess time for n=2097152 s=8 k=2 is [683] ms
+Prove time for n=2097152 s=8 k=2 is [725] ms
+Verify time for n=2097152 s=8 k=2 is [28] ms
+n=2097152, s=8, k=4
+Setup time for n=2097152 s=8 k=4 is [4565] ms
+Table preprocess time for n=2097152 s=8 k=4 is [688] ms
+Prove time for n=2097152 s=8 k=4 is [758] ms
+Verify time for n=2097152 s=8 k=4 is [29] ms
+n=2097152, s=8, k=8
+Setup time for n=2097152 s=8 k=8 is [4502] ms
+Table preprocess time for n=2097152 s=8 k=8 is [843] ms
+Prove time for n=2097152 s=8 k=8 is [887] ms
+Verify time for n=2097152 s=8 k=8 is [29] ms
+n=2097152, s=8, k=16
+Setup time for n=2097152 s=8 k=16 is [4493] ms
+Table preprocess time for n=2097152 s=8 k=16 is [835] ms
+Prove time for n=2097152 s=8 k=16 is [1004] ms
+Verify time for n=2097152 s=8 k=16 is [28] ms
+n=2097152, s=8, k=32
+Setup time for n=2097152 s=8 k=32 is [4555] ms
+Table preprocess time for n=2097152 s=8 k=32 is [848] ms
+Prove time for n=2097152 s=8 k=32 is [1282] ms
+Verify time for n=2097152 s=8 k=32 is [28] ms
+n=2097152, s=8, k=64
+Setup time for n=2097152 s=8 k=64 is [4538] ms
+Table preprocess time for n=2097152 s=8 k=64 is [835] ms
+Prove time for n=2097152 s=8 k=64 is [1896] ms
+Verify time for n=2097152 s=8 k=64 is [28] ms
+n=2097152, s=8, k=128
+Setup time for n=2097152 s=8 k=128 is [4556] ms
+Table preprocess time for n=2097152 s=8 k=128 is [836] ms
+Prove time for n=2097152 s=8 k=128 is [3050] ms
+Verify time for n=2097152 s=8 k=128 is [28] ms
+n=2097152, s=8, k=256
+Setup time for n=2097152 s=8 k=256 is [4553] ms
+Table preprocess time for n=2097152 s=8 k=256 is [835] ms
+Prove time for n=2097152 s=8 k=256 is [5414] ms
+Verify time for n=2097152 s=8 k=256 is [28] ms
+n=2097152, s=8, k=512
+Setup time for n=2097152 s=8 k=512 is [4562] ms
+Table preprocess time for n=2097152 s=8 k=512 is [842] ms
+Prove time for n=2097152 s=8 k=512 is [10312] ms
+Verify time for n=2097152 s=8 k=512 is [29] ms
+n=2097152, s=8, k=1024
+Setup time for n=2097152 s=8 k=1024 is [4501] ms
+Table preprocess time for n=2097152 s=8 k=1024 is [836] ms
+Prove time for n=2097152 s=8 k=1024 is [19728] ms
+Verify time for n=2097152 s=8 k=1024 is [28] ms
+n=4194304, s=4, k=1
+Setup time for n=4194304 s=4 k=1 is [4502] ms
+Table preprocess time for n=4194304 s=4 k=1 is [680] ms
+Prove time for n=4194304 s=4 k=1 is [677] ms
+Verify time for n=4194304 s=4 k=1 is [26] ms
+n=4194304, s=4, k=2
+Setup time for n=4194304 s=4 k=2 is [4513] ms
+Table preprocess time for n=4194304 s=4 k=2 is [679] ms
+Prove time for n=4194304 s=4 k=2 is [692] ms
+Verify time for n=4194304 s=4 k=2 is [27] ms
+n=4194304, s=4, k=4
+Setup time for n=4194304 s=4 k=4 is [4631] ms
+Table preprocess time for n=4194304 s=4 k=4 is [692] ms
+Prove time for n=4194304 s=4 k=4 is [752] ms
+Verify time for n=4194304 s=4 k=4 is [28] ms
+n=4194304, s=4, k=8
+Setup time for n=4194304 s=4 k=8 is [4470] ms
+Table preprocess time for n=4194304 s=4 k=8 is [682] ms
+Prove time for n=4194304 s=4 k=8 is [792] ms
+Verify time for n=4194304 s=4 k=8 is [28] ms
+n=4194304, s=4, k=16
+Setup time for n=4194304 s=4 k=16 is [4540] ms
+Table preprocess time for n=4194304 s=4 k=16 is [683] ms
+Prove time for n=4194304 s=4 k=16 is [893] ms
+Verify time for n=4194304 s=4 k=16 is [28] ms
+n=4194304, s=4, k=32
+Setup time for n=4194304 s=4 k=32 is [4544] ms
+Table preprocess time for n=4194304 s=4 k=32 is [687] ms
+Prove time for n=4194304 s=4 k=32 is [1089] ms
+Verify time for n=4194304 s=4 k=32 is [28] ms
+n=4194304, s=4, k=64
+Setup time for n=4194304 s=4 k=64 is [4481] ms
+Table preprocess time for n=4194304 s=4 k=64 is [679] ms
+Prove time for n=4194304 s=4 k=64 is [1480] ms
+Verify time for n=4194304 s=4 k=64 is [28] ms
+n=4194304, s=4, k=128
+Setup time for n=4194304 s=4 k=128 is [4554] ms
+Table preprocess time for n=4194304 s=4 k=128 is [679] ms
+Prove time for n=4194304 s=4 k=128 is [2315] ms
+Verify time for n=4194304 s=4 k=128 is [29] ms
+n=4194304, s=4, k=256
+Setup time for n=4194304 s=4 k=256 is [4541] ms
+Table preprocess time for n=4194304 s=4 k=256 is [678] ms
+Prove time for n=4194304 s=4 k=256 is [3919] ms
+Verify time for n=4194304 s=4 k=256 is [28] ms
+n=4194304, s=4, k=512
+Setup time for n=4194304 s=4 k=512 is [4564] ms
+Table preprocess time for n=4194304 s=4 k=512 is [698] ms
+Prove time for n=4194304 s=4 k=512 is [7063] ms
+Verify time for n=4194304 s=4 k=512 is [28] ms
+n=4194304, s=4, k=1024
+Setup time for n=4194304 s=4 k=1024 is [4535] ms
+Table preprocess time for n=4194304 s=4 k=1024 is [706] ms
+Prove time for n=4194304 s=4 k=1024 is [13446] ms
+Verify time for n=4194304 s=4 k=1024 is [28] ms
+n=131072, s=256, k=1
+Setup time for n=131072 s=256 k=1 is [9063] ms
+Table preprocess time for n=131072 s=256 k=1 is [1675] ms
+Prove time for n=131072 s=256 k=1 is [1827] ms
+Verify time for n=131072 s=256 k=1 is [27] ms
+n=131072, s=256, k=2
+Setup time for n=131072 s=256 k=2 is [8909] ms
+Table preprocess time for n=131072 s=256 k=2 is [1688] ms
+Prove time for n=131072 s=256 k=2 is [2222] ms
+Verify time for n=131072 s=256 k=2 is [27] ms
+n=131072, s=256, k=4
+Setup time for n=131072 s=256 k=4 is [8959] ms
+Table preprocess time for n=131072 s=256 k=4 is [1670] ms
+Prove time for n=131072 s=256 k=4 is [2983] ms
+Verify time for n=131072 s=256 k=4 is [29] ms
+n=131072, s=256, k=8
+Setup time for n=131072 s=256 k=8 is [9016] ms
+Table preprocess time for n=131072 s=256 k=8 is [1667] ms
+Prove time for n=131072 s=256 k=8 is [4499] ms
+Verify time for n=131072 s=256 k=8 is [29] ms
+n=131072, s=256, k=16
+Setup time for n=131072 s=256 k=16 is [9189] ms
+Table preprocess time for n=131072 s=256 k=16 is [1684] ms
+Prove time for n=131072 s=256 k=16 is [7625] ms
+Verify time for n=131072 s=256 k=16 is [30] ms
+n=131072, s=256, k=32
+Setup time for n=131072 s=256 k=32 is [9161] ms
+Table preprocess time for n=131072 s=256 k=32 is [1669] ms
+Prove time for n=131072 s=256 k=32 is [14034] ms
+Verify time for n=131072 s=256 k=32 is [30] ms
+n=131072, s=256, k=64
+Setup time for n=131072 s=256 k=64 is [8959] ms
+Table preprocess time for n=131072 s=256 k=64 is [1664] ms
+Prove time for n=131072 s=256 k=64 is [26400] ms
+Verify time for n=131072 s=256 k=64 is [28] ms
+n=131072, s=256, k=128
+Setup time for n=131072 s=256 k=128 is [8990] ms
+Table preprocess time for n=131072 s=256 k=128 is [1740] ms
+Prove time for n=131072 s=256 k=128 is [50425] ms
+Verify time for n=131072 s=256 k=128 is [27] ms
+n=131072, s=256, k=256
+Setup time for n=131072 s=256 k=256 is [9005] ms
+Table preprocess time for n=131072 s=256 k=256 is [1708] ms
+Prove time for n=131072 s=256 k=256 is [101159] ms
+Verify time for n=131072 s=256 k=256 is [27] ms
+n=131072, s=256, k=512
+Setup time for n=131072 s=256 k=512 is [9054] ms
+Table preprocess time for n=131072 s=256 k=512 is [1664] ms
+Prove time for n=131072 s=256 k=512 is [200745] ms
+Verify time for n=131072 s=256 k=512 is [28] ms
+n=131072, s=256, k=1024
+Setup time for n=131072 s=256 k=1024 is [9171] ms
+Table preprocess time for n=131072 s=256 k=1024 is [1738] ms
+Prove time for n=131072 s=256 k=1024 is [398667] ms
+Verify time for n=131072 s=256 k=1024 is [28] ms
+n=262144, s=128, k=1
+Setup time for n=262144 s=128 k=1 is [8908] ms
+Table preprocess time for n=262144 s=128 k=1 is [1683] ms
+Prove time for n=262144 s=128 k=1 is [1626] ms
+Verify time for n=262144 s=128 k=1 is [27] ms
+n=262144, s=128, k=2
+Setup time for n=262144 s=128 k=2 is [8917] ms
+Table preprocess time for n=262144 s=128 k=2 is [1663] ms
+Prove time for n=262144 s=128 k=2 is [1772] ms
+Verify time for n=262144 s=128 k=2 is [28] ms
+n=262144, s=128, k=4
+Setup time for n=262144 s=128 k=4 is [8973] ms
+Table preprocess time for n=262144 s=128 k=4 is [1668] ms
+Prove time for n=262144 s=128 k=4 is [2239] ms
+Verify time for n=262144 s=128 k=4 is [27] ms
+n=262144, s=128, k=8
+Setup time for n=262144 s=128 k=8 is [8954] ms
+Table preprocess time for n=262144 s=128 k=8 is [1665] ms
+Prove time for n=262144 s=128 k=8 is [3109] ms
+Verify time for n=262144 s=128 k=8 is [29] ms
+n=262144, s=128, k=16
+Setup time for n=262144 s=128 k=16 is [9079] ms
+Table preprocess time for n=262144 s=128 k=16 is [1720] ms
+Prove time for n=262144 s=128 k=16 is [4635] ms
+Verify time for n=262144 s=128 k=16 is [28] ms
+n=262144, s=128, k=32
+Setup time for n=262144 s=128 k=32 is [8990] ms
+Table preprocess time for n=262144 s=128 k=32 is [1663] ms
+Prove time for n=262144 s=128 k=32 is [7757] ms
+Verify time for n=262144 s=128 k=32 is [28] ms
+n=262144, s=128, k=64
+Setup time for n=262144 s=128 k=64 is [8936] ms
+Table preprocess time for n=262144 s=128 k=64 is [1669] ms
+Prove time for n=262144 s=128 k=64 is [14020] ms
+Verify time for n=262144 s=128 k=64 is [28] ms
+n=262144, s=128, k=128
+Setup time for n=262144 s=128 k=128 is [9036] ms
+Table preprocess time for n=262144 s=128 k=128 is [1694] ms
+Prove time for n=262144 s=128 k=128 is [26501] ms
+Verify time for n=262144 s=128 k=128 is [28] ms
+n=262144, s=128, k=256
+Setup time for n=262144 s=128 k=256 is [8933] ms
+Table preprocess time for n=262144 s=128 k=256 is [1669] ms
+Prove time for n=262144 s=128 k=256 is [51952] ms
+Verify time for n=262144 s=128 k=256 is [28] ms
+n=262144, s=128, k=512
+Setup time for n=262144 s=128 k=512 is [9095] ms
+Table preprocess time for n=262144 s=128 k=512 is [1663] ms
+Prove time for n=262144 s=128 k=512 is [103695] ms
+Verify time for n=262144 s=128 k=512 is [28] ms
+n=262144, s=128, k=1024
+Setup time for n=262144 s=128 k=1024 is [8925] ms
+Table preprocess time for n=262144 s=128 k=1024 is [1665] ms
+Prove time for n=262144 s=128 k=1024 is [203600] ms
+Verify time for n=262144 s=128 k=1024 is [28] ms
+n=524288, s=64, k=1
+Setup time for n=524288 s=64 k=1 is [8913] ms
+Table preprocess time for n=524288 s=64 k=1 is [1665] ms
+Prove time for n=524288 s=64 k=1 is [1518] ms
+Verify time for n=524288 s=64 k=1 is [27] ms
+n=524288, s=64, k=2
+Setup time for n=524288 s=64 k=2 is [9050] ms
+Table preprocess time for n=524288 s=64 k=2 is [1686] ms
+Prove time for n=524288 s=64 k=2 is [1639] ms
+Verify time for n=524288 s=64 k=2 is [28] ms
+n=524288, s=64, k=4
+Setup time for n=524288 s=64 k=4 is [8978] ms
+Table preprocess time for n=524288 s=64 k=4 is [1701] ms
+Prove time for n=524288 s=64 k=4 is [1902] ms
+Verify time for n=524288 s=64 k=4 is [30] ms
+n=524288, s=64, k=8
+Setup time for n=524288 s=64 k=8 is [8997] ms
+Table preprocess time for n=524288 s=64 k=8 is [1663] ms
+Prove time for n=524288 s=64 k=8 is [2185] ms
+Verify time for n=524288 s=64 k=8 is [28] ms
+n=524288, s=64, k=16
+Setup time for n=524288 s=64 k=16 is [9161] ms
+Table preprocess time for n=524288 s=64 k=16 is [1686] ms
+Prove time for n=524288 s=64 k=16 is [3159] ms
+Verify time for n=524288 s=64 k=16 is [29] ms
+n=524288, s=64, k=32
+Setup time for n=524288 s=64 k=32 is [9044] ms
+Table preprocess time for n=524288 s=64 k=32 is [1688] ms
+Prove time for n=524288 s=64 k=32 is [4669] ms
+Verify time for n=524288 s=64 k=32 is [29] ms
+n=524288, s=64, k=64
+Setup time for n=524288 s=64 k=64 is [9061] ms
+Table preprocess time for n=524288 s=64 k=64 is [1689] ms
+Prove time for n=524288 s=64 k=64 is [7881] ms
+Verify time for n=524288 s=64 k=64 is [29] ms
+n=524288, s=64, k=128
+Setup time for n=524288 s=64 k=128 is [9057] ms
+Table preprocess time for n=524288 s=64 k=128 is [1688] ms
+Prove time for n=524288 s=64 k=128 is [14837] ms
+Verify time for n=524288 s=64 k=128 is [28] ms
+n=524288, s=64, k=256
+Setup time for n=524288 s=64 k=256 is [8986] ms
+Table preprocess time for n=524288 s=64 k=256 is [1663] ms
+Prove time for n=524288 s=64 k=256 is [27834] ms
+Verify time for n=524288 s=64 k=256 is [29] ms
+n=524288, s=64, k=512
+Setup time for n=524288 s=64 k=512 is [8911] ms
+Table preprocess time for n=524288 s=64 k=512 is [1664] ms
+Prove time for n=524288 s=64 k=512 is [53770] ms
+Verify time for n=524288 s=64 k=512 is [28] ms
+n=524288, s=64, k=1024
+Setup time for n=524288 s=64 k=1024 is [8947] ms
+Table preprocess time for n=524288 s=64 k=1024 is [1668] ms
+Prove time for n=524288 s=64 k=1024 is [105322] ms
+Verify time for n=524288 s=64 k=1024 is [28] ms
+n=1048576, s=32, k=1
+Setup time for n=1048576 s=32 k=1 is [9012] ms
+Table preprocess time for n=1048576 s=32 k=1 is [1694] ms
+Prove time for n=1048576 s=32 k=1 is [1494] ms
+Verify time for n=1048576 s=32 k=1 is [27] ms
+n=1048576, s=32, k=2
+Setup time for n=1048576 s=32 k=2 is [9043] ms
+Table preprocess time for n=1048576 s=32 k=2 is [1690] ms
+Prove time for n=1048576 s=32 k=2 is [1505] ms
+Verify time for n=1048576 s=32 k=2 is [28] ms
+n=1048576, s=32, k=4
+Setup time for n=1048576 s=32 k=4 is [9048] ms
+Table preprocess time for n=1048576 s=32 k=4 is [1691] ms
+Prove time for n=1048576 s=32 k=4 is [1606] ms
+Verify time for n=1048576 s=32 k=4 is [30] ms
+n=1048576, s=32, k=8
+Setup time for n=1048576 s=32 k=8 is [9244] ms
+Table preprocess time for n=1048576 s=32 k=8 is [1739] ms
+Prove time for n=1048576 s=32 k=8 is [1836] ms
+Verify time for n=1048576 s=32 k=8 is [29] ms
+n=1048576, s=32, k=16
+Setup time for n=1048576 s=32 k=16 is [9136] ms
+Table preprocess time for n=1048576 s=32 k=16 is [1690] ms
+Prove time for n=1048576 s=32 k=16 is [2365] ms
+Verify time for n=1048576 s=32 k=16 is [29] ms
+n=1048576, s=32, k=32
+Setup time for n=1048576 s=32 k=32 is [9063] ms
+Table preprocess time for n=1048576 s=32 k=32 is [1691] ms
+Prove time for n=1048576 s=32 k=32 is [3262] ms
+Verify time for n=1048576 s=32 k=32 is [28] ms
+n=1048576, s=32, k=64
+Setup time for n=1048576 s=32 k=64 is [9037] ms
+Table preprocess time for n=1048576 s=32 k=64 is [1694] ms
+Prove time for n=1048576 s=32 k=64 is [4916] ms
+Verify time for n=1048576 s=32 k=64 is [29] ms
+n=1048576, s=32, k=128
+Setup time for n=1048576 s=32 k=128 is [9233] ms
+Table preprocess time for n=1048576 s=32 k=128 is [1699] ms
+Prove time for n=1048576 s=32 k=128 is [8399] ms
+Verify time for n=1048576 s=32 k=128 is [28] ms
+n=1048576, s=32, k=256
+Setup time for n=1048576 s=32 k=256 is [8983] ms
+Table preprocess time for n=1048576 s=32 k=256 is [1667] ms
+Prove time for n=1048576 s=32 k=256 is [15516] ms
+Verify time for n=1048576 s=32 k=256 is [28] ms
+n=1048576, s=32, k=512
+Setup time for n=1048576 s=32 k=512 is [9161] ms
+Table preprocess time for n=1048576 s=32 k=512 is [1739] ms
+Prove time for n=1048576 s=32 k=512 is [29626] ms
+Verify time for n=1048576 s=32 k=512 is [29] ms
+n=1048576, s=32, k=1024
+Setup time for n=1048576 s=32 k=1024 is [8974] ms
+Table preprocess time for n=1048576 s=32 k=1024 is [1721] ms
+Prove time for n=1048576 s=32 k=1024 is [56650] ms
+Verify time for n=1048576 s=32 k=1024 is [28] ms
+n=2097152, s=16, k=1
+Setup time for n=2097152 s=16 k=1 is [8971] ms
+Table preprocess time for n=2097152 s=16 k=1 is [1374] ms
+Prove time for n=2097152 s=16 k=1 is [1415] ms
+Verify time for n=2097152 s=16 k=1 is [27] ms
+n=2097152, s=16, k=2
+Setup time for n=2097152 s=16 k=2 is [9083] ms
+Table preprocess time for n=2097152 s=16 k=2 is [1374] ms
+Prove time for n=2097152 s=16 k=2 is [1450] ms
+Verify time for n=2097152 s=16 k=2 is [27] ms
+n=2097152, s=16, k=4
+Setup time for n=2097152 s=16 k=4 is [9087] ms
+Table preprocess time for n=2097152 s=16 k=4 is [1679] ms
+Prove time for n=2097152 s=16 k=4 is [1493] ms
+Verify time for n=2097152 s=16 k=4 is [29] ms
+n=2097152, s=16, k=8
+Setup time for n=2097152 s=16 k=8 is [9063] ms
+Table preprocess time for n=2097152 s=16 k=8 is [1693] ms
+Prove time for n=2097152 s=16 k=8 is [1637] ms
+Verify time for n=2097152 s=16 k=8 is [29] ms
+n=2097152, s=16, k=16
+Setup time for n=2097152 s=16 k=16 is [9074] ms
+Table preprocess time for n=2097152 s=16 k=16 is [1694] ms
+Prove time for n=2097152 s=16 k=16 is [1910] ms
+Verify time for n=2097152 s=16 k=16 is [28] ms
+n=2097152, s=16, k=32
+Setup time for n=2097152 s=16 k=32 is [9129] ms
+Table preprocess time for n=2097152 s=16 k=32 is [1688] ms
+Prove time for n=2097152 s=16 k=32 is [2338] ms
+Verify time for n=2097152 s=16 k=32 is [28] ms
+n=2097152, s=16, k=64
+Setup time for n=2097152 s=16 k=64 is [9019] ms
+Table preprocess time for n=2097152 s=16 k=64 is [1669] ms
+Prove time for n=2097152 s=16 k=64 is [3401] ms
+Verify time for n=2097152 s=16 k=64 is [29] ms
+n=2097152, s=16, k=128
+Setup time for n=2097152 s=16 k=128 is [9082] ms
+Table preprocess time for n=2097152 s=16 k=128 is [1672] ms
+Prove time for n=2097152 s=16 k=128 is [5278] ms
+Verify time for n=2097152 s=16 k=128 is [31] ms
+n=2097152, s=16, k=256
+Setup time for n=2097152 s=16 k=256 is [9131] ms
+Table preprocess time for n=2097152 s=16 k=256 is [1716] ms
+Prove time for n=2097152 s=16 k=256 is [9100] ms
+Verify time for n=2097152 s=16 k=256 is [28] ms
+n=2097152, s=16, k=512
+Setup time for n=2097152 s=16 k=512 is [9074] ms
+Table preprocess time for n=2097152 s=16 k=512 is [1669] ms
+Prove time for n=2097152 s=16 k=512 is [17268] ms
+Verify time for n=2097152 s=16 k=512 is [28] ms
+n=2097152, s=16, k=1024
+Setup time for n=2097152 s=16 k=1024 is [8949] ms
+Table preprocess time for n=2097152 s=16 k=1024 is [1670] ms
+Prove time for n=2097152 s=16 k=1024 is [32534] ms
+Verify time for n=2097152 s=16 k=1024 is [27] ms
+n=4194304, s=8, k=1
+Setup time for n=4194304 s=8 k=1 is [9078] ms
+Table preprocess time for n=4194304 s=8 k=1 is [1692] ms
+Prove time for n=4194304 s=8 k=1 is [1441] ms
+Verify time for n=4194304 s=8 k=1 is [26] ms
+n=4194304, s=8, k=2
+Setup time for n=4194304 s=8 k=2 is [8928] ms
+Table preprocess time for n=4194304 s=8 k=2 is [1666] ms
+Prove time for n=4194304 s=8 k=2 is [1474] ms
+Verify time for n=4194304 s=8 k=2 is [29] ms
+n=4194304, s=8, k=4
+Setup time for n=4194304 s=8 k=4 is [9022] ms
+Table preprocess time for n=4194304 s=8 k=4 is [1369] ms
+Prove time for n=4194304 s=8 k=4 is [1441] ms
+Verify time for n=4194304 s=8 k=4 is [28] ms
+n=4194304, s=8, k=8
+Setup time for n=4194304 s=8 k=8 is [9026] ms
+Table preprocess time for n=4194304 s=8 k=8 is [1357] ms
+Prove time for n=4194304 s=8 k=8 is [1515] ms
+Verify time for n=4194304 s=8 k=8 is [28] ms
+n=4194304, s=8, k=16
+Setup time for n=4194304 s=8 k=16 is [9256] ms
+Table preprocess time for n=4194304 s=8 k=16 is [1371] ms
+Prove time for n=4194304 s=8 k=16 is [1684] ms
+Verify time for n=4194304 s=8 k=16 is [29] ms
+n=4194304, s=8, k=32
+Setup time for n=4194304 s=8 k=32 is [9065] ms
+Table preprocess time for n=4194304 s=8 k=32 is [1373] ms
+Prove time for n=4194304 s=8 k=32 is [1986] ms
+Verify time for n=4194304 s=8 k=32 is [28] ms
+n=4194304, s=8, k=64
+Setup time for n=4194304 s=8 k=64 is [8984] ms
+Table preprocess time for n=4194304 s=8 k=64 is [1397] ms
+Prove time for n=4194304 s=8 k=64 is [2549] ms
+Verify time for n=4194304 s=8 k=64 is [28] ms
+n=4194304, s=8, k=128
+Setup time for n=4194304 s=8 k=128 is [8977] ms
+Table preprocess time for n=4194304 s=8 k=128 is [1357] ms
+Prove time for n=4194304 s=8 k=128 is [3737] ms
+Verify time for n=4194304 s=8 k=128 is [28] ms
+n=4194304, s=8, k=256
+Setup time for n=4194304 s=8 k=256 is [9032] ms
+Table preprocess time for n=4194304 s=8 k=256 is [1351] ms
+Prove time for n=4194304 s=8 k=256 is [6209] ms
+Verify time for n=4194304 s=8 k=256 is [28] ms
+n=4194304, s=8, k=512
+Setup time for n=4194304 s=8 k=512 is [9075] ms
+Table preprocess time for n=4194304 s=8 k=512 is [1365] ms
+Prove time for n=4194304 s=8 k=512 is [10883] ms
+Verify time for n=4194304 s=8 k=512 is [29] ms
+n=4194304, s=8, k=1024
+Setup time for n=4194304 s=8 k=1024 is [9022] ms
+Table preprocess time for n=4194304 s=8 k=1024 is [1354] ms
+Prove time for n=4194304 s=8 k=1024 is [20672] ms
+Verify time for n=4194304 s=8 k=1024 is [28] ms
+n=262144, s=256, k=1
+Setup time for n=262144 s=256 k=1 is [17768] ms
+Table preprocess time for n=262144 s=256 k=1 is [3320] ms
+Prove time for n=262144 s=256 k=1 is [3111] ms
+Verify time for n=262144 s=256 k=1 is [26] ms
+n=262144, s=256, k=2
+Setup time for n=262144 s=256 k=2 is [17968] ms
+Table preprocess time for n=262144 s=256 k=2 is [3332] ms
+Prove time for n=262144 s=256 k=2 is [3433] ms
+Verify time for n=262144 s=256 k=2 is [27] ms
+n=262144, s=256, k=4
+Setup time for n=262144 s=256 k=4 is [17983] ms
+Table preprocess time for n=262144 s=256 k=4 is [3354] ms
+Prove time for n=262144 s=256 k=4 is [4233] ms
+Verify time for n=262144 s=256 k=4 is [28] ms
+n=262144, s=256, k=8
+Setup time for n=262144 s=256 k=8 is [18020] ms
+Table preprocess time for n=262144 s=256 k=8 is [3380] ms
+Prove time for n=262144 s=256 k=8 is [5808] ms
+Verify time for n=262144 s=256 k=8 is [28] ms
+n=262144, s=256, k=16
+Setup time for n=262144 s=256 k=16 is [18032] ms
+Table preprocess time for n=262144 s=256 k=16 is [3362] ms
+Prove time for n=262144 s=256 k=16 is [9041] ms
+Verify time for n=262144 s=256 k=16 is [29] ms
+n=262144, s=256, k=32
+Setup time for n=262144 s=256 k=32 is [18163] ms
+Table preprocess time for n=262144 s=256 k=32 is [3379] ms
+Prove time for n=262144 s=256 k=32 is [15284] ms
+Verify time for n=262144 s=256 k=32 is [30] ms
+n=262144, s=256, k=64
+Setup time for n=262144 s=256 k=64 is [17835] ms
+Table preprocess time for n=262144 s=256 k=64 is [3357] ms
+Prove time for n=262144 s=256 k=64 is [27324] ms
+Verify time for n=262144 s=256 k=64 is [28] ms
+n=262144, s=256, k=128
+Setup time for n=262144 s=256 k=128 is [17952] ms
+Table preprocess time for n=262144 s=256 k=128 is [3382] ms
+Prove time for n=262144 s=256 k=128 is [52569] ms
+Verify time for n=262144 s=256 k=128 is [29] ms
+n=262144, s=256, k=256
+Setup time for n=262144 s=256 k=256 is [17818] ms
+Table preprocess time for n=262144 s=256 k=256 is [3328] ms
+Prove time for n=262144 s=256 k=256 is [102048] ms
+Verify time for n=262144 s=256 k=256 is [28] ms
+n=262144, s=256, k=512
+Setup time for n=262144 s=256 k=512 is [17792] ms
+Table preprocess time for n=262144 s=256 k=512 is [3363] ms
+Prove time for n=262144 s=256 k=512 is [201362] ms
+Verify time for n=262144 s=256 k=512 is [28] ms
+n=262144, s=256, k=1024
+Setup time for n=262144 s=256 k=1024 is [17919] ms
+Table preprocess time for n=262144 s=256 k=1024 is [3435] ms
+Prove time for n=262144 s=256 k=1024 is [398505] ms
+Verify time for n=262144 s=256 k=1024 is [29] ms
+n=524288, s=128, k=1
+Setup time for n=524288 s=128 k=1 is [18024] ms
+Table preprocess time for n=524288 s=128 k=1 is [3440] ms
+Prove time for n=524288 s=128 k=1 is [3039] ms
+Verify time for n=524288 s=128 k=1 is [27] ms
+n=524288, s=128, k=2
+Setup time for n=524288 s=128 k=2 is [18191] ms
+Table preprocess time for n=524288 s=128 k=2 is [3326] ms
+Prove time for n=524288 s=128 k=2 is [3057] ms
+Verify time for n=524288 s=128 k=2 is [27] ms
+n=524288, s=128, k=4
+Setup time for n=524288 s=128 k=4 is [17891] ms
+Table preprocess time for n=524288 s=128 k=4 is [3335] ms
+Prove time for n=524288 s=128 k=4 is [3664] ms
+Verify time for n=524288 s=128 k=4 is [30] ms
+n=524288, s=128, k=8
+Setup time for n=524288 s=128 k=8 is [18055] ms
+Table preprocess time for n=524288 s=128 k=8 is [3366] ms
+Prove time for n=524288 s=128 k=8 is [4309] ms
+Verify time for n=524288 s=128 k=8 is [28] ms
+n=524288, s=128, k=16
+Setup time for n=524288 s=128 k=16 is [18222] ms
+Table preprocess time for n=524288 s=128 k=16 is [3331] ms
+Prove time for n=524288 s=128 k=16 is [5944] ms
+Verify time for n=524288 s=128 k=16 is [28] ms
+n=524288, s=128, k=32
+Setup time for n=524288 s=128 k=32 is [18005] ms
+Table preprocess time for n=524288 s=128 k=32 is [3354] ms
+Prove time for n=524288 s=128 k=32 is [9206] ms
+Verify time for n=524288 s=128 k=32 is [29] ms
+n=524288, s=128, k=64
+Setup time for n=524288 s=128 k=64 is [18082] ms
+Table preprocess time for n=524288 s=128 k=64 is [3470] ms
+Prove time for n=524288 s=128 k=64 is [15413] ms
+Verify time for n=524288 s=128 k=64 is [29] ms
+n=524288, s=128, k=128
+Setup time for n=524288 s=128 k=128 is [17931] ms
+Table preprocess time for n=524288 s=128 k=128 is [3327] ms
+Prove time for n=524288 s=128 k=128 is [27706] ms
+Verify time for n=524288 s=128 k=128 is [28] ms
+n=524288, s=128, k=256
+Setup time for n=524288 s=128 k=256 is [17981] ms
+Table preprocess time for n=524288 s=128 k=256 is [3422] ms
+Prove time for n=524288 s=128 k=256 is [52910] ms
+Verify time for n=524288 s=128 k=256 is [28] ms
+n=524288, s=128, k=512
+Setup time for n=524288 s=128 k=512 is [18052] ms
+Table preprocess time for n=524288 s=128 k=512 is [3364] ms
+Prove time for n=524288 s=128 k=512 is [103757] ms
+Verify time for n=524288 s=128 k=512 is [28] ms
+n=524288, s=128, k=1024
+Setup time for n=524288 s=128 k=1024 is [17821] ms
+Table preprocess time for n=524288 s=128 k=1024 is [3365] ms
+Prove time for n=524288 s=128 k=1024 is [203977] ms
+Verify time for n=524288 s=128 k=1024 is [28] ms
+n=1048576, s=64, k=1
+Setup time for n=1048576 s=64 k=1 is [17995] ms
+Table preprocess time for n=1048576 s=64 k=1 is [3317] ms
+Prove time for n=1048576 s=64 k=1 is [2868] ms
+Verify time for n=1048576 s=64 k=1 is [26] ms
+n=1048576, s=64, k=2
+Setup time for n=1048576 s=64 k=2 is [18034] ms
+Table preprocess time for n=1048576 s=64 k=2 is [3323] ms
+Prove time for n=1048576 s=64 k=2 is [3008] ms
+Verify time for n=1048576 s=64 k=2 is [27] ms
+n=1048576, s=64, k=4
+Setup time for n=1048576 s=64 k=4 is [17812] ms
+Table preprocess time for n=1048576 s=64 k=4 is [3320] ms
+Prove time for n=1048576 s=64 k=4 is [3094] ms
+Verify time for n=1048576 s=64 k=4 is [28] ms
+n=1048576, s=64, k=8
+Setup time for n=1048576 s=64 k=8 is [17902] ms
+Table preprocess time for n=1048576 s=64 k=8 is [3356] ms
+Prove time for n=1048576 s=64 k=8 is [3518] ms
+Verify time for n=1048576 s=64 k=8 is [28] ms
+n=1048576, s=64, k=16
+Setup time for n=1048576 s=64 k=16 is [18146] ms
+Table preprocess time for n=1048576 s=64 k=16 is [3330] ms
+Prove time for n=1048576 s=64 k=16 is [4437] ms
+Verify time for n=1048576 s=64 k=16 is [29] ms
+n=1048576, s=64, k=32
+Setup time for n=1048576 s=64 k=32 is [18070] ms
+Table preprocess time for n=1048576 s=64 k=32 is [3326] ms
+Prove time for n=1048576 s=64 k=32 is [6014] ms
+Verify time for n=1048576 s=64 k=32 is [28] ms
+n=1048576, s=64, k=64
+Setup time for n=1048576 s=64 k=64 is [17855] ms
+Table preprocess time for n=1048576 s=64 k=64 is [3367] ms
+Prove time for n=1048576 s=64 k=64 is [9218] ms
+Verify time for n=1048576 s=64 k=64 is [30] ms
+n=1048576, s=64, k=128
+Setup time for n=1048576 s=64 k=128 is [17969] ms
+Table preprocess time for n=1048576 s=64 k=128 is [3352] ms
+Prove time for n=1048576 s=64 k=128 is [15696] ms
+Verify time for n=1048576 s=64 k=128 is [30] ms
+n=1048576, s=64, k=256
+Setup time for n=1048576 s=64 k=256 is [18199] ms
+Table preprocess time for n=1048576 s=64 k=256 is [3366] ms
+Prove time for n=1048576 s=64 k=256 is [28996] ms
+Verify time for n=1048576 s=64 k=256 is [28] ms
+n=1048576, s=64, k=512
+Setup time for n=1048576 s=64 k=512 is [18127] ms
+Table preprocess time for n=1048576 s=64 k=512 is [3332] ms
+Prove time for n=1048576 s=64 k=512 is [55780] ms
+Verify time for n=1048576 s=64 k=512 is [29] ms
+n=1048576, s=64, k=1024
+Setup time for n=1048576 s=64 k=1024 is [17902] ms
+Table preprocess time for n=1048576 s=64 k=1024 is [3373] ms
+Prove time for n=1048576 s=64 k=1024 is [107231] ms
+Verify time for n=1048576 s=64 k=1024 is [29] ms
+n=2097152, s=32, k=1
+Setup time for n=2097152 s=32 k=1 is [18064] ms
+Table preprocess time for n=2097152 s=32 k=1 is [3335] ms
+Prove time for n=2097152 s=32 k=1 is [2820] ms
+Verify time for n=2097152 s=32 k=1 is [26] ms
+n=2097152, s=32, k=2
+Setup time for n=2097152 s=32 k=2 is [17914] ms
+Table preprocess time for n=2097152 s=32 k=2 is [3331] ms
+Prove time for n=2097152 s=32 k=2 is [2830] ms
+Verify time for n=2097152 s=32 k=2 is [27] ms
+n=2097152, s=32, k=4
+Setup time for n=2097152 s=32 k=4 is [18083] ms
+Table preprocess time for n=2097152 s=32 k=4 is [3426] ms
+Prove time for n=2097152 s=32 k=4 is [3130] ms
+Verify time for n=2097152 s=32 k=4 is [30] ms
+n=2097152, s=32, k=8
+Setup time for n=2097152 s=32 k=8 is [17930] ms
+Table preprocess time for n=2097152 s=32 k=8 is [3374] ms
+Prove time for n=2097152 s=32 k=8 is [3143] ms
+Verify time for n=2097152 s=32 k=8 is [28] ms
+n=2097152, s=32, k=16
+Setup time for n=2097152 s=32 k=16 is [18058] ms
+Table preprocess time for n=2097152 s=32 k=16 is [3372] ms
+Prove time for n=2097152 s=32 k=16 is [3585] ms
+Verify time for n=2097152 s=32 k=16 is [29] ms
+n=2097152, s=32, k=32
+Setup time for n=2097152 s=32 k=32 is [18069] ms
+Table preprocess time for n=2097152 s=32 k=32 is [3346] ms
+Prove time for n=2097152 s=32 k=32 is [4520] ms
+Verify time for n=2097152 s=32 k=32 is [28] ms
+n=2097152, s=32, k=64
+Setup time for n=2097152 s=32 k=64 is [17996] ms
+Table preprocess time for n=2097152 s=32 k=64 is [3346] ms
+Prove time for n=2097152 s=32 k=64 is [6323] ms
+Verify time for n=2097152 s=32 k=64 is [29] ms
+n=2097152, s=32, k=128
+Setup time for n=2097152 s=32 k=128 is [18152] ms
+Table preprocess time for n=2097152 s=32 k=128 is [3319] ms
+Prove time for n=2097152 s=32 k=128 is [9705] ms
+Verify time for n=2097152 s=32 k=128 is [28] ms
+n=2097152, s=32, k=256
+Setup time for n=2097152 s=32 k=256 is [18103] ms
+Table preprocess time for n=2097152 s=32 k=256 is [3366] ms
+Prove time for n=2097152 s=32 k=256 is [16750] ms
+Verify time for n=2097152 s=32 k=256 is [28] ms
+n=2097152, s=32, k=512
+Setup time for n=2097152 s=32 k=512 is [18092] ms
+Table preprocess time for n=2097152 s=32 k=512 is [3454] ms
+Prove time for n=2097152 s=32 k=512 is [30304] ms
+Verify time for n=2097152 s=32 k=512 is [28] ms
+n=2097152, s=32, k=1024
+Setup time for n=2097152 s=32 k=1024 is [18159] ms
+Table preprocess time for n=2097152 s=32 k=1024 is [3360] ms
+Prove time for n=2097152 s=32 k=1024 is [59018] ms
+Verify time for n=2097152 s=32 k=1024 is [28] ms
+n=4194304, s=16, k=1
+Setup time for n=4194304 s=16 k=1 is [17831] ms
+Table preprocess time for n=4194304 s=16 k=1 is [2704] ms
+Prove time for n=4194304 s=16 k=1 is [2733] ms
+Verify time for n=4194304 s=16 k=1 is [26] ms
+n=4194304, s=16, k=2
+Setup time for n=4194304 s=16 k=2 is [18030] ms
+Table preprocess time for n=4194304 s=16 k=2 is [2757] ms
+Prove time for n=4194304 s=16 k=2 is [2831] ms
+Verify time for n=4194304 s=16 k=2 is [28] ms
+n=4194304, s=16, k=4
+Setup time for n=4194304 s=16 k=4 is [18146] ms
+Table preprocess time for n=4194304 s=16 k=4 is [2785] ms
+Prove time for n=4194304 s=16 k=4 is [2777] ms
+Verify time for n=4194304 s=16 k=4 is [28] ms
+n=4194304, s=16, k=8
+Setup time for n=4194304 s=16 k=8 is [17748] ms
+Table preprocess time for n=4194304 s=16 k=8 is [2707] ms
+Prove time for n=4194304 s=16 k=8 is [2955] ms
+Verify time for n=4194304 s=16 k=8 is [28] ms
+n=4194304, s=16, k=16
+Setup time for n=4194304 s=16 k=16 is [18031] ms
+Table preprocess time for n=4194304 s=16 k=16 is [2728] ms
+Prove time for n=4194304 s=16 k=16 is [3191] ms
+Verify time for n=4194304 s=16 k=16 is [28] ms
+n=4194304, s=16, k=32
+Setup time for n=4194304 s=16 k=32 is [18026] ms
+Table preprocess time for n=4194304 s=16 k=32 is [2733] ms
+Prove time for n=4194304 s=16 k=32 is [3688] ms
+Verify time for n=4194304 s=16 k=32 is [29] ms
+n=4194304, s=16, k=64
+Setup time for n=4194304 s=16 k=64 is [17944] ms
+Table preprocess time for n=4194304 s=16 k=64 is [2803] ms
+Prove time for n=4194304 s=16 k=64 is [4727] ms
+Verify time for n=4194304 s=16 k=64 is [29] ms
+n=4194304, s=16, k=128
+Setup time for n=4194304 s=16 k=128 is [18407] ms
+Table preprocess time for n=4194304 s=16 k=128 is [2781] ms
+Prove time for n=4194304 s=16 k=128 is [6663] ms
+Verify time for n=4194304 s=16 k=128 is [27] ms
+n=4194304, s=16, k=256
+Setup time for n=4194304 s=16 k=256 is [18227] ms
+Table preprocess time for n=4194304 s=16 k=256 is [2813] ms
+Prove time for n=4194304 s=16 k=256 is [10455] ms
+Verify time for n=4194304 s=16 k=256 is [28] ms
+n=4194304, s=16, k=512
+Setup time for n=4194304 s=16 k=512 is [17994] ms
+Table preprocess time for n=4194304 s=16 k=512 is [2738] ms
+Prove time for n=4194304 s=16 k=512 is [18259] ms
+Verify time for n=4194304 s=16 k=512 is [30] ms
+n=4194304, s=16, k=1024
+Setup time for n=4194304 s=16 k=1024 is [18143] ms
+Table preprocess time for n=4194304 s=16 k=1024 is [2730] ms
+Prove time for n=4194304 s=16 k=1024 is [33787] ms
+Verify time for n=4194304 s=16 k=1024 is [29] ms
+n=524288, s=256, k=1
+Setup time for n=524288 s=256 k=1 is [35994] ms
+Table preprocess time for n=524288 s=256 k=1 is [6874] ms
+Prove time for n=524288 s=256 k=1 is [17463] ms
+Verify time for n=524288 s=256 k=1 is [159] ms
+n=524288, s=256, k=2
+Setup time for n=524288 s=256 k=2 is [36485] ms
+Table preprocess time for n=524288 s=256 k=2 is [6753] ms
+Prove time for n=524288 s=256 k=2 is [20011] ms
+Verify time for n=524288 s=256 k=2 is [178] ms
+n=524288, s=256, k=4
+Setup time for n=524288 s=256 k=4 is [35899] ms
+Table preprocess time for n=524288 s=256 k=4 is [6738] ms
+Prove time for n=524288 s=256 k=4 is [20983] ms
+Verify time for n=524288 s=256 k=4 is [128] ms
+n=524288, s=256, k=8
+Setup time for n=524288 s=256 k=8 is [35907] ms
+Table preprocess time for n=524288 s=256 k=8 is [6733] ms
+Prove time for n=524288 s=256 k=8 is [18962] ms
+Verify time for n=524288 s=256 k=8 is [128] ms
+n=524288, s=256, k=16
+Setup time for n=524288 s=256 k=16 is [35952] ms
+Table preprocess time for n=524288 s=256 k=16 is [6691] ms
+Prove time for n=524288 s=256 k=16 is [18377] ms
+Verify time for n=524288 s=256 k=16 is [29] ms
+n=524288, s=256, k=32
+Setup time for n=524288 s=256 k=32 is [36261] ms
+Table preprocess time for n=524288 s=256 k=32 is [6685] ms
+Prove time for n=524288 s=256 k=32 is [19602] ms
+Verify time for n=524288 s=256 k=32 is [29] ms
+n=524288, s=256, k=64
+Setup time for n=524288 s=256 k=64 is [35775] ms
+Table preprocess time for n=524288 s=256 k=64 is [6715] ms
+Prove time for n=524288 s=256 k=64 is [30150] ms
+Verify time for n=524288 s=256 k=64 is [28] ms
+n=524288, s=256, k=128
+Setup time for n=524288 s=256 k=128 is [35968] ms
+Table preprocess time for n=524288 s=256 k=128 is [6694] ms
+Prove time for n=524288 s=256 k=128 is [55380] ms
+Verify time for n=524288 s=256 k=128 is [29] ms
+n=524288, s=256, k=256
+Setup time for n=524288 s=256 k=256 is [36187] ms
+Table preprocess time for n=524288 s=256 k=256 is [6706] ms
+Prove time for n=524288 s=256 k=256 is [104371] ms
+Verify time for n=524288 s=256 k=256 is [28] ms
+n=524288, s=256, k=512
+Setup time for n=524288 s=256 k=512 is [35914] ms
+Table preprocess time for n=524288 s=256 k=512 is [6754] ms
+Prove time for n=524288 s=256 k=512 is [204930] ms
+Verify time for n=524288 s=256 k=512 is [28] ms
+n=524288, s=256, k=1024
+Setup time for n=524288 s=256 k=1024 is [35982] ms
+Table preprocess time for n=524288 s=256 k=1024 is [6728] ms
+Prove time for n=524288 s=256 k=1024 is [402719] ms
+Verify time for n=524288 s=256 k=1024 is [29] ms
+n=1048576, s=128, k=1
+Setup time for n=1048576 s=128 k=1 is [36056] ms
+Table preprocess time for n=1048576 s=128 k=1 is [6743] ms
+Prove time for n=1048576 s=128 k=1 is [5906] ms
+Verify time for n=1048576 s=128 k=1 is [26] ms
+n=1048576, s=128, k=2
+Setup time for n=1048576 s=128 k=2 is [35852] ms
+Table preprocess time for n=1048576 s=128 k=2 is [6748] ms
+Prove time for n=1048576 s=128 k=2 is [5909] ms
+Verify time for n=1048576 s=128 k=2 is [26] ms
+n=1048576, s=128, k=4
+Setup time for n=1048576 s=128 k=4 is [35862] ms
+Table preprocess time for n=1048576 s=128 k=4 is [6681] ms
+Prove time for n=1048576 s=128 k=4 is [6099] ms
+Verify time for n=1048576 s=128 k=4 is [28] ms
+n=1048576, s=128, k=8
+Setup time for n=1048576 s=128 k=8 is [36093] ms
+Table preprocess time for n=1048576 s=128 k=8 is [6700] ms
+Prove time for n=1048576 s=128 k=8 is [6851] ms
+Verify time for n=1048576 s=128 k=8 is [29] ms
+n=1048576, s=128, k=16
+Setup time for n=1048576 s=128 k=16 is [36180] ms
+Table preprocess time for n=1048576 s=128 k=16 is [6703] ms
+Prove time for n=1048576 s=128 k=16 is [8937] ms
+Verify time for n=1048576 s=128 k=16 is [29] ms
+n=1048576, s=128, k=32
+Setup time for n=1048576 s=128 k=32 is [36058] ms
+Table preprocess time for n=1048576 s=128 k=32 is [6667] ms
+Prove time for n=1048576 s=128 k=32 is [12007] ms
+Verify time for n=1048576 s=128 k=32 is [28] ms
+n=1048576, s=128, k=64
+Setup time for n=1048576 s=128 k=64 is [36368] ms
+Table preprocess time for n=1048576 s=128 k=64 is [6914] ms
+Prove time for n=1048576 s=128 k=64 is [18067] ms
+Verify time for n=1048576 s=128 k=64 is [29] ms
+n=1048576, s=128, k=128
+Setup time for n=1048576 s=128 k=128 is [36296] ms
+Table preprocess time for n=1048576 s=128 k=128 is [6691] ms
+Prove time for n=1048576 s=128 k=128 is [30773] ms
+Verify time for n=1048576 s=128 k=128 is [29] ms
+n=1048576, s=128, k=256
+Setup time for n=1048576 s=128 k=256 is [35716] ms
+Table preprocess time for n=1048576 s=128 k=256 is [6796] ms
+Prove time for n=1048576 s=128 k=256 is [55691] ms
+Verify time for n=1048576 s=128 k=256 is [28] ms
+n=1048576, s=128, k=512
+Setup time for n=1048576 s=128 k=512 is [36213] ms
+Table preprocess time for n=1048576 s=128 k=512 is [6714] ms
+Prove time for n=1048576 s=128 k=512 is [107090] ms
+Verify time for n=1048576 s=128 k=512 is [29] ms
+n=1048576, s=128, k=1024
+Setup time for n=1048576 s=128 k=1024 is [36059] ms
+Table preprocess time for n=1048576 s=128 k=1024 is [6736] ms
+Prove time for n=1048576 s=128 k=1024 is [207928] ms
+Verify time for n=1048576 s=128 k=1024 is [29] ms
+n=2097152, s=64, k=1
+Setup time for n=2097152 s=64 k=1 is [36030] ms
+Table preprocess time for n=2097152 s=64 k=1 is [6652] ms
+Prove time for n=2097152 s=64 k=1 is [5583] ms
+Verify time for n=2097152 s=64 k=1 is [27] ms
+n=2097152, s=64, k=2
+Setup time for n=2097152 s=64 k=2 is [35819] ms
+Table preprocess time for n=2097152 s=64 k=2 is [6848] ms
+Prove time for n=2097152 s=64 k=2 is [5743] ms
+Verify time for n=2097152 s=64 k=2 is [27] ms
+n=2097152, s=64, k=4
+Setup time for n=2097152 s=64 k=4 is [35865] ms
+Table preprocess time for n=2097152 s=64 k=4 is [6738] ms
+Prove time for n=2097152 s=64 k=4 is [5818] ms
+Verify time for n=2097152 s=64 k=4 is [28] ms
+n=2097152, s=64, k=8
+Setup time for n=2097152 s=64 k=8 is [36026] ms
+Table preprocess time for n=2097152 s=64 k=8 is [6651] ms
+Prove time for n=2097152 s=64 k=8 is [6238] ms
+Verify time for n=2097152 s=64 k=8 is [29] ms
+n=2097152, s=64, k=16
+Setup time for n=2097152 s=64 k=16 is [36499] ms
+Table preprocess time for n=2097152 s=64 k=16 is [6705] ms
+Prove time for n=2097152 s=64 k=16 is [6996] ms
+Verify time for n=2097152 s=64 k=16 is [29] ms
+n=2097152, s=64, k=32
+Setup time for n=2097152 s=64 k=32 is [36018] ms
+Table preprocess time for n=2097152 s=64 k=32 is [6711] ms
+Prove time for n=2097152 s=64 k=32 is [8971] ms
+Verify time for n=2097152 s=64 k=32 is [28] ms
+n=2097152, s=64, k=64
+Setup time for n=2097152 s=64 k=64 is [35897] ms
+Table preprocess time for n=2097152 s=64 k=64 is [6719] ms
+Prove time for n=2097152 s=64 k=64 is [12075] ms
+Verify time for n=2097152 s=64 k=64 is [28] ms
+n=2097152, s=64, k=128
+Setup time for n=2097152 s=64 k=128 is [36430] ms
+Table preprocess time for n=2097152 s=64 k=128 is [6669] ms
+Prove time for n=2097152 s=64 k=128 is [18828] ms
+Verify time for n=2097152 s=64 k=128 is [28] ms
+n=2097152, s=64, k=256
+Setup time for n=2097152 s=64 k=256 is [35899] ms
+Table preprocess time for n=2097152 s=64 k=256 is [6659] ms
+Prove time for n=2097152 s=64 k=256 is [31881] ms
+Verify time for n=2097152 s=64 k=256 is [28] ms
+n=2097152, s=64, k=512
+Setup time for n=2097152 s=64 k=512 is [35995] ms
+Table preprocess time for n=2097152 s=64 k=512 is [6805] ms
+Prove time for n=2097152 s=64 k=512 is [57489] ms
+Verify time for n=2097152 s=64 k=512 is [29] ms
+n=2097152, s=64, k=1024
+Setup time for n=2097152 s=64 k=1024 is [36167] ms
+Table preprocess time for n=2097152 s=64 k=1024 is [6685] ms
+Prove time for n=2097152 s=64 k=1024 is [110903] ms
+Verify time for n=2097152 s=64 k=1024 is [28] ms
+n=4194304, s=32, k=1
+Setup time for n=4194304 s=32 k=1 is [36027] ms
+Table preprocess time for n=4194304 s=32 k=1 is [6628] ms
+Prove time for n=4194304 s=32 k=1 is [5627] ms
+Verify time for n=4194304 s=32 k=1 is [26] ms
+n=4194304, s=32, k=2
+Setup time for n=4194304 s=32 k=2 is [35906] ms
+Table preprocess time for n=4194304 s=32 k=2 is [6707] ms
+Prove time for n=4194304 s=32 k=2 is [5458] ms
+Verify time for n=4194304 s=32 k=2 is [28] ms
+n=4194304, s=32, k=4
+Setup time for n=4194304 s=32 k=4 is [35723] ms
+Table preprocess time for n=4194304 s=32 k=4 is [6767] ms
+Prove time for n=4194304 s=32 k=4 is [5531] ms
+Verify time for n=4194304 s=32 k=4 is [28] ms
+n=4194304, s=32, k=8
+Setup time for n=4194304 s=32 k=8 is [35545] ms
+Table preprocess time for n=4194304 s=32 k=8 is [6827] ms
+Prove time for n=4194304 s=32 k=8 is [5943] ms
+Verify time for n=4194304 s=32 k=8 is [29] ms
+n=4194304, s=32, k=16
+Setup time for n=4194304 s=32 k=16 is [35904] ms
+Table preprocess time for n=4194304 s=32 k=16 is [6800] ms
+Prove time for n=4194304 s=32 k=16 is [6160] ms
+Verify time for n=4194304 s=32 k=16 is [29] ms
+n=4194304, s=32, k=32
+Setup time for n=4194304 s=32 k=32 is [36051] ms
+Table preprocess time for n=4194304 s=32 k=32 is [6902] ms
+Prove time for n=4194304 s=32 k=32 is [7369] ms
+Verify time for n=4194304 s=32 k=32 is [28] ms
+n=4194304, s=32, k=64
+Setup time for n=4194304 s=32 k=64 is [35941] ms
+Table preprocess time for n=4194304 s=32 k=64 is [6667] ms
+Prove time for n=4194304 s=32 k=64 is [8956] ms
+Verify time for n=4194304 s=32 k=64 is [29] ms
+n=4194304, s=32, k=128
+Setup time for n=4194304 s=32 k=128 is [35942] ms
+Table preprocess time for n=4194304 s=32 k=128 is [6661] ms
+Prove time for n=4194304 s=32 k=128 is [12283] ms
+Verify time for n=4194304 s=32 k=128 is [28] ms
+n=4194304, s=32, k=256
+Setup time for n=4194304 s=32 k=256 is [36419] ms
+Table preprocess time for n=4194304 s=32 k=256 is [6731] ms
+Prove time for n=4194304 s=32 k=256 is [19369] ms
+Verify time for n=4194304 s=32 k=256 is [28] ms
+n=4194304, s=32, k=512
+Setup time for n=4194304 s=32 k=512 is [36187] ms
+Table preprocess time for n=4194304 s=32 k=512 is [6738] ms
+Prove time for n=4194304 s=32 k=512 is [33412] ms
+Verify time for n=4194304 s=32 k=512 is [28] ms
+n=4194304, s=32, k=1024
+Setup time for n=4194304 s=32 k=1024 is [35988] ms
+Table preprocess time for n=4194304 s=32 k=1024 is [6725] ms
+Prove time for n=4194304 s=32 k=1024 is [61255] ms
+Verify time for n=4194304 s=32 k=1024 is [28] ms
+n=1048576, s=256, k=1
+Setup time for n=1048576 s=256 k=1 is [605172] ms
+Table preprocess time for n=1048576 s=256 k=1 is [306380] ms
+Prove time for n=1048576 s=256 k=1 is [67061] ms
+Verify time for n=1048576 s=256 k=1 is [58] ms
+n=1048576, s=256, k=2
+Setup time for n=1048576 s=256 k=2 is [533057] ms
+Table preprocess time for n=1048576 s=256 k=2 is [288258] ms
+Prove time for n=1048576 s=256 k=2 is [24534] ms
+Verify time for n=1048576 s=256 k=2 is [27] ms
+n=1048576, s=256, k=4
+Setup time for n=1048576 s=256 k=4 is [603898] ms
+Table preprocess time for n=1048576 s=256 k=4 is [356849] ms
+Prove time for n=1048576 s=256 k=4 is [58909] ms
+Verify time for n=1048576 s=256 k=4 is [310] ms
+n=1048576, s=256, k=8
+Setup time for n=1048576 s=256 k=8 is [522298] ms
+Table preprocess time for n=1048576 s=256 k=8 is [281756] ms
+Prove time for n=1048576 s=256 k=8 is [73594] ms
+Verify time for n=1048576 s=256 k=8 is [29] ms
+n=1048576, s=256, k=16
+Setup time for n=1048576 s=256 k=16 is [727445] ms
+Table preprocess time for n=1048576 s=256 k=16 is [226088] ms
+Prove time for n=1048576 s=256 k=16 is [64868] ms
+Verify time for n=1048576 s=256 k=16 is [52] ms
+n=1048576, s=256, k=32
+Setup time for n=1048576 s=256 k=32 is [627686] ms
+Table preprocess time for n=1048576 s=256 k=32 is [202617] ms
+Prove time for n=1048576 s=256 k=32 is [42606] ms
+Verify time for n=1048576 s=256 k=32 is [29] ms
+n=1048576, s=256, k=64
+Setup time for n=1048576 s=256 k=64 is [623212] ms
+Table preprocess time for n=1048576 s=256 k=64 is [261598] ms
+Prove time for n=1048576 s=256 k=64 is [75426] ms
+Verify time for n=1048576 s=256 k=64 is [31] ms
+n=1048576, s=256, k=128
+Setup time for n=1048576 s=256 k=128 is [662518] ms
+Table preprocess time for n=1048576 s=256 k=128 is [257259] ms
+Prove time for n=1048576 s=256 k=128 is [106567] ms
+Verify time for n=1048576 s=256 k=128 is [31] ms
+n=1048576, s=256, k=256
+Setup time for n=1048576 s=256 k=256 is [607585] ms
+Table preprocess time for n=1048576 s=256 k=256 is [295636] ms
+Prove time for n=1048576 s=256 k=256 is [160350] ms
+Verify time for n=1048576 s=256 k=256 is [50] ms
+n=1048576, s=256, k=512
+Setup time for n=1048576 s=256 k=512 is [558627] ms
+Table preprocess time for n=1048576 s=256 k=512 is [337127] ms
+Prove time for n=1048576 s=256 k=512 is [252771] ms
+Verify time for n=1048576 s=256 k=512 is [52] ms
+n=1048576, s=256, k=1024
+Setup time for n=1048576 s=256 k=1024 is [544047] ms
+Table preprocess time for n=1048576 s=256 k=1024 is [322403] ms
+Prove time for n=1048576 s=256 k=1024 is [454208] ms
+Verify time for n=1048576 s=256 k=1024 is [30] ms
+n=2097152, s=128, k=1
+Setup time for n=2097152 s=128 k=1 is [616052] ms
+Table preprocess time for n=2097152 s=128 k=1 is [285137] ms
+Prove time for n=2097152 s=128 k=1 is [54239] ms
+Verify time for n=2097152 s=128 k=1 is [146] ms
+n=2097152, s=128, k=2
+Setup time for n=2097152 s=128 k=2 is [608241] ms
+Table preprocess time for n=2097152 s=128 k=2 is [275398] ms
+Prove time for n=2097152 s=128 k=2 is [67248] ms
+Verify time for n=2097152 s=128 k=2 is [100] ms
+n=2097152, s=128, k=4
+Setup time for n=2097152 s=128 k=4 is [611638] ms
+Table preprocess time for n=2097152 s=128 k=4 is [238777] ms
+Prove time for n=2097152 s=128 k=4 is [46469] ms
+Verify time for n=2097152 s=128 k=4 is [210] ms
+n=2097152, s=128, k=8
+Setup time for n=2097152 s=128 k=8 is [676856] ms
+Table preprocess time for n=2097152 s=128 k=8 is [249634] ms
+Prove time for n=2097152 s=128 k=8 is [42290] ms
+Verify time for n=2097152 s=128 k=8 is [59] ms
+n=2097152, s=128, k=16
+Setup time for n=2097152 s=128 k=16 is [586846] ms
+Table preprocess time for n=2097152 s=128 k=16 is [339997] ms
+Prove time for n=2097152 s=128 k=16 is [65784] ms
+Verify time for n=2097152 s=128 k=16 is [74] ms
+n=2097152, s=128, k=32
+Setup time for n=2097152 s=128 k=32 is [538317] ms
+Table preprocess time for n=2097152 s=128 k=32 is [341506] ms
+Prove time for n=2097152 s=128 k=32 is [50906] ms
+Verify time for n=2097152 s=128 k=32 is [56] ms
+n=2097152, s=128, k=64
+Setup time for n=2097152 s=128 k=64 is [652366] ms
+Table preprocess time for n=2097152 s=128 k=64 is [218845] ms
+Prove time for n=2097152 s=128 k=64 is [45317] ms
+Verify time for n=2097152 s=128 k=64 is [31] ms
+n=2097152, s=128, k=128
+Setup time for n=2097152 s=128 k=128 is [628917] ms
+Table preprocess time for n=2097152 s=128 k=128 is [344799] ms
+Prove time for n=2097152 s=128 k=128 is [80431] ms
+Verify time for n=2097152 s=128 k=128 is [30] ms
+n=2097152, s=128, k=256
+Setup time for n=2097152 s=128 k=256 is [614012] ms
+Table preprocess time for n=2097152 s=128 k=256 is [278845] ms
+Prove time for n=2097152 s=128 k=256 is [83118] ms
+Verify time for n=2097152 s=128 k=256 is [29] ms
+n=2097152, s=128, k=512
+Setup time for n=2097152 s=128 k=512 is [631981] ms
+Table preprocess time for n=2097152 s=128 k=512 is [263820] ms
+Prove time for n=2097152 s=128 k=512 is [153936] ms
+Verify time for n=2097152 s=128 k=512 is [29] ms
+n=2097152, s=128, k=1024
+Setup time for n=2097152 s=128 k=1024 is [716142] ms
+Table preprocess time for n=2097152 s=128 k=1024 is [176783] ms
+Prove time for n=2097152 s=128 k=1024 is [257050] ms
+Verify time for n=2097152 s=128 k=1024 is [51] ms
+n=4194304, s=64, k=1
+Setup time for n=4194304 s=64 k=1 is [626118] ms
+Table preprocess time for n=4194304 s=64 k=1 is [294556] ms
+Prove time for n=4194304 s=64 k=1 is [19091] ms
+Verify time for n=4194304 s=64 k=1 is [51] ms
+n=4194304, s=64, k=2
+Setup time for n=4194304 s=64 k=2 is [712203] ms
+Table preprocess time for n=4194304 s=64 k=2 is [294109] ms
+Prove time for n=4194304 s=64 k=2 is [59025] ms
+Verify time for n=4194304 s=64 k=2 is [450] ms
+n=4194304, s=64, k=4
+Setup time for n=4194304 s=64 k=4 is [568926] ms
+Table preprocess time for n=4194304 s=64 k=4 is [322686] ms
+Prove time for n=4194304 s=64 k=4 is [64654] ms
+Verify time for n=4194304 s=64 k=4 is [29] ms
+n=4194304, s=64, k=8
+Setup time for n=4194304 s=64 k=8 is [602292] ms
+Table preprocess time for n=4194304 s=64 k=8 is [319791] ms
+Prove time for n=4194304 s=64 k=8 is [65799] ms
+Verify time for n=4194304 s=64 k=8 is [148] ms
+n=4194304, s=64, k=16
+Setup time for n=4194304 s=64 k=16 is [628798] ms
+Table preprocess time for n=4194304 s=64 k=16 is [302151] ms
+Prove time for n=4194304 s=64 k=16 is [67441] ms
+Verify time for n=4194304 s=64 k=16 is [29] ms
+n=4194304, s=64, k=32
+Setup time for n=4194304 s=64 k=32 is [585548] ms
+Table preprocess time for n=4194304 s=64 k=32 is [331599] ms
+Prove time for n=4194304 s=64 k=32 is [64128] ms
+Verify time for n=4194304 s=64 k=32 is [87] ms
+n=4194304, s=64, k=64
+Setup time for n=4194304 s=64 k=64 is [625873] ms
+Table preprocess time for n=4194304 s=64 k=64 is [289454] ms
+Prove time for n=4194304 s=64 k=64 is [73277] ms
+Verify time for n=4194304 s=64 k=64 is [56] ms
+n=4194304, s=64, k=128
+Setup time for n=4194304 s=64 k=128 is [553501] ms
+Table preprocess time for n=4194304 s=64 k=128 is [254969] ms
+Prove time for n=4194304 s=64 k=128 is [83397] ms
+Verify time for n=4194304 s=64 k=128 is [67] ms
+n=4194304, s=64, k=256
+Setup time for n=4194304 s=64 k=256 is [594408] ms
+Table preprocess time for n=4194304 s=64 k=256 is [305183] ms
+Prove time for n=4194304 s=64 k=256 is [98557] ms
+Verify time for n=4194304 s=64 k=256 is [30] ms
+n=4194304, s=64, k=512
+Setup time for n=4194304 s=64 k=512 is [605760] ms
+Table preprocess time for n=4194304 s=64 k=512 is [290866] ms
+Prove time for n=4194304 s=64 k=512 is [114521] ms
+Verify time for n=4194304 s=64 k=512 is [31] ms
+n=4194304, s=64, k=1024
+Setup time for n=4194304 s=64 k=1024 is [649348] ms
+Table preprocess time for n=4194304 s=64 k=1024 is [277157] ms
+Prove time for n=4194304 s=64 k=1024 is [120425] ms
+Verify time for n=4194304 s=64 k=1024 is [50] ms
+n=2097152, s=256, k=1
+run.sh: line 1: 361583 Killed                  RAYON_NUM_THREADS=1 cargo run --release
