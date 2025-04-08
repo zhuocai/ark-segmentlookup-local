@@ -95,14 +95,15 @@ fn end_to_end(n: usize, s: usize, k: usize, &dummy: &bool) {
 }
 fn main() {
     let seg_powers: Vec<usize> = vec![16, 17, 18, 19, 20, 21, 22];
-    let segsizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256];
-    let witness_sizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
-    // let witness_sizes: Vec<usize> = vec![1, 32]; //, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+    // let segsizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256];
+    let segsizes: Vec<usize> = vec![1,4,16,64];
+    // let witness_sizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+    let witness_sizes: Vec<usize> = vec![1024]; //, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
 
     let table_powers: Vec<usize> = vec![
         16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
     ];
-    let dummy: bool = true;
+    let dummy: bool = false;
 
     for table_power in table_powers.iter() {
         for num_segment_power in seg_powers.iter() {
