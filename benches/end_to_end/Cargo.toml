@@ -6,5 +6,5 @@ edition = "2021"
 [dependencies]
 ark-std = { version = "0.5.0", features = ["parallel"] }
 ark-ec = { version = "0.5.0", features = ["parallel"] }
-ark-bls12-381 = "0.5.0"
+ark-bn254 = "0.5.0"
 ark-segmentlookup = { path = "../.." }

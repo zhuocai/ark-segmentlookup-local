@@ -153,7 +153,7 @@ pub fn divide_by_vanishing_poly_on_coset_in_place<C: CurveGroup>(
 
 #[cfg(test)]
 mod tests {
-    use ark_bls12_381::Bls12_381;
+    use ark_bn254::Bn254;
 
     use super::*;
 
@@ -164,13 +164,13 @@ mod tests {
 
         let order_v = num_queries * segment_size;
         let domain_v =
-            Radix2EvaluationDomain::<<Bls12_381 as Pairing>::ScalarField>::new(order_v).unwrap();
+            Radix2EvaluationDomain::<<Bn254 as Pairing>::ScalarField>::new(order_v).unwrap();
         let order_k = num_queries;
-        let domain_k = create_sub_domain::<Bls12_381>(&domain_v, order_k, segment_size).unwrap();
+        let domain_k = create_sub_domain::<Bn254>(&domain_v, order_k, segment_size).unwrap();
         let group_gen_k = domain_k.group_gen;
         assert_eq!(
             group_gen_k.pow([domain_k.size]),
-            <Bls12_381 as Pairing>::ScalarField::one()
+            <Bn254 as Pairing>::ScalarField::one()
         );
     }
 }

@@ -17,7 +17,7 @@ In this demo, we create one table segment containing four random field elements,
 verify a lookup proof.
 
 ```rust
-use ark_bls12_381::Bls12_381;
+use ark_bn254::Bn254;
 use ark_ec::pairing::Pairing;
 use ark_segmentlookup::prover::prove;
 use ark_segmentlookup::public_parameters::PublicParameters;
@@ -47,12 +47,12 @@ fn main() {
 
     // Create a single table segment with random field elements.
     let segment: Vec<_> = (0..segment_size)
-        .map(|_| <Bls12_381 as Pairing>::ScalarField::rand(&mut rng))
+        .map(|_| <Bn254 as Pairing>::ScalarField::rand(&mut rng))
         .collect();
     let segments = vec![segment];
 
     // Build the lookup table.
-    let table = Table::<Bls12_381>::new(&pp, segments).expect("Failed to create table");
+    let table = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
     let tpp = table.preprocess(&pp).expect("Failed to preprocess table");
 
     // For a single segment, the only valid queried segment index is 0.

@@ -83,7 +83,7 @@ mod tests {
                 "num_table_segments: {}, num_witness_segments: {}, segment_size: {}",
                 num_table_segments, num_witness_segments, segment_size
             );
-            let (pp, _, witness, statement, tpp) = prepare_common_inputs::<ark_bn2::Bls12_381>(
+            let (pp, _, witness, statement, tpp) = prepare_common_inputs::<ark_bn2::Bn254>(
                 *num_table_segments,
                 *num_witness_segments,
                 *segment_size,

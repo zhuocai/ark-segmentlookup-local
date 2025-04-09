@@ -1,6 +1,6 @@
 mod parameters;
 
-use ark_bls12_381::Bls12_381;
+use ark_bn254::Bn254;
 use ark_ec::pairing::Pairing;
 use ark_segmentlookup::prover::prove;
 use ark_segmentlookup::public_parameters::PublicParameters;
@@ -39,7 +39,7 @@ fn rand_indices<P: Pairing>(num_table_segments: usize, num_witness_segments: usi
 
 fn end_to_end(n: usize, s: usize, k: usize, &dummy: &bool) {
     println!("n={}, s={}, k={}", n, s, k);
-    let segments = rand_table::<Bls12_381>(n, s);
+    let segments = rand_table::<Bn254>(n, s);
     let mut rng = &mut test_rng();
     let mut curr_time = std::time::Instant::now();
     let pp = PublicParameters::builder()
@@ -55,7 +55,7 @@ fn end_to_end(n: usize, s: usize, k: usize, &dummy: &bool) {
         k,
         curr_time.elapsed().as_millis()
     );
-    let table = Table::<Bls12_381>::new(&pp, segments).expect("Failed to create table");
+    let table = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
     curr_time = std::time::Instant::now();
     let tpp = table
         .preprocess(&pp, &dummy)
@@ -67,7 +67,7 @@ fn end_to_end(n: usize, s: usize, k: usize, &dummy: &bool) {
         k,
         curr_time.elapsed().as_millis()
     );
-    let queried_segment_indices = rand_indices::<Bls12_381>(n, k);
+    let queried_segment_indices = rand_indices::<Bn254>(n, k);
 
     let witness = Witness::new(&pp, &tpp.adjusted_table_values, &queried_segment_indices).unwrap();
     let statement = witness.generate_statement(&pp.g1_affine_srs);
@@ -94,16 +94,18 @@ fn end_to_end(n: usize, s: usize, k: usize, &dummy: &bool) {
     // assert!(res.is_ok());
 }
 fn main() {
-    let seg_powers: Vec<usize> = vec![16, 17, 18, 19, 20, 21, 22];
-    // let segsizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256];
-    let segsizes: Vec<usize> = vec![1,4,16,64];
-    // let witness_sizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
-    let witness_sizes: Vec<usize> = vec![1024]; //, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+    let seg_powers: Vec<usize> = vec![16, 17, 18, 19, 20, 21, 22, 23, 24];
+    
+    let segsizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256];
+    // let segsizes: Vec<usize> = vec![1,4,16,64];
+    
+    let witness_sizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+    // let witness_sizes: Vec<usize> = vec![1024]; //, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
 
     let table_powers: Vec<usize> = vec![
         16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
     ];
-    let dummy: bool = false;
+    let dummy: bool = true;
 
     for table_power in table_powers.iter() {
         for num_segment_power in seg_powers.iter() {

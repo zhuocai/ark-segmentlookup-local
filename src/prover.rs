@@ -750,14 +750,14 @@ fn compute_degree_check_g1_affine<P: Pairing>(
 mod tests {
     use super::*;
     use crate::table::{rand_segments, Table};
-    use ark_bls12_381::Bls12_381;
+    use ark_bn254::Bn254;
     use ark_ec::PrimeGroup;
     use ark_std::rand::RngCore;
     use ark_std::{test_rng, UniformRand};
     use std::ops::{Neg, Sub};
 
-    type Fr = <Bls12_381 as Pairing>::ScalarField;
-    type G1 = <Bls12_381 as Pairing>::G1;
+    type Fr = <Bn254 as Pairing>::ScalarField;
+    type G1 = <Bn254 as Pairing>::G1;
 
     #[test]
     fn test_mul_and_neg() {
@@ -771,7 +771,7 @@ mod tests {
     #[test]
     fn test_domain_generator() {
         let size = 8;
-        let domain = Radix2EvaluationDomain::<<Bls12_381 as Pairing>::ScalarField>::new(size).unwrap();
+        let domain = Radix2EvaluationDomain::<<Bn254 as Pairing>::ScalarField>::new(size).unwrap();
         let domain_elements: Vec<_> = domain.elements().collect();
         assert_eq!(domain_elements[1], domain.group_gen);
     }
@@ -795,7 +795,7 @@ mod tests {
         let num_table_segments = 16;
         let num_witness_segments = 8;
         let segment_size = 4;
-        let pp = PublicParameters::<Bls12_381>::builder()
+        let pp = PublicParameters::<Bn254>::builder()
             .num_table_segments(num_table_segments)
             .num_witness_segments(num_witness_segments)
             .segment_size(segment_size)
@@ -837,14 +837,14 @@ mod tests {
         let mut poly_qm = poly_m.clone();
         poly_qm = poly_qm.sub(&poly_m_div_w);
         poly_qm = poly_qm.naive_mul(&poly_x_pow_n_sub_one);
-        let poly_qm = divide_by_vanishing_poly_checked::<Bls12_381>(&pp.domain_w, &poly_qm).unwrap();
+        let poly_qm = divide_by_vanishing_poly_checked::<Bn254>(&pp.domain_w, &poly_qm).unwrap();
         let g1_affine_qm_expected = Kzg::<G1>::commit(&pp.g1_affine_srs, &poly_qm).into_affine();
 
         let MultiplicityPolynomialsAndQuotient {
             g1_affine_m: g1_affine_m_got,
             g1_affine_m_div_w: g1_affine_m_div_w_got,
             g1_affine_qm: g1_affine_qm_got,
-        } = compute_multiplicity_polynomials_and_quotient::<Bls12_381>(
+        } = compute_multiplicity_polynomials_and_quotient::<Bn254>(
             &multiplicities,
             &pp.g1_affine_list_lw,
             &pp.g1_affine_list_q3,
@@ -862,7 +862,7 @@ mod tests {
         let mut rng = test_rng();
         let inputs = [(4, 8, 4), (8, 4, 4), (8, 16, 4), (16, 8, 4)];
         for (num_table_segments, num_witness_segments, segment_size) in inputs.into_iter() {
-            let pp = PublicParameters::<Bls12_381>::builder()
+            let pp = PublicParameters::<Bn254>::builder()
                 .num_table_segments(num_table_segments)
                 .num_witness_segments(num_witness_segments)
                 .segment_size(segment_size)

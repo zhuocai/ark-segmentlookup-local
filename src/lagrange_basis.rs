@@ -73,13 +73,13 @@ mod tests {
     use super::*;
     use crate::domain::roots_of_unity;
     use crate::kzg::{unsafe_setup_from_rng, Kzg};
-    use ark_bls12_381::Bls12_381;
+    use ark_bn254::Bn254;
     use ark_poly::univariate::DensePolynomial;
     use ark_poly::DenseUVPolynomial;
     use ark_std::{test_rng, One, Zero};
 
-    type ScalarField = <Bls12_381 as Pairing>::ScalarField;
-    type G1Affine = <Bls12_381 as Pairing>::G1Affine;
+    type ScalarField = <Bn254 as Pairing>::ScalarField;
+    type G1Affine = <Bn254 as Pairing>::G1Affine;
 
     fn lagrange_basis<P: Pairing>(
         domain: &Radix2EvaluationDomain<P::ScalarField>,
@@ -113,33 +113,33 @@ mod tests {
     fn test_zero_opening_proofs() {
         let n = 32;
         let domain = Radix2EvaluationDomain::<ScalarField>::new(n).unwrap();
-        let lagrange_basis = lagrange_basis::<Bls12_381>(&domain);
+        let lagrange_basis = lagrange_basis::<Bn254>(&domain);
 
         let mut rng = test_rng();
 
-        let (srs_g1, _, _, _) = unsafe_setup_from_rng::<Bls12_381, _>(n - 1, 0, &mut rng);
+        let (srs_g1, _, _, _) = unsafe_setup_from_rng::<Bn254, _>(n - 1, 0, &mut rng);
         let lagrange_basis_1: Vec<G1Affine> = lagrange_basis
             .iter()
-            .map(|li| Kzg::<<Bls12_381 as Pairing>::G1>::commit(&srs_g1, li).into())
+            .map(|li| Kzg::<<Bn254 as Pairing>::G1>::commit(&srs_g1, li).into())
             .collect();
 
         let zero = ScalarField::zero();
         let li_proofs_slow: Vec<G1Affine> = lagrange_basis
             .iter()
-            .map(|li| Kzg::<<Bls12_381 as Pairing>::G1>::open(&srs_g1, li, zero).1)
+            .map(|li| Kzg::<<Bn254 as Pairing>::G1>::open(&srs_g1, li, zero).1)
             .collect();
 
         let li_proofs_fast =
-            zero_opening_proofs::<Bls12_381>(&srs_g1, &domain, &lagrange_basis_1).unwrap();
+            zero_opening_proofs::<Bn254>(&srs_g1, &domain, &lagrange_basis_1).unwrap();
 
         assert_eq!(li_proofs_slow, li_proofs_fast);
 
         // Different domain size and SRS size.
         let mut rng = test_rng();
 
-        let (srs_g1, _, _, _) = unsafe_setup_from_rng::<Bls12_381, _>(n + 100, 0, &mut rng);
+        let (srs_g1, _, _, _) = unsafe_setup_from_rng::<Bn254, _>(n + 100, 0, &mut rng);
         let li_proofs_fast =
-            zero_opening_proofs::<Bls12_381>(&srs_g1, &domain, &lagrange_basis_1).unwrap();
+            zero_opening_proofs::<Bn254>(&srs_g1, &domain, &lagrange_basis_1).unwrap();
 
         assert_eq!(li_proofs_slow, li_proofs_fast);
     }

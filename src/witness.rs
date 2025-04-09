@@ -70,7 +70,7 @@ impl<P: Pairing> Witness<P> {
 
 #[cfg(test)]
 mod tests {
-    use ark_bls12_381::Bls12_381;
+    use ark_bn254::Bn254;
     use ark_std::rand::RngCore;
     use ark_std::test_rng;
 
@@ -89,7 +89,7 @@ mod tests {
             .expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
 
-        let t = Table::<Bls12_381>::new(&pp, segments).expect("Failed to create table");
+        let t = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
 
         let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
             .map(|_| rng.next_u32() as usize % pp.num_table_segments)
