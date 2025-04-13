@@ -96,18 +96,27 @@ fn end_to_end(n: usize, s: usize, k: usize, &dummy: &bool) {
 }
 fn main() {
     // let seg_powers: Vec<usize> = vec![16, 17, 18, 19, 20, 21, 22, 23, 24];
-    let seg_powers: Vec<usize> = vec![20];
+    // let seg_powers: Vec<usize> = vec![20];
     
-    // let segsizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256];
-    let segsizes: Vec<usize> = vec![4, 32];
+    // // let segsizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256];
+    // let segsizes: Vec<usize> = vec![4, 32];
 
-    // let witness_sizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
-    // let witness_sizes: Vec<usize> = vec![1024]; //, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
-    let witness_sizes: Vec<usize> = vec![4096, 16384];
+    // // let witness_sizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+    // // let witness_sizes: Vec<usize> = vec![1024]; //, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+    // let witness_sizes: Vec<usize> = vec![4096, 16384];
 
     // 2^28 run out of memory
-    let table_powers: Vec<usize> = vec![
-        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 
+    // let table_powers: Vec<usize> = vec![
+    //     16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 
+    // ];
+    let row_col_batch: vec![
+        (20, vec![
+            (0, vec![4,10]),
+            (2, vec![0,2,4,5,6,8,10,12,14]),
+            (4, vec![4,10]),
+            (5, vec![0,2,4,5,6,8,10,12,14]),
+            (6, vec![4,10])
+        ]),
     ];
     let dummy: bool = true;
 
