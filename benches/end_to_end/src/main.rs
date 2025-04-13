@@ -82,6 +82,7 @@ fn end_to_end(n: usize, s: usize, k: usize, &dummy: &bool) {
         curr_time.elapsed().as_millis()
     );
 
+
     let curr_time = std::time::Instant::now();
     let res = verify(&pp, &tpp, statement, &proof, rng);
     println!(
@@ -94,16 +95,19 @@ fn end_to_end(n: usize, s: usize, k: usize, &dummy: &bool) {
     // assert!(res.is_ok());
 }
 fn main() {
-    let seg_powers: Vec<usize> = vec![16, 17, 18, 19, 20, 21, 22, 23, 24];
+    // let seg_powers: Vec<usize> = vec![16, 17, 18, 19, 20, 21, 22, 23, 24];
+    let seg_powers: Vec<usize> = vec![20];
     
-    let segsizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256];
-    // let segsizes: Vec<usize> = vec![1,4,16,64];
-    
-    let witness_sizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
-    // let witness_sizes: Vec<usize> = vec![1024]; //, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+    // let segsizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256];
+    let segsizes: Vec<usize> = vec![4, 32];
 
+    // let witness_sizes: Vec<usize> = vec![1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+    // let witness_sizes: Vec<usize> = vec![1024]; //, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+    let witness_sizes: Vec<usize> = vec![4096, 16384];
+
+    // 2^28 run out of memory
     let table_powers: Vec<usize> = vec![
-        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 
     ];
     let dummy: bool = true;
 
