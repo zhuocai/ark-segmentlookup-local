@@ -109,7 +109,7 @@ fn main() {
     // let table_powers: Vec<usize> = vec![
     //     16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 
     // ];
-    let row_col_batch: vec![
+    let row_col_batch =  vec![
         (20, vec![
             (0, vec![4,10]),
             (2, vec![0,2,4,5,6,8,10,12,14]),
@@ -120,17 +120,15 @@ fn main() {
     ];
     let dummy: bool = true;
 
-    for table_power in table_powers.iter() {
-        for num_segment_power in seg_powers.iter() {
-            for segsize in segsizes.iter() {
-                let log_seg: i32 = *table_power as i32 - *num_segment_power as i32;
-                
-                if log_seg >=0 && *segsize == 2_i32.pow(log_seg as u32).try_into().unwrap() {
-                    for witness_size in witness_sizes.iter() {
-                        let num_segments = 2_i32.pow(*num_segment_power as u32);
-                        end_to_end(num_segments as usize, *segsize, *witness_size, &dummy);
-                    }
-                }
+    for i in 0..row_col_batch.len() {
+        let log_row = row_col_batch[i].0;
+        let col_batch = &row_col_batch[i].1;
+        for j in 0..col_batch.len() {
+            let log_col = col_batch[j].0;
+            let log_batches = &col_batch[j].1;
+            for k in 0..log_batches.len() {
+                let log_batch = log_batches[k];
+                end_to_end(1usize<<log_row, 1usize<<log_col, 1usize<<log_batch, &dummy);
             }
         }
     }
