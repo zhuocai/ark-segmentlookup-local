@@ -1,0 +1,196 @@
+    Updating crates.io index
+     Locking 78 packages to latest compatible versions
+ Downloading crates ...
+  Downloaded ark-ff-asm v0.5.0
+  Downloaded ark-serialize-derive v0.5.0
+  Downloaded ark-serialize v0.5.0
+  Downloaded ark-bn254 v0.5.0
+  Downloaded enum-ordinalize-derive v4.3.1
+  Downloaded enum-ordinalize v4.3.0
+  Downloaded ark-std v0.5.0
+  Downloaded scopeguard v1.2.0
+  Downloaded ark-ff-macros v0.5.0
+  Downloaded parking_lot_core v0.9.10
+  Downloaded smallvec v1.15.0
+  Downloaded lock_api v0.4.12
+  Downloaded dashmap v6.1.0
+  Downloaded educe v0.6.0
+  Downloaded blake2 v0.10.6
+  Downloaded ark-ff v0.5.0
+  Downloaded ark-ec v0.5.0
+  Downloaded allocator-api2 v0.2.21
+  Downloaded itertools v0.13.0
+  Downloaded hashbrown v0.14.5
+  Downloaded ark-poly v0.5.0
+   Compiling autocfg v1.4.0
+   Compiling proc-macro2 v1.0.94
+   Compiling unicode-ident v1.0.18
+   Compiling version_check v0.9.5
+   Compiling libc v0.2.171
+   Compiling cfg-if v1.0.0
+   Compiling crossbeam-utils v0.8.21
+   Compiling typenum v1.18.0
+   Compiling zerocopy v0.8.24
+   Compiling rayon-core v1.12.1
+   Compiling generic-array v0.14.7
+   Compiling either v1.15.0
+   Compiling num-traits v0.2.19
+   Compiling subtle v2.6.1
+   Compiling paste v1.0.15
+   Compiling ahash v0.8.11
+   Compiling quote v1.0.40
+   Compiling crossbeam-epoch v0.9.18
+   Compiling syn v2.0.100
+   Compiling getrandom v0.2.15
+   Compiling crossbeam-deque v0.8.6
+   Compiling rand_core v0.6.4
+   Compiling num-integer v0.1.46
+   Compiling arrayvec v0.7.6
+   Compiling once_cell v1.21.3
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.6
+   Compiling num-bigint v0.4.6
+   Compiling digest v0.10.7
+   Compiling rayon v1.10.0
+   Compiling itertools v0.13.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling allocator-api2 v0.2.21
+   Compiling rand_chacha v0.3.1
+   Compiling zerocopy v0.7.35
+   Compiling rand v0.8.5
+   Compiling hashbrown v0.15.2
+   Compiling lock_api v0.4.12
+   Compiling parking_lot_core v0.9.10
+   Compiling scopeguard v1.2.0
+   Compiling smallvec v1.15.0
+   Compiling keccak v0.1.5
+   Compiling byteorder v1.5.0
+   Compiling hashbrown v0.14.5
+   Compiling blake2 v0.10.6
+   Compiling ark-std v0.5.0
+   Compiling dashmap v6.1.0
+   Compiling zeroize_derive v1.4.2
+   Compiling enum-ordinalize-derive v4.3.1
+   Compiling ark-serialize-derive v0.5.0
+   Compiling ark-ff-macros v0.5.0
+   Compiling ark-ff-asm v0.5.0
+   Compiling ark-serialize v0.5.0
+   Compiling zeroize v1.8.1
+   Compiling enum-ordinalize v4.3.0
+   Compiling educe v0.6.0
+   Compiling merlin v3.0.0
+   Compiling ark-ff v0.5.0
+   Compiling ark-poly v0.5.0
+   Compiling ark-ec v0.5.0
+   Compiling ark-bn254 v0.5.0
+   Compiling ark-segmentlookup v0.1.0 (/home/chris/zhuo/ark-segmentlookup-local)
+warning: unnecessary parentheses around `if` condition
+   --> /home/chris/zhuo/ark-segmentlookup-local/src/public_parameters.rs:161:12
+    |
+161 |         if (!dummy)
+    |            ^      ^
+    |
+    = note: `#[warn(unused_parens)]` on by default
+help: remove these parentheses
+    |
+161 -         if (!dummy)
+161 +         if !dummy
+    |
+
+warning: unused import: `ark_std::rand::rngs::StdRng`
+  --> /home/chris/zhuo/ark-segmentlookup-local/src/table.rs:12:5
+   |
+12 | use ark_std::rand::rngs::StdRng;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `ark_std::rand::Rng`
+  --> /home/chris/zhuo/ark-segmentlookup-local/src/table.rs:13:5
+   |
+13 | use ark_std::rand::Rng;
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: unnecessary parentheses around `if` condition
+  --> /home/chris/zhuo/ark-segmentlookup-local/src/table.rs:74:12
+   |
+74 |         if (!dummy) {
+   |            ^      ^
+   |
+help: remove these parentheses
+   |
+74 -         if (!dummy) {
+74 +         if !dummy {
+   |
+
+warning: `ark-segmentlookup` (lib) generated 4 warnings (run `cargo fix --lib -p ark-segmentlookup` to apply 4 suggestions)
+   Compiling e2e-test v0.1.0 (/home/chris/zhuo/ark-segmentlookup-local/benches/end_to_end)
+warning: unused variable: `res`
+  --> src/main.rs:87:9
+   |
+87 |     let res = verify(&pp, &tpp, statement, &proof, rng);
+   |         ^^^ help: if this is intentional, prefix it with an underscore: `_res`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: constant `N_VEC` is never used
+ --> src/parameters.rs:2:11
+  |
+2 | pub const N_VEC: [usize; 19] = [
+  |           ^^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: constant `S_VEC` is never used
+  --> src/parameters.rs:24:11
+   |
+24 | pub const S_VEC: [usize; 10] = [
+   |           ^^^^^
+
+warning: constant `K_VEC` is never used
+  --> src/parameters.rs:37:11
+   |
+37 | pub const K_VEC: [usize; 11] = [
+   |           ^^^^^
+
+warning: constant `N_MID` is never used
+  --> src/parameters.rs:51:11
+   |
+51 | pub const N_MID: usize = 1 << 14;
+   |           ^^^^^
+
+warning: constant `S_MID` is never used
+  --> src/parameters.rs:52:11
+   |
+52 | pub const S_MID: usize = 1 << 6;
+   |           ^^^^^
+
+warning: constant `K_MID` is never used
+  --> src/parameters.rs:53:11
+   |
+53 | pub const K_MID: usize = 1 << 4;
+   |           ^^^^^
+
+warning: `e2e-test` (bin "e2e-test") generated 7 warnings
+    Finished `release` profile [optimized] target(s) in 26.90s
+     Running `target/release/e2e-test`
+n=1048576, s=4, k=4096
+Setup time for n=1048576 s=4 k=4096 is [824] ms
+Table preprocess time for n=1048576 s=4 k=4096 is [125] ms
+Prove time for n=1048576 s=4 k=4096 is [27174] ms
+Verify time for n=1048576 s=4 k=4096 is [18] ms
+n=1048576, s=4, k=16384
+Setup time for n=1048576 s=4 k=16384 is [878] ms
+Table preprocess time for n=1048576 s=4 k=16384 is [125] ms
+Prove time for n=1048576 s=4 k=16384 is [107854] ms
+Verify time for n=1048576 s=4 k=16384 is [18] ms
+n=1048576, s=32, k=4096
+Setup time for n=1048576 s=32 k=4096 is [6396] ms
+Table preprocess time for n=1048576 s=32 k=4096 is [1322] ms
+Prove time for n=1048576 s=32 k=4096 is [118808] ms
+Verify time for n=1048576 s=32 k=4096 is [18] ms
+n=1048576, s=32, k=16384
+Setup time for n=1048576 s=32 k=16384 is [6453] ms
+Table preprocess time for n=1048576 s=32 k=16384 is [1321] ms
+Prove time for n=1048576 s=32 k=16384 is [467545] ms
+Verify time for n=1048576 s=32 k=16384 is [18] ms
