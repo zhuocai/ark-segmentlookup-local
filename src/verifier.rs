@@ -422,7 +422,7 @@ fn fr_to_curve_element<C: CurveGroup>(fr: C::ScalarField) -> C {
 
 #[cfg(test)]
 mod tests {
-    use ark_bn254::Bn254;
+    use ark_bls12_381::Bls12_381;
     use ark_std::rand::RngCore;
     use ark_std::{test_rng, UniformRand};
 
@@ -432,8 +432,8 @@ mod tests {
 
     use super::*;
 
-    type Fr = <Bn254 as Pairing>::ScalarField;
-    type G1Affine = <Bn254 as Pairing>::G1Affine;
+    type Fr = <Bls12_381 as Pairing>::ScalarField;
+    type G1Affine = <Bls12_381 as Pairing>::G1Affine;
 
     #[test]
     fn test_successful_verify() {
@@ -450,7 +450,7 @@ mod tests {
                 .expect("Failed to setup public parameters");
             let segments = rand_segments::generate(&pp);
 
-            let t = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
+            let t = Table::<Bls12_381>::new(&pp, segments).expect("Failed to create table");
             let tpp = t.preprocess(&pp).unwrap();
 
             let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)
@@ -465,9 +465,9 @@ mod tests {
             let rng = &mut test_rng();
 
             let proof =
-                prove::<Bn254, _>(&pp, &tpp, &witness, statement, rng).expect("Failed to prove");
+                prove::<Bls12_381, _>(&pp, &tpp, &witness, statement, rng).expect("Failed to prove");
 
-            assert!(verify::<Bn254, _>(&pp, &tpp, statement, &proof, rng).is_ok());
+            assert!(verify::<Bls12_381, _>(&pp, &tpp, statement, &proof, rng).is_ok());
         }
     }
 
@@ -486,7 +486,7 @@ mod tests {
                 .expect("Failed to setup public parameters");
             let segments = rand_segments::generate(&pp);
 
-            let t = Table::<Bn254>::new(&pp, segments.clone()).expect("Failed to create table");
+            let t = Table::<Bls12_381>::new(&pp, segments.clone()).expect("Failed to create table");
             let tpp = t.preprocess(&pp).unwrap();
 
             let queried_segment_indices: Vec<usize> = (0..pp.num_witness_segments)

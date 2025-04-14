@@ -479,7 +479,7 @@ fn serialize_usize(input: usize, buf: &mut Vec<u8>) {
 
 #[cfg(test)]
 mod test {
-    use ark_bn254::Bn254;
+    use ark_bls12_381::Bls12_381;
     use ark_std::test_rng;
 
     use super::*;
@@ -487,7 +487,7 @@ mod test {
     #[test]
     fn test_public_parameters_builder() {
         let mut rng = test_rng();
-        PublicParameters::<Bn254>::builder()
+        PublicParameters::<Bls12_381>::builder()
             .num_table_segments(8)
             .num_witness_segments(4)
             .segment_size(4)

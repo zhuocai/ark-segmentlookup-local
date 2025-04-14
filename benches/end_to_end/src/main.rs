@@ -1,6 +1,6 @@
 mod parameters;
 
-use ark_bn254::Bn254;
+use ark_bls12_381::Bls12_381;
 use ark_ec::pairing::Pairing;
 use ark_segmentlookup::prover::prove;
 use ark_segmentlookup::public_parameters::PublicParameters;
@@ -39,7 +39,7 @@ fn rand_indices<P: Pairing>(num_table_segments: usize, num_witness_segments: usi
 
 fn end_to_end(n: usize, s: usize, k: usize, &dummy: &bool) {
     println!("n={}, s={}, k={}", n, s, k);
-    let segments = rand_table::<Bn254>(n, s);
+    let segments = rand_table::<Bls12_381>(n, s);
     let mut rng = &mut test_rng();
     let mut curr_time = std::time::Instant::now();
     let pp = PublicParameters::builder()
@@ -55,7 +55,7 @@ fn end_to_end(n: usize, s: usize, k: usize, &dummy: &bool) {
         k,
         curr_time.elapsed().as_millis()
     );
-    let table = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
+    let table = Table::<Bls12_381>::new(&pp, segments).expect("Failed to create table");
     curr_time = std::time::Instant::now();
     let tpp = table
         .preprocess(&pp, &dummy)
@@ -67,7 +67,7 @@ fn end_to_end(n: usize, s: usize, k: usize, &dummy: &bool) {
         k,
         curr_time.elapsed().as_millis()
     );
-    let queried_segment_indices = rand_indices::<Bn254>(n, k);
+    let queried_segment_indices = rand_indices::<Bls12_381>(n, k);
 
     let witness = Witness::new(&pp, &tpp.adjusted_table_values, &queried_segment_indices).unwrap();
     let statement = witness.generate_statement(&pp.g1_affine_srs);

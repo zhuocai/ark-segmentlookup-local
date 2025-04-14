@@ -4,7 +4,7 @@
   Downloaded ark-ff-asm v0.5.0
   Downloaded ark-serialize-derive v0.5.0
   Downloaded ark-serialize v0.5.0
-  Downloaded ark-bn254 v0.5.0
+  Downloaded ark-bls12_381 v0.5.0
   Downloaded enum-ordinalize-derive v4.3.1
   Downloaded enum-ordinalize v4.3.0
   Downloaded ark-std v0.5.0
@@ -82,7 +82,7 @@
    Compiling ark-ff v0.5.0
    Compiling ark-poly v0.5.0
    Compiling ark-ec v0.5.0
-   Compiling ark-bn254 v0.5.0
+   Compiling ark-bls12_381 v0.5.0
    Compiling ark-segmentlookup v0.1.0 (/home/chris/zhuo/ark-segmentlookup-local)
 warning: unnecessary parentheses around `if` condition
    --> /home/chris/zhuo/ark-segmentlookup-local/src/public_parameters.rs:161:12

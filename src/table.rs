@@ -267,7 +267,7 @@ pub mod rand_segments {
 
 #[cfg(test)]
 mod tests {
-    use ark_bn254::Bn254;
+    use ark_bls12_381::Bls12_381;
     use ark_std::test_rng;
 
     use super::*;
@@ -281,9 +281,9 @@ mod tests {
             .segment_size(4)
             .build(&mut rng)
             .expect("Failed to setup public parameters");
-        let segments = rand_segments::generate::<Bn254>(&pp);
+        let segments = rand_segments::generate::<Bls12_381>(&pp);
 
-        Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
+        Table::<Bls12_381>::new(&pp, segments).expect("Failed to create table");
     }
 
     #[test]
@@ -297,7 +297,7 @@ mod tests {
             .expect("Failed to setup public parameters");
         let segments = rand_segments::generate(&pp);
 
-        let t = Table::<Bn254>::new(&pp, segments).expect("Failed to create table");
+        let t = Table::<Bls12_381>::new(&pp, segments).expect("Failed to create table");
 
         t.preprocess(&pp).expect("Failed to preprocess table");
     }
