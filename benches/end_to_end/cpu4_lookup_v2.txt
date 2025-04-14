@@ -1,0 +1,210 @@
+warning: unnecessary parentheses around `if` condition
+   --> /home/caizhuo/code/ark-segmentlookup-local/src/public_parameters.rs:161:12
+    |
+161 |         if (!dummy)
+    |            ^      ^
+    |
+    = note: `#[warn(unused_parens)]` on by default
+help: remove these parentheses
+    |
+161 -         if (!dummy)
+161 +         if !dummy
+    |
+
+warning: unused import: `ark_std::rand::rngs::StdRng`
+  --> /home/caizhuo/code/ark-segmentlookup-local/src/table.rs:12:5
+   |
+12 | use ark_std::rand::rngs::StdRng;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `ark_std::rand::Rng`
+  --> /home/caizhuo/code/ark-segmentlookup-local/src/table.rs:13:5
+   |
+13 | use ark_std::rand::Rng;
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: unnecessary parentheses around `if` condition
+  --> /home/caizhuo/code/ark-segmentlookup-local/src/table.rs:74:12
+   |
+74 |         if (!dummy) {
+   |            ^      ^
+   |
+help: remove these parentheses
+   |
+74 -         if (!dummy) {
+74 +         if !dummy {
+   |
+
+warning: `ark-segmentlookup` (lib) generated 4 warnings (run `cargo fix --lib -p ark-segmentlookup` to apply 4 suggestions)
+   Compiling e2e-test v0.1.0 (/home/caizhuo/code/ark-segmentlookup-local/benches/end_to_end)
+warning: unused variable: `res`
+  --> src/main.rs:87:9
+   |
+87 |     let res = verify(&pp, &tpp, statement, &proof, rng);
+   |         ^^^ help: if this is intentional, prefix it with an underscore: `_res`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: constant `N_VEC` is never used
+ --> src/parameters.rs:2:11
+  |
+2 | pub const N_VEC: [usize; 19] = [
+  |           ^^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: constant `S_VEC` is never used
+  --> src/parameters.rs:24:11
+   |
+24 | pub const S_VEC: [usize; 10] = [
+   |           ^^^^^
+
+warning: constant `K_VEC` is never used
+  --> src/parameters.rs:37:11
+   |
+37 | pub const K_VEC: [usize; 11] = [
+   |           ^^^^^
+
+warning: constant `N_MID` is never used
+  --> src/parameters.rs:51:11
+   |
+51 | pub const N_MID: usize = 1 << 14;
+   |           ^^^^^
+
+warning: constant `S_MID` is never used
+  --> src/parameters.rs:52:11
+   |
+52 | pub const S_MID: usize = 1 << 6;
+   |           ^^^^^
+
+warning: constant `K_MID` is never used
+  --> src/parameters.rs:53:11
+   |
+53 | pub const K_MID: usize = 1 << 4;
+   |           ^^^^^
+
+warning: `e2e-test` (bin "e2e-test") generated 7 warnings
+    Finished `release` profile [optimized] target(s) in 10.35s
+     Running `target/release/e2e-test`
+n=1048576, s=1, k=16
+Setup time for n=1048576 s=1 k=16 is [208] ms
+Table preprocess time for n=1048576 s=1 k=16 is [38] ms
+Prove time for n=1048576 s=1 k=16 is [131] ms
+Verify time for n=1048576 s=1 k=16 is [17] ms
+n=1048576, s=1, k=1024
+Setup time for n=1048576 s=1 k=1024 is [226] ms
+Table preprocess time for n=1048576 s=1 k=1024 is [31] ms
+Prove time for n=1048576 s=1 k=1024 is [4469] ms
+Verify time for n=1048576 s=1 k=1024 is [18] ms
+n=1048576, s=4, k=1
+Setup time for n=1048576 s=4 k=1 is [821] ms
+Table preprocess time for n=1048576 s=4 k=1 is [165] ms
+Prove time for n=1048576 s=4 k=1 is [183] ms
+Verify time for n=1048576 s=4 k=1 is [17] ms
+n=1048576, s=4, k=4
+Setup time for n=1048576 s=4 k=4 is [823] ms
+Table preprocess time for n=1048576 s=4 k=4 is [165] ms
+Prove time for n=1048576 s=4 k=4 is [212] ms
+Verify time for n=1048576 s=4 k=4 is [18] ms
+n=1048576, s=4, k=16
+Setup time for n=1048576 s=4 k=16 is [822] ms
+Table preprocess time for n=1048576 s=4 k=16 is [165] ms
+Prove time for n=1048576 s=4 k=16 is [291] ms
+Verify time for n=1048576 s=4 k=16 is [18] ms
+n=1048576, s=4, k=32
+Setup time for n=1048576 s=4 k=32 is [822] ms
+Table preprocess time for n=1048576 s=4 k=32 is [165] ms
+Prove time for n=1048576 s=4 k=32 is [399] ms
+Verify time for n=1048576 s=4 k=32 is [18] ms
+n=1048576, s=4, k=64
+Setup time for n=1048576 s=4 k=64 is [847] ms
+Table preprocess time for n=1048576 s=4 k=64 is [167] ms
+Prove time for n=1048576 s=4 k=64 is [612] ms
+Verify time for n=1048576 s=4 k=64 is [18] ms
+n=1048576, s=4, k=256
+Setup time for n=1048576 s=4 k=256 is [816] ms
+Table preprocess time for n=1048576 s=4 k=256 is [165] ms
+Prove time for n=1048576 s=4 k=256 is [1883] ms
+Verify time for n=1048576 s=4 k=256 is [18] ms
+n=1048576, s=4, k=1024
+Setup time for n=1048576 s=4 k=1024 is [820] ms
+Table preprocess time for n=1048576 s=4 k=1024 is [165] ms
+Prove time for n=1048576 s=4 k=1024 is [6957] ms
+Verify time for n=1048576 s=4 k=1024 is [18] ms
+n=1048576, s=4, k=4096
+Setup time for n=1048576 s=4 k=4096 is [828] ms
+Table preprocess time for n=1048576 s=4 k=4096 is [165] ms
+Prove time for n=1048576 s=4 k=4096 is [27284] ms
+Verify time for n=1048576 s=4 k=4096 is [19] ms
+n=1048576, s=4, k=16384
+Setup time for n=1048576 s=4 k=16384 is [901] ms
+Table preprocess time for n=1048576 s=4 k=16384 is [172] ms
+Prove time for n=1048576 s=4 k=16384 is [110223] ms
+Verify time for n=1048576 s=4 k=16384 is [18] ms
+n=1048576, s=16, k=16
+Setup time for n=1048576 s=16 k=16 is [3226] ms
+Table preprocess time for n=1048576 s=16 k=16 is [654] ms
+Prove time for n=1048576 s=16 k=16 is [935] ms
+Verify time for n=1048576 s=16 k=16 is [18] ms
+n=1048576, s=16, k=1024
+Setup time for n=1048576 s=16 k=1024 is [3189] ms
+Table preprocess time for n=1048576 s=16 k=1024 is [647] ms
+Prove time for n=1048576 s=16 k=1024 is [17398] ms
+Verify time for n=1048576 s=16 k=1024 is [18] ms
+n=1048576, s=32, k=1
+Setup time for n=1048576 s=32 k=1 is [6347] ms
+Table preprocess time for n=1048576 s=32 k=1 is [1317] ms
+Prove time for n=1048576 s=32 k=1 is [1321] ms
+Verify time for n=1048576 s=32 k=1 is [17] ms
+n=1048576, s=32, k=4
+Setup time for n=1048576 s=32 k=4 is [6520] ms
+Table preprocess time for n=1048576 s=32 k=4 is [1346] ms
+Prove time for n=1048576 s=32 k=4 is [1480] ms
+Verify time for n=1048576 s=32 k=4 is [19] ms
+n=1048576, s=32, k=16
+Setup time for n=1048576 s=32 k=16 is [6528] ms
+Table preprocess time for n=1048576 s=32 k=16 is [1343] ms
+Prove time for n=1048576 s=32 k=16 is [1828] ms
+Verify time for n=1048576 s=32 k=16 is [18] ms
+n=1048576, s=32, k=32
+Setup time for n=1048576 s=32 k=32 is [6337] ms
+Table preprocess time for n=1048576 s=32 k=32 is [1308] ms
+Prove time for n=1048576 s=32 k=32 is [2307] ms
+Verify time for n=1048576 s=32 k=32 is [18] ms
+n=1048576, s=32, k=64
+Setup time for n=1048576 s=32 k=64 is [6288] ms
+Table preprocess time for n=1048576 s=32 k=64 is [1291] ms
+Prove time for n=1048576 s=32 k=64 is [3258] ms
+Verify time for n=1048576 s=32 k=64 is [18] ms
+n=1048576, s=32, k=256
+Setup time for n=1048576 s=32 k=256 is [6333] ms
+Table preprocess time for n=1048576 s=32 k=256 is [1309] ms
+Prove time for n=1048576 s=32 k=256 is [8829] ms
+Verify time for n=1048576 s=32 k=256 is [18] ms
+n=1048576, s=32, k=1024
+Setup time for n=1048576 s=32 k=1024 is [6379] ms
+Table preprocess time for n=1048576 s=32 k=1024 is [1297] ms
+Prove time for n=1048576 s=32 k=1024 is [31080] ms
+Verify time for n=1048576 s=32 k=1024 is [18] ms
+n=1048576, s=32, k=4096
+Setup time for n=1048576 s=32 k=4096 is [6270] ms
+Table preprocess time for n=1048576 s=32 k=4096 is [1294] ms
+Prove time for n=1048576 s=32 k=4096 is [123145] ms
+Verify time for n=1048576 s=32 k=4096 is [18] ms
+n=1048576, s=32, k=16384
+Setup time for n=1048576 s=32 k=16384 is [6326] ms
+Table preprocess time for n=1048576 s=32 k=16384 is [1294] ms
+Prove time for n=1048576 s=32 k=16384 is [480695] ms
+Verify time for n=1048576 s=32 k=16384 is [18] ms
+n=1048576, s=64, k=16
+Setup time for n=1048576 s=64 k=16 is [12520] ms
+Table preprocess time for n=1048576 s=64 k=16 is [2573] ms
+Prove time for n=1048576 s=64 k=16 is [3464] ms
+Verify time for n=1048576 s=64 k=16 is [18] ms
+n=1048576, s=64, k=1024
+Setup time for n=1048576 s=64 k=1024 is [12593] ms
+Table preprocess time for n=1048576 s=64 k=1024 is [2680] ms
+Prove time for n=1048576 s=64 k=1024 is [58077] ms
+Verify time for n=1048576 s=64 k=1024 is [19] ms
